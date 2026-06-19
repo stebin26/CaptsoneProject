@@ -172,3 +172,10 @@ def domain_data(dataset_id: int, domain: str, limit: int = 200) -> dict[str, Any
         return _handle(resp)
     except requests.RequestException as exc:
         raise APIError(f"Failed to load domain data: {exc}") from exc
+
+def list_datasets() -> list[dict[str, Any]]:
+    try:
+        resp = requests.get(_url("/datasets"), timeout=_TIMEOUT)
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to list datasets: {exc}") from exc

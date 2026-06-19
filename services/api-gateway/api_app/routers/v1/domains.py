@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ops_common.db import get_db, duckdb_scope
@@ -188,3 +189,59 @@ def _as_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+# ============================================================
+# Dataset listing (for the Datasets browse page)
+# ============================================================
+
+class DatasetListItem(BaseModel):
+    dataset_id: int
+    business_name: str
+    industry: str | None
+    source_filename: str
+    row_count: int | None
+    uploaded_at: str
+    features_collected: int
+    features_skipped: int
+
+
+@router.get("/datasets", response_model=list[DatasetListItem])
+def list_datasets(session: Session = Depends(get_db)) -> list[DatasetListItem]:
+    from ops_common.domain.models import Dataset, FeatureRecord, FeatureStatus
+    from sqlalchemy import func
+
+    datasets = session.execute(
+        select(Dataset).order_by(Dataset.id.desc())
+    ).scalars().all()
+
+    counts: dict[int, dict[str, int]] = {}
+    rows = session.execute(
+        select(
+            FeatureRecord.dataset_id,
+            FeatureRecord.status,
+            func.count().label("n"),
+        ).group_by(FeatureRecord.dataset_id, FeatureRecord.status)
+    ).all()
+    for dataset_id, status, n in rows:
+        bucket = counts.setdefault(dataset_id, {"collected": 0, "skipped": 0})
+        if status in (FeatureStatus.COLLECTED.value, FeatureStatus.ADDED_LATER.value):
+            bucket["collected"] += int(n)
+        elif status == FeatureStatus.SKIPPED.value:
+            bucket["skipped"] += int(n)
+
+    result: list[DatasetListItem] = []
+    for d in datasets:
+        c = counts.get(d.id, {"collected": 0, "skipped": 0})
+        result.append(
+            DatasetListItem(
+                dataset_id=d.id,
+                business_name=d.business_name,
+                industry=d.industry,
+                source_filename=d.source_filename,
+                row_count=d.row_count,
+                uploaded_at=str(d.uploaded_at),
+                features_collected=c["collected"],
+                features_skipped=c["skipped"],
+            )
+        )
+    return result

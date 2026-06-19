@@ -133,7 +133,7 @@ def _attach_postgres(conn: duckdb.DuckDBPyConnection) -> None:
     if attached and attached[0] > 0:
         return
     conn.execute(
-        f"ATTACH 'postgres:{settings.duckdb_attach_dsn}' AS {alias} "
+        f"ATTACH '{settings.duckdb_attach_dsn}' AS {alias} "
         f"(TYPE postgres, READ_ONLY);"
     )
     logger.info("Attached Postgres to DuckDB", extra={"alias": alias})
