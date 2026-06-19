@@ -1,0 +1,11 @@
+fastapi>=0.110,<0.116
+uvicorn[standard]>=0.27,<0.35
+python-multipart>=0.0.9,<0.1
+pandas>=2.1,<3.0
+numpy>=1.26,<3.0
+anthropic>=0.25,<1.0
+sqlalchemy>=2.0,<2.1
+psycopg[binary]>=3.1,<4.0
+duckdb>=0.10,<2.0
+pydantic>=2.6,<3.0
+pydantic-settings>=2.2,<3.0

@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field, PostgresDsn, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="OPS_",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # ---- Environment ----
+    environment: str = Field(default="development")
+    debug: bool = Field(default=True)
+    log_level: str = Field(default="INFO")
+
+    # ---- Postgres (the hub) ----
+    postgres_host: str = Field(default="postgres")
+    postgres_port: int = Field(default=5432)
+    postgres_db: str = Field(default="ops")
+    postgres_user: str = Field(default="ops")
+    postgres_password: str = Field(default="ops")
+
+    # ---- DuckDB (analytics) ----
+    duckdb_path: str = Field(default="/data/analytics.duckdb")
+    duckdb_pg_alias: str = Field(default="pg")
+
+    # ---- API gateway ----
+    api_host: str = Field(default="0.0.0.0")
+    api_port: int = Field(default=8000)
+    api_cors_origins: list[str] = Field(default=["http://localhost:5173"])
+
+    # ---- LLM (mapping suggester) ----
+    anthropic_api_key: str = Field(default="")
+    llm_model: str = Field(default="claude-sonnet-4-6")
+    llm_max_tokens: int = Field(default=1024)
+    llm_enabled: bool = Field(default=True)
+
+    # ---- Paths ----
+    project_root: Path = Field(default=Path(__file__).resolve().parents[4])
+    upload_dir: Path = Field(default=Path("/data/uploads"))
+    mapping_config_dir: Path = Field(
+        default=Path(__file__).resolve().parent / "mapping_configs"
+    )
+
+    # ---- Derived connection strings ----
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def postgres_dsn(self) -> str:
+        return (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def sqlalchemy_dsn(self) -> str:
+        return (
+            f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def duckdb_attach_dsn(self) -> str:
+        return (
+            f"dbname={self.postgres_db} host={self.postgres_host} "
+            f"port={self.postgres_port} user={self.postgres_user} "
+            f"password={self.postgres_password}"
+        )
+
+    def ensure_dirs(self) -> None:
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.mapping_config_dir.mkdir(parents=True, exist_ok=True)
+        Path(self.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.ensure_dirs()
+    return settings
+
+
+settings = get_settings()

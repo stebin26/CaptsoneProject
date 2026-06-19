@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ops_postgres
+    environment:
+      POSTGRES_DB: ${OPS_POSTGRES_DB:-ops}
+      POSTGRES_USER: ${OPS_POSTGRES_USER:-ops}
+      POSTGRES_PASSWORD: ${OPS_POSTGRES_PASSWORD:-ops}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${OPS_POSTGRES_USER:-ops} -d ${OPS_POSTGRES_DB:-ops}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - ops_net
+
+  seed:
+    build:
+      context: .
+      dockerfile: services/data-simulator/Dockerfile
+    container_name: ops_seed
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OPS_ENVIRONMENT: ${OPS_ENVIRONMENT:-development}
+      OPS_POSTGRES_HOST: postgres
+      OPS_POSTGRES_PORT: 5432
+      OPS_POSTGRES_DB: ${OPS_POSTGRES_DB:-ops}
+      OPS_POSTGRES_USER: ${OPS_POSTGRES_USER:-ops}
+      OPS_POSTGRES_PASSWORD: ${OPS_POSTGRES_PASSWORD:-ops}
+    command: ["python", "-m", "app.cli", "seed"]
+    volumes:
+      - shared_data:/data
+    networks:
+      - ops_net
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: ops_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    environment:
+      OPS_ENVIRONMENT: ${OPS_ENVIRONMENT:-development}
+      OPS_POSTGRES_HOST: postgres
+      OPS_POSTGRES_PORT: 5432
+      OPS_POSTGRES_DB: ${OPS_POSTGRES_DB:-ops}
+      OPS_POSTGRES_USER: ${OPS_POSTGRES_USER:-ops}
+      OPS_POSTGRES_PASSWORD: ${OPS_POSTGRES_PASSWORD:-ops}
+      OPS_DUCKDB_PATH: /data/analytics.duckdb
+      OPS_UPLOAD_DIR: /data/uploads
+      OPS_API_CORS_ORIGINS: '["http://localhost:8050"]'
+      OPS_ANTHROPIC_API_KEY: ${OPS_ANTHROPIC_API_KEY:-}
+      OPS_LLM_ENABLED: ${OPS_LLM_ENABLED:-true}
+      OPS_LLM_MODEL: ${OPS_LLM_MODEL:-claude-sonnet-4-6}
+    ports:
+      - "8000:8000"
+    volumes:
+      - shared_data:/data
+    networks:
+      - ops_net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: services/dashboard/Dockerfile
+    container_name: ops_dashboard
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      OPS_ENVIRONMENT: ${OPS_ENVIRONMENT:-development}
+      OPS_API_BASE_URL: http://api:8000/api/v1
+      OPS_DASH_HOST: 0.0.0.0
+      OPS_DASH_PORT: 8050
+    ports:
+      - "8050:8050"
+    networks:
+      - ops_net
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  shared_data:
+
+networks:
+  ops_net:
+    driver: bridge
