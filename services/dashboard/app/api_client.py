@@ -179,3 +179,68 @@ def list_datasets() -> list[dict[str, Any]]:
         return _handle(resp)
     except requests.RequestException as exc:
         raise APIError(f"Failed to list datasets: {exc}") from exc
+
+# ============================================================
+# Analytics (Spark-computed results)
+# ============================================================
+
+def analytics_overview(dataset_id: int) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url(f"/analytics/{dataset_id}/overview"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load analytics overview: {exc}") from exc
+
+
+def analytics_metrics(dataset_id: int) -> list[dict[str, Any]]:
+    try:
+        resp = requests.get(
+            _url(f"/analytics/{dataset_id}/metrics"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load analytics metrics: {exc}") from exc
+
+
+def analytics_trend(
+    dataset_id: int,
+    domain: str | None = None,
+    metric_name: str | None = None,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {}
+    if domain:
+        params["domain"] = domain
+    if metric_name:
+        params["metric_name"] = metric_name
+    try:
+        resp = requests.get(
+            _url(f"/analytics/{dataset_id}/trend"),
+            params=params,
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load analytics trend: {exc}") from exc
+
+
+def analytics_features(
+    dataset_id: int,
+    domain: str | None = None,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {"limit": limit}
+    if domain:
+        params["domain"] = domain
+    try:
+        resp = requests.get(
+            _url(f"/analytics/{dataset_id}/features"),
+            params=params,
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load analytics features: {exc}") from exc

@@ -13,6 +13,8 @@ from ops_common.config import settings
 from ops_common.db import get_db
 from ops_common.logging import get_logger
 from app.pipeline import start_onboarding, complete_onboarding
+from api_app.spark_trigger import trigger_analytics_async
+
 
 logger = get_logger(__name__)
 
@@ -154,6 +156,8 @@ def onboard_confirm(
         session.rollback()
         logger.exception("onboard/confirm failed")
         raise
+
+    trigger_analytics_async()
 
     return CompleteResponse(
         dataset_id=result.dataset_id,

@@ -15,7 +15,7 @@ from ops_common.db import (
     wait_for_postgres,
 )
 from ops_common.logging import configure_logging, get_logger
-from api_app.routers.v1 import onboard, features, domains
+from api_app.routers.v1 import onboard, features, domains, analytics
 
 logger = get_logger(__name__)
 
@@ -100,3 +100,4 @@ async def health_db() -> dict[str, str]:
 app.include_router(onboard.router, prefix="/api/v1", tags=["onboarding"])
 app.include_router(features.router, prefix="/api/v1", tags=["features"])
 app.include_router(domains.router, prefix="/api/v1", tags=["domains"])
+app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])

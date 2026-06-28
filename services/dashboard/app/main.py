@@ -45,6 +45,7 @@ def _nav_bar() -> html.Div:
                     dcc.Link("Confirm", href="/confirm", style=link_style),
                     dcc.Link("Review", href="/review", style=link_style),
                     dcc.Link("Datasets", href="/datasets", style=link_style),
+                    dcc.Link("Analytics", href="/analytics", style=link_style),
                 ],
             )
         ],

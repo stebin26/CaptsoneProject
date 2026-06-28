@@ -43,6 +43,15 @@ def _date_range(config: GeneratorConfig) -> list[datetime]:
     return [config.start_date + timedelta(days=d) for d in range(config.days)]
 
 
+def _timestamp(date: datetime, rng: np.random.Generator) -> str:
+    offset = timedelta(
+        hours=int(rng.integers(6, 20)),
+        minutes=int(rng.integers(0, 60)),
+        seconds=int(rng.integers(0, 60)),
+    )
+    return (date + offset).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _seasonal(day_index: int, period: int = 7, amplitude: float = 0.15) -> float:
     return 1.0 + amplitude * np.sin(2 * np.pi * day_index / period)
 
@@ -77,7 +86,7 @@ def build_manufacturing(config: GeneratorConfig, entity_count: int, prefix: str)
             rows.append(
                 {
                     "machine_id": machine_id,
-                    "date": date.strftime("%Y-%m-%d"),
+                    "date": _timestamp(date, rng),
                     "units_produced": round(units, 1),
                     "downtime_minutes": round(downtime, 1),
                     "defect_count": round(defects, 1),
@@ -115,7 +124,7 @@ def build_telecom(config: GeneratorConfig, entity_count: int, prefix: str) -> pd
             rows.append(
                 {
                     "tower_id": tower_id,
-                    "date": date.strftime("%Y-%m-%d"),
+                    "date": _timestamp(date, rng),
                     "active_subscribers": int(subscribers),
                     "data_usage_gb": round(data_gb, 1),
                     "dropped_calls": round(dropped_calls, 1),
@@ -153,7 +162,7 @@ def build_aerospace(config: GeneratorConfig, entity_count: int, prefix: str) -> 
             rows.append(
                 {
                     "aircraft_id": aircraft_id,
-                    "date": date.strftime("%Y-%m-%d"),
+                    "date": _timestamp(date, rng),
                     "flight_hours": round(flight_hours, 1),
                     "sorties": sorties,
                     "inspection_failures": inspection_failures,
@@ -191,7 +200,7 @@ def build_education(config: GeneratorConfig, entity_count: int, prefix: str) -> 
             rows.append(
                 {
                     "classroom_id": classroom_id,
-                    "date": date.strftime("%Y-%m-%d"),
+                    "date": _timestamp(date, rng),
                     "students_enrolled": enrolled,
                     "attendance_count": attendance,
                     "average_grade": avg_grade,
