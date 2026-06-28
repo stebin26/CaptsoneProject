@@ -157,7 +157,7 @@ def onboard_confirm(
         logger.exception("onboard/confirm failed")
         raise
 
-    trigger_analytics_async()
+    trigger_analytics_async(result.dataset_id)
 
     return CompleteResponse(
         dataset_id=result.dataset_id,

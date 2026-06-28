@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import json
 import threading
 import urllib.request
@@ -33,18 +34,22 @@ def _get_token() -> str | None:
         return None
 
 
-def _trigger_dag() -> None:
+def _trigger_dag(dataset_id: int | None) -> None:
     token = _get_token()
     if not token:
         logger.error("No Airflow token; cannot trigger analytics")
         return
 
-    import datetime
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     run_id = f"api__{now}"
+    conf: dict[str, int] = {}
+    if dataset_id is not None:
+        conf["dataset_id"] = int(dataset_id)
+
     body = json.dumps({
         "dag_run_id": run_id,
         "logical_date": now,
+        "conf": conf,
     }).encode()
     req = urllib.request.Request(
         _TRIGGER_URL,
@@ -57,12 +62,18 @@ def _trigger_dag() -> None:
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            logger.info("Triggered analytics DAG", extra={"status": resp.status})
+            logger.info(
+                "Triggered analytics DAG",
+                extra={"status": resp.status, "dataset_id": dataset_id},
+            )
     except Exception:  # noqa: BLE001
         logger.exception("Failed to trigger analytics DAG")
 
 
-def trigger_analytics_async() -> None:
-    thread = threading.Thread(target=_trigger_dag, daemon=True)
+def trigger_analytics_async(dataset_id: int | None = None) -> None:
+    thread = threading.Thread(target=_trigger_dag, args=(dataset_id,), daemon=True)
     thread.start()
-    logger.info("Analytics DAG trigger requested in background")
+    logger.info(
+        "Analytics DAG trigger requested in background",
+        extra={"dataset_id": dataset_id},
+    )

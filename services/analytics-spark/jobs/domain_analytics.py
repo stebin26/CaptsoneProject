@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 
 from pyspark.sql import DataFrame, SparkSession
@@ -11,6 +12,21 @@ from spark_session import (
     read_table,
     replace_dataset_rows,
 )
+
+
+def _target_dataset_id() -> int | None:
+    if len(sys.argv) > 1 and sys.argv[1].strip():
+        try:
+            return int(sys.argv[1].strip())
+        except ValueError:
+            pass
+    env = os.environ.get("OPS_TARGET_DATASET_ID", "").strip()
+    if env:
+        try:
+            return int(env)
+        except ValueError:
+            pass
+    return None
 
 
 def _domain_name(table: str) -> str:
@@ -99,8 +115,14 @@ def _select_trend_columns(df: DataFrame) -> DataFrame:
 
 
 def run() -> None:
+    target_id = _target_dataset_id()
     spark = build_spark("domain-analytics")
     spark.sparkContext.setLogLevel("WARN")
+
+    if target_id is not None:
+        print(f"[MODE] incremental — processing dataset_id={target_id} only")
+    else:
+        print("[MODE] full — processing all datasets")
 
     processed = 0
     skipped: list[str] = []
@@ -116,8 +138,11 @@ def run() -> None:
             skipped.append(domain)
             continue
 
+        if target_id is not None:
+            df = df.filter(F.col("dataset_id") == target_id)
+
         if _is_empty(df):
-            print(f"[SKIP] {domain}: table is empty")
+            print(f"[SKIP] {domain}: no rows for this run")
             skipped.append(domain)
             continue
 

@@ -31,6 +31,10 @@ SPARK_CONF = {
     "spark.driver.memory": "512m",
 }
 
+# If a dataset_id is passed in the trigger conf, only that dataset is processed.
+# If not (e.g. scheduled batch run), the job processes all datasets.
+DATASET_ARG = "{{ dag_run.conf.get('dataset_id', '') if dag_run else '' }}"
+
 
 @dag(
     dag_id="analytics_pipeline",
@@ -49,6 +53,7 @@ def analytics_pipeline():
         conn_id=SPARK_CONN_ID,
         py_files=f"{JOBS_DIR}/spark_session.py",
         jars="/opt/spark/jars/postgresql-42.7.4.jar",
+        application_args=[DATASET_ARG],
         name="domain-analytics",
         deploy_mode="client",
         conf=SPARK_CONF,
@@ -62,6 +67,7 @@ def analytics_pipeline():
         conn_id=SPARK_CONN_ID,
         py_files=f"{JOBS_DIR}/spark_session.py",
         jars="/opt/spark/jars/postgresql-42.7.4.jar",
+        application_args=[DATASET_ARG],
         name="feature-engineering",
         deploy_mode="client",
         conf=SPARK_CONF,
