@@ -18,6 +18,30 @@ from app import theme
 dash.register_page(__name__, path="/analytics", name="Analytics")
 
 
+# Fixed chart type per domain
+DOMAIN_ORDER = [
+    "assets",
+    "operations",
+    "quality",
+    "maintenance",
+    "inventory",
+    "workforce",
+    "finance",
+    "customers",
+]
+
+DOMAIN_CHART = {
+    "assets": "line",
+    "operations": "column",
+    "quality": "bubble",
+    "maintenance": "bar_trend",
+    "inventory": "treemap",
+    "workforce": "hbar",
+    "finance": "area",
+    "customers": "donut",
+}
+
+
 def layout() -> html.Div:
     return html.Div(
         style=theme.PAGE_STYLE,
@@ -67,6 +91,23 @@ def layout() -> html.Div:
                 style=theme.SUBHEADING_STYLE,
             ),
             html.Div(id="analytics-features-table"),
+
+            # ---- Domain dashboard (below the features table) ----
+            html.Hr(
+                style={
+                    "margin": "2rem 0",
+                    "border": "none",
+                    "borderTop": f"1px solid {theme.COLORS['border']}",
+                }
+            ),
+            html.H3("Domain dashboard", style={"fontSize": "1.2rem"}),
+            html.P(
+                "Each active domain visualized with a chart suited to its data. "
+                "Only domains present in this dataset are shown.",
+                style=theme.SUBHEADING_STYLE,
+            ),
+            html.Div(id="analytics-domain-status"),
+            html.Div(id="analytics-domain-charts"),
         ],
     )
 
@@ -280,6 +321,257 @@ def load_features(dataset_id: int | None) -> Any:
         style={"width": "100%", "borderCollapse": "collapse", "fontSize": "0.85rem"},
     )
     return html.Div(table, style=theme.CARD_STYLE)
+
+
+# ============================================================
+# Domain status row + per-domain charts (below the table)
+# ============================================================
+
+@callback(
+    Output("analytics-domain-status", "children"),
+    Output("analytics-domain-charts", "children"),
+    Input("analytics-dataset", "value"),
+)
+def load_domain_dashboard(dataset_id: int | None) -> tuple[Any, Any]:
+    if dataset_id is None:
+        return "", ""
+
+    try:
+        features = analytics_features(dataset_id, limit=500)
+    except APIError:
+        return "", ""
+
+    if not features:
+        return "", ""
+
+    by_domain: dict[str, list[dict[str, Any]]] = {}
+    for f in features:
+        by_domain.setdefault(f["domain"], []).append(f)
+
+    active = set(by_domain.keys())
+
+    status_row = _render_domain_status(active)
+
+    charts = []
+    for domain in DOMAIN_ORDER:
+        if domain not in active:
+            continue
+        chart = _render_domain_chart(dataset_id, domain, by_domain[domain])
+        if chart is not None:
+            charts.append(chart)
+
+    return status_row, html.Div(charts)
+
+
+def _render_domain_status(active: set[str]) -> html.Div:
+    pills = []
+    for domain in DOMAIN_ORDER:
+        is_on = domain in active
+        pills.append(
+            html.Span(
+                [
+                    domain.capitalize(),
+                    html.Span(
+                        " ✓" if is_on else " —",
+                        style={"fontWeight": 600},
+                    ),
+                ],
+                style={
+                    "fontSize": "0.8rem",
+                    "padding": "0.25rem 0.7rem",
+                    "borderRadius": "6px",
+                    "marginRight": "0.5rem",
+                    "marginBottom": "0.5rem",
+                    "display": "inline-block",
+                    "backgroundColor": (
+                        _domain_tint(domain) if is_on else "#F1EFE8"
+                    ),
+                    "color": (
+                        theme.domain_color(domain) if is_on else "#888780"
+                    ),
+                },
+            )
+        )
+
+    return html.Div(
+        style={"margin": "1rem 0 1.5rem"},
+        children=[
+            html.P(
+                f"{len(active)} of 8 domains have data. "
+                "Charts below show only the active domains.",
+                style={**theme.SUBHEADING_STYLE, "marginBottom": "0.75rem"},
+            ),
+            html.Div(pills),
+        ],
+    )
+
+
+def _render_domain_chart(
+    dataset_id: int,
+    domain: str,
+    rows: list[dict[str, Any]],
+) -> Any:
+    chart_type = DOMAIN_CHART.get(domain, "column")
+    color = theme.domain_color(domain)
+
+    if chart_type == "line":
+        fig = _chart_line(dataset_id, domain, rows, color)
+    elif chart_type == "area":
+        fig = _chart_area(dataset_id, domain, rows, color)
+    elif chart_type == "bubble":
+        fig = _chart_bubble(rows, color)
+    elif chart_type == "bar_trend":
+        fig = _chart_bar_trend(rows)
+    elif chart_type == "hbar":
+        fig = _chart_hbar(rows, color)
+    elif chart_type == "treemap":
+        fig = _chart_treemap(rows, domain)
+    elif chart_type == "donut":
+        fig = _chart_donut(rows, domain)
+    else:
+        fig = _chart_column(rows, color)
+
+    if fig is None:
+        return None
+
+    fig.update_layout(
+        height=300,
+        margin=dict(l=20, r=20, t=50, b=60),
+        plot_bgcolor="white",
+        title=f"{domain.capitalize()}",
+    )
+    return html.Div(dcc.Graph(figure=fig), style=theme.CARD_STYLE)
+
+
+def _avg_by_entity(rows: list[dict[str, Any]]) -> tuple[list[str], list[float]]:
+    ents = [r["entity_ref"] for r in rows]
+    avgs = [float(r.get("avg_value") or 0) for r in rows]
+    return ents, avgs
+
+
+def _chart_column(rows: list[dict[str, Any]], color: str) -> go.Figure:
+    ents, avgs = _avg_by_entity(rows)
+    fig = go.Figure()
+    fig.add_bar(x=ents, y=avgs, marker_color=color)
+    fig.update_xaxes(tickangle=-45)
+    return fig
+
+
+def _chart_hbar(rows: list[dict[str, Any]], color: str) -> go.Figure:
+    ents, avgs = _avg_by_entity(rows)
+    fig = go.Figure()
+    fig.add_bar(x=avgs, y=ents, orientation="h", marker_color=color)
+    return fig
+
+
+def _chart_bubble(rows: list[dict[str, Any]], color: str) -> go.Figure:
+    ents = [r["entity_ref"] for r in rows]
+    avgs = [float(r.get("avg_value") or 0) for r in rows]
+    stds = [float(r.get("std_value") or 0) for r in rows]
+    sizes = [max(8, s * 2) for s in stds]
+    fig = go.Figure()
+    fig.add_scatter(
+        x=list(range(len(ents))),
+        y=avgs,
+        mode="markers",
+        marker=dict(size=sizes, color=color, opacity=0.5),
+        text=ents,
+    )
+    fig.update_xaxes(
+        tickmode="array",
+        tickvals=list(range(len(ents))),
+        ticktext=ents,
+        tickangle=-45,
+    )
+    return fig
+
+
+def _chart_bar_trend(rows: list[dict[str, Any]]) -> go.Figure:
+    ents = [r["entity_ref"] for r in rows]
+    avgs = [float(r.get("avg_value") or 0) for r in rows]
+    trends = [float(r.get("trend_slope") or 0) for r in rows]
+    colors = ["#E24B4A" if t > 0 else "#BA7517" for t in trends]
+    fig = go.Figure()
+    fig.add_bar(x=ents, y=avgs, marker_color=colors)
+    fig.update_xaxes(tickangle=-45)
+    return fig
+
+
+def _chart_treemap(rows: list[dict[str, Any]], domain: str) -> go.Figure:
+    ents = [r["entity_ref"] for r in rows]
+    avgs = [abs(float(r.get("avg_value") or 0)) for r in rows]
+    fig = go.Figure(
+        go.Treemap(
+            labels=ents,
+            parents=[""] * len(ents),
+            values=avgs,
+            marker_colorscale="Blues",
+        )
+    )
+    return fig
+
+
+def _chart_donut(rows: list[dict[str, Any]], domain: str) -> go.Figure:
+    ents = [r["entity_ref"] for r in rows]
+    avgs = [abs(float(r.get("avg_value") or 0)) for r in rows]
+    fig = go.Figure(go.Pie(labels=ents, values=avgs, hole=0.55))
+    return fig
+
+
+def _chart_line(
+    dataset_id: int,
+    domain: str,
+    rows: list[dict[str, Any]],
+    color: str,
+) -> go.Figure:
+    metric = rows[0]["metric_name"]
+    try:
+        points = analytics_trend(dataset_id, domain=domain, metric_name=metric)
+    except APIError:
+        points = []
+    if points:
+        days = [p["day"] for p in points]
+        vals = [float(p.get("avg_value") or 0) for p in points]
+        fig = go.Figure()
+        fig.add_scatter(x=days, y=vals, mode="lines+markers",
+                        line=dict(color=color, width=2))
+        return fig
+    return _chart_column(rows, color)
+
+
+def _chart_area(
+    dataset_id: int,
+    domain: str,
+    rows: list[dict[str, Any]],
+    color: str,
+) -> go.Figure:
+    metric = rows[0]["metric_name"]
+    try:
+        points = analytics_trend(dataset_id, domain=domain, metric_name=metric)
+    except APIError:
+        points = []
+    if points:
+        days = [p["day"] for p in points]
+        vals = [float(p.get("avg_value") or 0) for p in points]
+        fig = go.Figure()
+        fig.add_scatter(x=days, y=vals, mode="lines", fill="tozeroy",
+                        line=dict(color=color, width=2))
+        return fig
+    return _chart_column(rows, color)
+
+
+def _domain_tint(domain: str) -> str:
+    tints = {
+        "assets": "#E6F1FB",
+        "operations": "#E6F1FB",
+        "quality": "#E1F5EE",
+        "maintenance": "#FAEEDA",
+        "inventory": "#EEEDFE",
+        "workforce": "#EEEDFE",
+        "finance": "#E1F5EE",
+        "customers": "#FBEAF0",
+    }
+    return tints.get(domain, "#F1EFE8")
 
 
 # ============================================================
