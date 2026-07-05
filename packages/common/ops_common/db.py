@@ -15,6 +15,8 @@ from ops_common.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Module-level singletons: one engine + one session factory shared across the app.
+# The lock guards against two threads creating the engine at the same time.
 _engine: Engine | None = None
 _SessionFactory: sessionmaker[Session] | None = None
 _engine_lock = threading.Lock()
@@ -24,6 +26,8 @@ _engine_lock = threading.Lock()
 # Postgres (the hub) — SQLAlchemy engine + session
 # ============================================================
 
+# Lazily build the Postgres engine once (thread-safe double-checked locking).
+# pool_pre_ping checks dead connections; pool_size/max_overflow tune concurrency.
 def get_engine() -> Engine:
     global _engine, _SessionFactory
     if _engine is None:
@@ -37,6 +41,7 @@ def get_engine() -> Engine:
                     max_overflow=10,
                     future=True,
                 )
+                # Session factory configured for explicit commits (autocommit off).
                 _SessionFactory = sessionmaker(
                     bind=_engine,
                     autoflush=False,
@@ -47,6 +52,7 @@ def get_engine() -> Engine:
     return _engine
 
 
+# Return the session factory, building the engine first if needed.
 def get_session_factory() -> sessionmaker[Session]:
     if _SessionFactory is None:
         get_engine()
@@ -54,6 +60,8 @@ def get_session_factory() -> sessionmaker[Session]:
     return _SessionFactory
 
 
+# Context manager for a unit of work: commit on success, rollback on error,
+# always close. Use this for scripts/pipelines (with session_scope() as s:).
 @contextmanager
 def session_scope() -> Iterator[Session]:
     factory = get_session_factory()
@@ -69,7 +77,8 @@ def session_scope() -> Iterator[Session]:
         session.close()
 
 
-# FastAPI dependency
+# FastAPI dependency version: yields a session, no auto-commit (routes commit
+# themselves). Used via Depends(get_db) in API endpoints.
 def get_db() -> Iterator[Session]:
     factory = get_session_factory()
     session = factory()
@@ -79,6 +88,8 @@ def get_db() -> Iterator[Session]:
         session.close()
 
 
+# Startup helper: poll Postgres until it answers SELECT 1 or retries run out.
+# Needed because in Docker the API can boot before Postgres is ready.
 def wait_for_postgres(retries: int = 30, delay: float = 2.0) -> None:
     import time
 
@@ -100,6 +111,8 @@ def wait_for_postgres(retries: int = 30, delay: float = 2.0) -> None:
     raise RuntimeError(f"Postgres unavailable after {retries} attempts") from last_err
 
 
+# Run a .sql file against Postgres in one transaction. This is how the hub
+# schema gets applied at startup (idempotent schema.sql).
 def apply_schema(schema_path: str | Path) -> None:
     schema_path = Path(schema_path)
     if not schema_path.exists():
@@ -115,6 +128,9 @@ def apply_schema(schema_path: str | Path) -> None:
 # DuckDB (analytics) — attaches Postgres read-only, loads views
 # ============================================================
 
+# Open a DuckDB connection and wire it to Postgres: install+load the postgres
+# extension, then attach the live Postgres DB so DuckDB can query hub tables.
+# This is the "fast analytics reads off the same data" mechanism.
 def get_duckdb(read_only: bool = False) -> duckdb.DuckDBPyConnection:
     Path(settings.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
     conn = duckdb.connect(settings.duckdb_path, read_only=read_only)
@@ -124,6 +140,8 @@ def get_duckdb(read_only: bool = False) -> duckdb.DuckDBPyConnection:
     return conn
 
 
+# Attach Postgres into DuckDB as READ_ONLY — but only once. First checks if the
+# alias is already attached (avoids the slow re-attach / duplicate error).
 def _attach_postgres(conn: duckdb.DuckDBPyConnection) -> None:
     alias = settings.duckdb_pg_alias
     attached = conn.execute(
@@ -139,6 +157,8 @@ def _attach_postgres(conn: duckdb.DuckDBPyConnection) -> None:
     logger.info("Attached Postgres to DuckDB", extra={"alias": alias})
 
 
+# Run the analytics .sql file (the 6 DuckDB views) against DuckDB once at startup.
+# These views sit on top of the attached Postgres data for fast reads.
 def load_analytics_views(analytics_sql_path: str | Path) -> None:
     analytics_sql_path = Path(analytics_sql_path)
     if not analytics_sql_path.exists():
@@ -152,6 +172,8 @@ def load_analytics_views(analytics_sql_path: str | Path) -> None:
         conn.close()
 
 
+# Context manager for DuckDB reads: opens (read-only by default), yields, closes.
+# Use this when the dashboard/API needs to run an analytics query.
 @contextmanager
 def duckdb_scope(read_only: bool = True) -> Iterator[duckdb.DuckDBPyConnection]:
     conn = get_duckdb(read_only=read_only)

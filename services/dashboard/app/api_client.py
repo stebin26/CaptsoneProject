@@ -244,3 +244,163 @@ def analytics_features(
         return _handle(resp)
     except requests.RequestException as exc:
         raise APIError(f"Failed to load analytics features: {exc}") from exc
+
+
+# ============================================================
+# ML (Phase 3 — forecasts, anomalies, risk scores)
+# ============================================================
+
+def ml_overview(dataset_id: int) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url(f"/ml/{dataset_id}/overview"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load ML overview: {exc}") from exc
+
+
+def ml_forecasts(
+    dataset_id: int,
+    domain: str | None = None,
+    metric_name: str | None = None,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {}
+    if domain:
+        params["domain"] = domain
+    if metric_name:
+        params["metric_name"] = metric_name
+    try:
+        resp = requests.get(
+            _url(f"/ml/{dataset_id}/forecasts"),
+            params=params,
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load forecasts: {exc}") from exc
+
+
+def ml_anomalies(
+    dataset_id: int,
+    domain: str | None = None,
+    severity: str | None = None,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {"limit": limit}
+    if domain:
+        params["domain"] = domain
+    if severity:
+        params["severity"] = severity
+    try:
+        resp = requests.get(
+            _url(f"/ml/{dataset_id}/anomalies"),
+            params=params,
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load anomalies: {exc}") from exc
+
+
+def ml_risk_scores(
+    dataset_id: int,
+    domain: str | None = None,
+    risk_level: str | None = None,
+) -> list[dict[str, Any]]:
+    params: dict[str, Any] = {}
+    if domain:
+        params["domain"] = domain
+    if risk_level:
+        params["risk_level"] = risk_level
+    try:
+        resp = requests.get(
+            _url(f"/ml/{dataset_id}/risk-scores"),
+            params=params,
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load risk scores: {exc}") from exc
+
+
+def ml_domain_intelligence(dataset_id: int, domain: str) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url(f"/ml/{dataset_id}/domain/{domain}"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load domain intelligence: {exc}") from exc
+    
+# Intelligence (Phase 3 Level 2 — cross-domain insights)
+
+def intelligence(dataset_id: int) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url(f"/intelligence/{dataset_id}"),
+            timeout=(5, 180),          # was _TIMEOUT (60s); give Ollama room
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load intelligence: {exc}") from exc
+
+# ============================================================
+# RAG (Phase 3 Level 3 — document assistant)
+# ============================================================
+
+def rag_upload(dataset_id: int, files: list[tuple[str, bytes]],
+               business_name: str | None = None) -> dict[str, Any]:
+    multipart = [("files", (name, data, "application/octet-stream")) for name, data in files]
+    form: dict[str, Any] = {}
+    if business_name:
+        form["business_name"] = business_name
+    try:
+        resp = requests.post(
+            _url(f"/rag/{dataset_id}/upload"),
+            files=multipart,
+            data=form,
+            timeout=(5, 300),
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to upload documents: {exc}") from exc
+
+
+def rag_documents(dataset_id: int) -> list[dict[str, Any]]:
+    try:
+        resp = requests.get(
+            _url(f"/rag/{dataset_id}/documents"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load documents: {exc}") from exc
+
+
+def rag_query(dataset_id: int, question: str, top_k: int | None = None) -> dict[str, Any]:
+    body: dict[str, Any] = {"question": question}
+    if top_k is not None:
+        body["top_k"] = top_k
+    try:
+        resp = requests.post(
+            _url(f"/rag/{dataset_id}/query"),
+            json=body,
+            timeout=(5, 120),
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to query documents: {exc}") from exc
+
+
+def rag_delete_document(dataset_id: int, document_id: int) -> dict[str, Any]:
+    try:
+        resp = requests.delete(
+            _url(f"/rag/{dataset_id}/documents/{document_id}"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to delete document: {exc}") from exc

@@ -13,12 +13,17 @@ from app.connectors.base import (
 
 logger = get_logger(__name__)
 
+# A column that is ≥99% empty is treated as dead and dropped.
 _MAX_EMPTY_RATIO = 0.99
 
 
+# The concrete CSV reader — inherits BaseConnector so every source type
+# (CSV now, API/ERP later) shares the same interface. source_type tags it.
 class CSVConnector(BaseConnector):
     source_type = "csv"
 
+    # Store the file path + read options + metadata. _cache holds the parsed
+    # DataFrame so repeated reads don't re-parse the file.
     def __init__(
         self,
         path: str | Path,
@@ -32,6 +37,8 @@ class CSVConnector(BaseConnector):
         self.encoding = encoding
         self._cache: pd.DataFrame | None = None
 
+    # Cheap pre-checks before parsing: file exists, is a file, not zero-byte.
+    # Fails fast with a clear error instead of a confusing pandas crash.
     def validate_source(self) -> None:
         if not self.path.exists():
             raise SourceValidationError(f"CSV file not found: {self.path}")
@@ -40,6 +47,8 @@ class CSVConnector(BaseConnector):
         if self.path.stat().st_size == 0:
             raise SourceValidationError(f"CSV file is empty: {self.path}")
 
+    # The actual pandas read. If no delimiter is given, use the python engine
+    # with sep=None so pandas auto-sniffs the separator (comma/tab/semicolon).
     def _read_raw(self) -> pd.DataFrame:
         read_kwargs: dict = {
             "encoding": self.encoding,
@@ -52,6 +61,7 @@ class CSVConnector(BaseConnector):
             read_kwargs["sep"] = None
             read_kwargs["engine"] = "python"
 
+        # If UTF-8 fails on a messy file, retry once with latin-1 (common fix).
         try:
             return pd.read_csv(self.path, **read_kwargs)
         except UnicodeDecodeError:
@@ -62,6 +72,8 @@ class CSVConnector(BaseConnector):
             read_kwargs["encoding"] = "latin-1"
             return pd.read_csv(self.path, **read_kwargs)
 
+    # The main public method: validate → read → clean → cache → return.
+    # Cleaning = normalize headers, drop dead columns, dedupe duplicate names.
     def read_dataframe(self) -> pd.DataFrame:
         if self._cache is not None:
             return self._cache
@@ -88,6 +100,8 @@ class CSVConnector(BaseConnector):
         )
         return df
 
+    # Drop columns that are almost entirely empty (≥99% NaN) — they carry no
+    # signal and would just clutter profiling/mapping.
     def _drop_dead_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         keep = []
         for col in df.columns:
@@ -98,6 +112,8 @@ class CSVConnector(BaseConnector):
             keep.append(col)
         return df[keep]
 
+    # Make duplicate column names unique (col, col_1, col_2...) so downstream
+    # code doesn't break on two columns sharing a name.
     def _dedupe_columns(self, df: pd.DataFrame) -> pd.DataFrame:
         seen: dict[str, int] = {}
         new_cols: list[str] = []
@@ -111,6 +127,8 @@ class CSVConnector(BaseConnector):
         df.columns = new_cols
         return df
 
+    # Convenience constructor: build the connector straight from an upload,
+    # packaging path + business name + industry into the metadata object.
     @classmethod
     def from_upload(
         cls,

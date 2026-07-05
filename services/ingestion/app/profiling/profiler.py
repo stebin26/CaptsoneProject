@@ -10,10 +10,14 @@ from ops_common.logging import get_logger
 
 logger = get_logger(__name__)
 
+# Keep at most 5 sample values per column. Column-name tokens that hint the
+# column is a date/time (used to decide datetime type).
 _MAX_SAMPLE_VALUES = 5
 _DATETIME_HINT_TOKENS = ("date", "time", "timestamp", "_at", "_on", "dt")
 
 
+# The profiling result for ONE column: its type, distinct/null counts, samples,
+# and three boolean flags (numeric? datetime? identifier?) the suggester uses.
 @dataclass
 class ColumnProfile:
     column_name: str
@@ -26,6 +30,7 @@ class ColumnProfile:
     is_datetime: bool = False
     is_identifier: bool = False
 
+    # Serialize to a plain dict (for JSON storage / API response).
     def to_dict(self) -> dict[str, Any]:
         return {
             "column_name": self.column_name,
@@ -40,6 +45,8 @@ class ColumnProfile:
         }
 
 
+# The profiling result for the WHOLE dataset: filename, row count, and the
+# list of per-column profiles above.
 @dataclass
 class DatasetProfile:
     source_filename: str
@@ -54,35 +61,49 @@ class DatasetProfile:
         }
 
 
+# The core type-detection logic. Returns (type_name, is_numeric, is_datetime).
+# Goes in priority order so the most reliable signal wins.
 def _infer_logical_type(series: pd.Series, column_name: str) -> tuple[str, bool, bool]:
     non_null = series.dropna()
 
+    # All-null column → "empty", nothing more to infer.
     if non_null.empty:
         return "empty", False, False
 
+    # True/False column.
     if pd.api.types.is_bool_dtype(series):
         return "boolean", False, False
 
+    # Already a proper numeric dtype → int or float, flag as numeric.
     if pd.api.types.is_integer_dtype(series) or pd.api.types.is_float_dtype(series):
         return ("integer" if pd.api.types.is_integer_dtype(series) else "float"), True, False
 
+    # Already a proper datetime dtype.
     if pd.api.types.is_datetime64_any_dtype(series):
         return "datetime", False, True
 
+    # Name looks like a date column → try parsing; if ≥80% parse, call it datetime.
+    # This catches dates stored as text.
     name_lower = column_name.lower()
     if any(tok in name_lower for tok in _DATETIME_HINT_TOKENS):
         parsed = pd.to_datetime(non_null, errors="coerce", utc=False)
         if parsed.notna().mean() >= 0.8:
             return "datetime", False, True
 
+    # Numbers stored as text → if ≥90% coerce to number, treat as numeric.
+    # Then check if all whole numbers to pick integer vs float.
     coerced = pd.to_numeric(non_null, errors="coerce")
     if coerced.notna().mean() >= 0.9:
         is_int = (coerced.dropna() % 1 == 0).all()
         return ("integer" if is_int else "float"), True, False
 
+    # Default: plain text.
     return "string", False, False
 
 
+# Decide if a column is an identifier (an entity key like machine_id).
+# Rule: name ends in _id/_ref OR the values are ≥95% unique.
+# Identifiers become the entity_ref in the hub, not a metric.
 def _is_identifier(series: pd.Series, distinct_count: int, total_count: int, column_name: str) -> bool:
     name_lower = column_name.lower()
     if name_lower.endswith("_id") or name_lower == "id" or name_lower.endswith("_ref"):
@@ -93,6 +114,8 @@ def _is_identifier(series: pd.Series, distinct_count: int, total_count: int, col
     return uniqueness >= 0.95
 
 
+# Grab up to 5 distinct example values, converted to clean Python scalars
+# (numpy types → native) so they serialize to JSON safely.
 def _sample_values(series: pd.Series) -> list[Any]:
     non_null = series.dropna()
     if non_null.empty:
@@ -110,6 +133,8 @@ def _sample_values(series: pd.Series) -> list[Any]:
     return out
 
 
+# The main entry: walk every column, build its ColumnProfile, and assemble
+# the DatasetProfile. This is what the suggester consumes next.
 def profile_dataframe(df: pd.DataFrame, source_filename: str) -> DatasetProfile:
     total = len(df)
     columns: list[ColumnProfile] = []
@@ -145,6 +170,8 @@ def profile_dataframe(df: pd.DataFrame, source_filename: str) -> DatasetProfile:
     )
 
 
+# Convenience: profile straight from a CSV path. Reads the file, strips
+# whitespace from headers, then runs profile_dataframe.
 def profile_csv(path: str | Path, source_filename: str | None = None) -> DatasetProfile:
     path = Path(path)
     if not path.exists():

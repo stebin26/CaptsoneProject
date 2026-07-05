@@ -1,0 +1,236 @@
+{
+  "meta": {
+    "version": "1.0",
+    "description": "Master knowledge graph of universal business-domain dependencies. Directed edges; bidirectional only where the reverse carries a genuinely different business meaning. The inference engine traverses only the active-domain subgraph and lights an edge only when both endpoints carry a corroborating ML signal.",
+    "strength_levels": {
+      "critical": 5,
+      "strong": 4,
+      "medium": 3,
+      "weak": 2,
+      "very_weak": 1
+    },
+    "effect_meaning": {
+      "negative": "an adverse move in the source tends to worsen the target",
+      "positive": "the source and target tend to move together (a drop in one drags the other)"
+    }
+  },
+  "edges": [
+    {
+      "source": "maintenance",
+      "target": "operations",
+      "strength": "critical",
+      "effect": "negative",
+      "label": "reduces production capacity and slows throughput"
+    },
+    {
+      "source": "maintenance",
+      "target": "assets",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "accelerates asset degradation and lowers equipment health"
+    },
+    {
+      "source": "maintenance",
+      "target": "quality",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "poorly maintained equipment produces more defects"
+    },
+    {
+      "source": "maintenance",
+      "target": "finance",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "raises repair and downtime costs"
+    },
+    {
+      "source": "maintenance",
+      "target": "customers",
+      "strength": "weak",
+      "effect": "negative",
+      "label": "indirectly affects service reliability"
+    },
+
+    {
+      "source": "operations",
+      "target": "finance",
+      "strength": "critical",
+      "effect": "positive",
+      "label": "drives revenue and unit cost efficiency"
+    },
+    {
+      "source": "operations",
+      "target": "quality",
+      "strength": "critical",
+      "effect": "negative",
+      "label": "rushed or overloaded operations raise defect rates"
+    },
+    {
+      "source": "operations",
+      "target": "inventory",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "higher output consumes stock faster"
+    },
+    {
+      "source": "operations",
+      "target": "customers",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "output level shapes delivery capacity and satisfaction"
+    },
+    {
+      "source": "operations",
+      "target": "workforce",
+      "strength": "medium",
+      "effect": "positive",
+      "label": "production load drives staffing demand"
+    },
+    {
+      "source": "operations",
+      "target": "maintenance",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "heavy sustained production increases equipment wear"
+    },
+
+    {
+      "source": "assets",
+      "target": "operations",
+      "strength": "critical",
+      "effect": "positive",
+      "label": "asset health directly enables production capacity"
+    },
+    {
+      "source": "assets",
+      "target": "maintenance",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "degrading assets increase maintenance demand"
+    },
+    {
+      "source": "assets",
+      "target": "quality",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "worn assets produce less consistent output"
+    },
+    {
+      "source": "assets",
+      "target": "finance",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "failing assets raise capital and repair costs"
+    },
+
+    {
+      "source": "inventory",
+      "target": "operations",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "stock availability sustains production continuity"
+    },
+    {
+      "source": "inventory",
+      "target": "customers",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "low stock causes delivery delays and dissatisfaction"
+    },
+    {
+      "source": "inventory",
+      "target": "finance",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "shortages or overstock both strain cost efficiency"
+    },
+
+    {
+      "source": "quality",
+      "target": "customers",
+      "strength": "critical",
+      "effect": "positive",
+      "label": "quality level directly shapes customer satisfaction"
+    },
+    {
+      "source": "quality",
+      "target": "finance",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "defects drive rework, returns, and warranty cost"
+    },
+    {
+      "source": "quality",
+      "target": "operations",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "rising defects force rework and reduce effective output"
+    },
+
+    {
+      "source": "workforce",
+      "target": "operations",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "staffing levels enable production throughput"
+    },
+    {
+      "source": "workforce",
+      "target": "quality",
+      "strength": "medium",
+      "effect": "positive",
+      "label": "adequate skilled staff sustains output quality"
+    },
+    {
+      "source": "workforce",
+      "target": "maintenance",
+      "strength": "medium",
+      "effect": "negative",
+      "label": "staff shortages delay maintenance execution"
+    },
+
+    {
+      "source": "finance",
+      "target": "inventory",
+      "strength": "medium",
+      "effect": "positive",
+      "label": "budget constraints limit replenishment ability"
+    },
+    {
+      "source": "finance",
+      "target": "workforce",
+      "strength": "medium",
+      "effect": "positive",
+      "label": "budget pressure constrains staffing and overtime"
+    },
+    {
+      "source": "finance",
+      "target": "maintenance",
+      "strength": "weak",
+      "effect": "positive",
+      "label": "cost pressure can defer maintenance spend"
+    },
+
+    {
+      "source": "customers",
+      "target": "operations",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "demand level drives required production output"
+    },
+    {
+      "source": "customers",
+      "target": "inventory",
+      "strength": "strong",
+      "effect": "negative",
+      "label": "rising demand draws down available stock"
+    },
+    {
+      "source": "customers",
+      "target": "finance",
+      "strength": "strong",
+      "effect": "positive",
+      "label": "demand and satisfaction drive revenue"
+    }
+  ]
+}

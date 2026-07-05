@@ -37,15 +37,45 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000)
     api_cors_origins: list[str] = Field(default=["http://localhost:5173"])
 
-    # ---- LLM (mapping suggester) ----
+    # ---- LLM (mapping suggester + RAG answering) ----
     anthropic_api_key: str = Field(default="")
     llm_model: str = Field(default="claude-sonnet-4-6")
     llm_max_tokens: int = Field(default=1024)
     llm_enabled: bool = Field(default=True)
 
+   # ---- LLM (mapping suggester + RAG answering) ----
+    anthropic_api_key: str = Field(default="")
+    llm_model: str = Field(default="claude-sonnet-4-6")
+    llm_max_tokens: int = Field(default=1024)
+    llm_enabled: bool = Field(default=True)
+
+    # ---- RAG (Level 3 — document assistant) ----
+    # Single config block; embedder, schema dimension, retriever and QA chain
+    # all read from here. Switching model = change model + dimension only.
+    embedding_provider: str = Field(default="local")            # 'local' | 'anthropic' | 'openai'
+    embedding_model: str = Field(default="all-MiniLM-L6-v2")
+    embedding_dimension: int = Field(default=384)               # must match the model + rag.embeddings column
+    rag_chunk_size: int = Field(default=600)                    # tokens (approx) per chunk
+    rag_chunk_overlap: int = Field(default=100)
+    rag_top_k: int = Field(default=5)                           # chunks retrieved per query
+    rag_max_answer_tokens: int = Field(default=800)
+
+    # ---- RAG answer LLM (provider-configurable) ----
+    # 'ollama' = local on-premise inference (no key, no cost, no internet).
+    # 'anthropic' = cloud API (needs a valid key). Switch via OPS_LLM_PROVIDER.
+    llm_provider: str = Field(default="ollama")
+    ollama_url: str = Field(default="http://host.docker.internal:11434")
+    ollama_model: str = Field(default="llama3.2:3b")
+
+    # ---- Intelligence page LLM polish (independent of RAG) ----
+    # Off by default so the Business Intelligence page loads instantly on templates.
+    # RAG still uses the LLM (llm_enabled) regardless of this flag.
+    intelligence_llm_polish: bool = Field(default=False)
+
     # ---- Paths ----
     project_root: Path = Field(default=Path(__file__).resolve().parents[4])
     upload_dir: Path = Field(default=Path("/data/uploads"))
+    rag_upload_dir: Path = Field(default=Path("/data/rag_uploads"))
     mapping_config_dir: Path = Field(
         default=Path(__file__).resolve().parent / "mapping_configs"
     )
@@ -78,6 +108,7 @@ class Settings(BaseSettings):
 
     def ensure_dirs(self) -> None:
         self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.rag_upload_dir.mkdir(parents=True, exist_ok=True)
         self.mapping_config_dir.mkdir(parents=True, exist_ok=True)
         Path(self.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
 

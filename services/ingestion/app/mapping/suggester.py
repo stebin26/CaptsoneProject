@@ -120,6 +120,19 @@ def _keyword_suggestion(col: ColumnProfile) -> ColumnSuggestion:
             source="keyword",
         )
 
+    # Numeric column with no keyword-matched domain: still a metric, just needs a
+    # domain chosen at confirm. Skipping it silently drops usable data (this was
+    # the cause of real metrics like signal_strength being dropped).
+    if col.is_numeric:
+        return ColumnSuggestion(
+            column_name=col.column_name,
+            suggested_domain=None,
+            suggested_metric=_metric_name(col.column_name),
+            role="metric",
+            confidence=0.3,
+            source="none",
+        )
+
     return ColumnSuggestion(
         column_name=col.column_name,
         suggested_domain=None,

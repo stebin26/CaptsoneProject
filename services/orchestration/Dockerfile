@@ -34,3 +34,10 @@ RUN pip install --no-cache-dir \
         /opt/ops/services/ingestion
 
 RUN pip install --no-cache-dir pyspark==4.0.3
+
+RUN pip install --no-cache-dir \
+        "numpy>=1.26,<2.2" \
+        "pandas>=2.1" \
+        "scikit-learn>=1.4" \
+        "statsmodels>=0.14" \
+        "psycopg2-binary>=2.9"

@@ -15,12 +15,14 @@ from ops_common.db import (
     wait_for_postgres,
 )
 from ops_common.logging import configure_logging, get_logger
-from api_app.routers.v1 import onboard, features, domains, analytics
+from api_app.routers.v1 import onboard, features, domains, analytics, ml, intelligence, rag
 
 logger = get_logger(__name__)
 
 _SCHEMA_PATH = Path("/app/data-hub/postgres/schema.sql")
 _ANALYTICS_PATH = Path("/app/data-hub/duckdb/analytics.sql")
+_ML_SCHEMA_PATH = Path("/app/data-hub/postgres/ml_schema.sql")
+_RAG_SCHEMA_PATH = Path("/app/data-hub/postgres/rag_schema.sql")
 
 
 @asynccontextmanager
@@ -34,6 +36,22 @@ async def lifespan(app: FastAPI):
         apply_schema(_SCHEMA_PATH)
     else:
         logger.warning("Schema file not found at startup", extra={"path": str(_SCHEMA_PATH)})
+
+    if _ML_SCHEMA_PATH.exists():
+        try:
+            apply_schema(_ML_SCHEMA_PATH)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to apply ML schema")
+    else:
+        logger.warning("ML schema file not found at startup", extra={"path": str(_ML_SCHEMA_PATH)})
+
+    if _RAG_SCHEMA_PATH.exists():
+        try:
+            apply_schema(_RAG_SCHEMA_PATH)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to apply RAG schema")
+    else:
+        logger.warning("RAG schema file not found at startup", extra={"path": str(_RAG_SCHEMA_PATH)})
 
     if _ANALYTICS_PATH.exists():
         try:
@@ -101,3 +119,6 @@ app.include_router(onboard.router, prefix="/api/v1", tags=["onboarding"])
 app.include_router(features.router, prefix="/api/v1", tags=["features"])
 app.include_router(domains.router, prefix="/api/v1", tags=["domains"])
 app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
+app.include_router(ml.router, prefix="/api/v1", tags=["ml"])
+app.include_router(intelligence.router, prefix="/api/v1", tags=["intelligence"])
+app.include_router(rag.router, prefix="/api/v1", tags=["rag"])

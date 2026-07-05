@@ -6,6 +6,8 @@ from enum import Enum
 from ops_common.domain.models import Domain
 
 
+# The set of aggregation operations a feature can apply (sum, avg, trend, etc.).
+# Each feature below picks one of these to describe HOW it's computed.
 class Aggregation(str, Enum):
     SUM = "sum"
     AVG = "avg"
@@ -18,6 +20,8 @@ class Aggregation(str, Enum):
     RATE = "rate"
 
 
+# Blueprint of a single feature: its name, how it's aggregated, a description,
+# and whether it needs a time column (trends require time).
 @dataclass(frozen=True)
 class FeatureDef:
     name: str
@@ -26,6 +30,8 @@ class FeatureDef:
     requires_time: bool = False
 
 
+# Blueprint of one domain: which Domain it is, a description, the alias keywords
+# used to recognise it, and the list of features it owns.
 @dataclass(frozen=True)
 class DomainSpec:
     domain: Domain
@@ -33,6 +39,7 @@ class DomainSpec:
     aliases: tuple[str, ...]
     features: tuple[FeatureDef, ...] = field(default_factory=tuple)
 
+    # Convenience: just the feature names of this domain.
     def feature_names(self) -> list[str]:
         return [f.name for f in self.features]
 
@@ -43,7 +50,12 @@ class DomainSpec:
 # use to route a raw column into the right domain.
 # ============================================================
 
+# THE central config of the whole portability idea: for each of the 8 domains,
+# its recognition aliases + its ready-made features. Spark reads this to know
+# what to compute; the suggester reads aliases to route columns. Pure declaration.
 DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
+    # ASSETS — the physical/logical things being operated. Aliases catch words
+    # like machine/tower/vehicle; features count assets and measure utilization.
     Domain.ASSETS: DomainSpec(
         domain=Domain.ASSETS,
         description="Physical or logical resources: machines, towers, vehicles, aircraft, classrooms.",
@@ -58,6 +70,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("availability_rate", Aggregation.RATE, "Share of time assets are available."),
         ),
     ),
+    # OPERATIONS — the core work/output. Features sum and trend the throughput.
     Domain.OPERATIONS: DomainSpec(
         domain=Domain.OPERATIONS,
         description="The core work performed: production, throughput, calls handled, trips, sessions.",
@@ -73,6 +86,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("peak_output", Aggregation.MAX, "Highest output observed."),
         ),
     ),
+    # QUALITY — defects/failures/complaints. Features count and trend defects.
     Domain.QUALITY: DomainSpec(
         domain=Domain.QUALITY,
         description="Defects, failures, SLA breaches, complaints, inspection outcomes.",
@@ -87,6 +101,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("worst_offender", Aggregation.MAX, "Highest single defect value."),
         ),
     ),
+    # MAINTENANCE — repairs/downtime. Features sum downtime and trend it.
     Domain.MAINTENANCE: DomainSpec(
         domain=Domain.MAINTENANCE,
         description="Repairs, downtime, servicing, maintenance cycles, mean time to repair.",
@@ -101,6 +116,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("maintenance_events", Aggregation.COUNT, "Number of maintenance events."),
         ),
     ),
+    # INVENTORY — stock/materials. Features sum stock and measure variance.
     Domain.INVENTORY: DomainSpec(
         domain=Domain.INVENTORY,
         description="Stock, materials, spare parts, supply levels, consumables.",
@@ -115,6 +131,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("low_stock_min", Aggregation.MIN, "Lowest stock level observed."),
         ),
     ),
+    # WORKFORCE — staff/shifts/hours. Features count heads and sum labor hours.
     Domain.WORKFORCE: DomainSpec(
         domain=Domain.WORKFORCE,
         description="Staff, shifts, crew, headcount, attendance, labor hours.",
@@ -129,6 +146,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("attendance_rate", Aggregation.RATE, "Share of expected attendance met."),
         ),
     ),
+    # FINANCE — money: revenue/cost. Features sum, average, trend, vary value.
     Domain.FINANCE: DomainSpec(
         domain=Domain.FINANCE,
         description="Spend, revenue, cost, billing, efficiency, margins.",
@@ -144,6 +162,7 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
             FeatureDef("value_variance", Aggregation.VARIANCE, "Variability in monetary values."),
         ),
     ),
+    # CUSTOMERS — subscribers/students/clients. Features count and measure churn.
     Domain.CUSTOMERS: DomainSpec(
         domain=Domain.CUSTOMERS,
         description="Subscribers, students, clients, patients, accounts.",
@@ -165,16 +184,20 @@ DOMAIN_REGISTRY: dict[Domain, DomainSpec] = {
 # Lookup helpers
 # ============================================================
 
+# Get the full spec for a domain — accepts either a Domain enum or its string.
 def get_spec(domain: Domain | str) -> DomainSpec:
     if isinstance(domain, str):
         domain = Domain(domain)
     return DOMAIN_REGISTRY[domain]
 
 
+# Get just the feature definitions for a domain (used by Spark when computing).
 def features_for_domain(domain: Domain | str) -> tuple[FeatureDef, ...]:
     return get_spec(domain).features
 
 
+# Flatten every alias across all domains into one {alias: domain} dict.
+# This is the lookup table the keyword fallback searches.
 def all_aliases() -> dict[str, Domain]:
     mapping: dict[str, Domain] = {}
     for spec in DOMAIN_REGISTRY.values():
@@ -183,6 +206,8 @@ def all_aliases() -> dict[str, Domain]:
     return mapping
 
 
+# Keyword fallback (used when the LLM is off/fails): if any alias appears
+# inside the column name, route it to that domain. First match wins.
 def match_domain_by_keyword(column_name: str) -> Domain | None:
     name = column_name.lower()
     for alias, domain in all_aliases().items():
@@ -191,6 +216,8 @@ def match_domain_by_keyword(column_name: str) -> Domain | None:
     return None
 
 
+# Builds a text summary of all domains + features to feed into the LLM prompt,
+# so the suggester knows the available domains when classifying columns.
 def registry_as_prompt_context() -> str:
     lines: list[str] = []
     for spec in DOMAIN_REGISTRY.values():
