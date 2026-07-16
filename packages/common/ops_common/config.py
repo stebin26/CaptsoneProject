@@ -43,11 +43,6 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=1024)
     llm_enabled: bool = Field(default=True)
 
-   # ---- LLM (mapping suggester + RAG answering) ----
-    anthropic_api_key: str = Field(default="")
-    llm_model: str = Field(default="claude-sonnet-4-6")
-    llm_max_tokens: int = Field(default=1024)
-    llm_enabled: bool = Field(default=True)
 
     # ---- RAG (Level 3 — document assistant) ----
     # Single config block; embedder, schema dimension, retriever and QA chain
@@ -71,7 +66,17 @@ class Settings(BaseSettings):
     # Off by default so the Business Intelligence page loads instantly on templates.
     # RAG still uses the LLM (llm_enabled) regardless of this flag.
     intelligence_llm_polish: bool = Field(default=False)
-
+    
+    # ---- Auth / JWT (Item 6) ----
+    # DEV DEFAULT ONLY — override OPS_JWT_SECRET in .env for any real deployment.
+    jwt_secret: str = Field(default="dev-insecure-change-me-in-production")
+    jwt_algorithm: str = Field(default="HS256")
+    access_token_expire_minutes: int = Field(default=30)       # short-lived access token
+    refresh_token_expire_days: int = Field(default=7)          # DB-stored, revocable
+    # Google OAuth (Phase 2 — unused until OAuth is wired; safe to leave blank)
+    google_client_id: str = Field(default="")
+    google_client_secret: str = Field(default="")
+    
     # ---- Paths ----
     project_root: Path = Field(default=Path(__file__).resolve().parents[4])
     upload_dir: Path = Field(default=Path("/data/uploads"))

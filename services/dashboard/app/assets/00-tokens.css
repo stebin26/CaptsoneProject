@@ -1,0 +1,95 @@
+:root {
+  /* ---- Surfaces ---- */
+  --rail:            #0D1526;   /* the navy sidebar: the only dark surface */
+  --rail-hover:      #172236;
+  --rail-border:     #1E2B42;
+  --canvas:          #F6F8FB;   /* page background */
+  --surface:         #FFFFFF;   /* cards */
+  --surface-sunken:  #F1F5F9;   /* table headers, inset wells */
+
+  /* ---- Ink ---- */
+  --ink:             #0F172A;
+  --ink-muted:       #64748B;
+  --ink-faint:       #94A3B8;
+  --ink-on-dark:     #E2E8F0;
+  --ink-on-dark-dim: #7A8AA3;
+  --ink-inverse:     #FFFFFF;
+
+  /* ---- Accent: one blue, used everywhere ---- */
+  --accent:          #2563EB;
+  --accent-hover:    #1D4ED8;
+  --accent-tint:     #EFF6FF;
+  --accent-border:   #BFDBFE;
+
+  /* ---- Semantics. Meaning only, never decoration. ---- */
+  --danger:          #EF4444;
+  --danger-ink:      #B91C1C;
+  --danger-tint:     #FEF2F2;
+  --danger-border:   #FECACA;
+
+  --warn:            #F59E0B;
+  --warn-ink:        #B45309;
+  --warn-tint:       #FFFBEB;
+  --warn-border:     #FDE68A;
+
+  --ok:              #10B981;
+  --ok-ink:          #047857;
+  --ok-tint:         #ECFDF5;
+  --ok-border:       #A7F3D0;
+
+  /* ---- Lines ---- */
+  --line:            #E4EAF2;
+  --line-strong:     #CBD5E1;
+
+  /* ---- The eight universal domains ----
+     Ink is the saturated colour used for charts and glyphs.
+     Tint is the soft background behind a domain tile or chip. */
+  --assets:          #4F46E5;  --assets-tint:      #EEF2FF;
+  --operations:      #0EA5E9;  --operations-tint:  #E0F2FE;
+  --quality:         #DC2626;  --quality-tint:     #FEE2E2;
+  --maintenance:     #D97706;  --maintenance-tint: #FEF3C7;
+  --inventory:       #16A34A;  --inventory-tint:   #DCFCE7;
+  --workforce:       #9333EA;  --workforce-tint:   #F3E8FF;
+  --finance:         #0D9488;  --finance-tint:     #CCFBF1;
+  --customers:       #DB2777;  --customers-tint:   #FCE7F3;
+  --domain-none:     #94A3B8;  --domain-none-tint: #F1F5F9;
+
+  /* ---- Type ---- */
+  --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          system-ui, sans-serif;
+
+  --text-2xs: 0.6875rem;  /* 11px -- chip labels, footnotes */
+  --text-xs:  0.75rem;    /* 12px -- table meta, captions */
+  --text-sm:  0.8125rem;  /* 13px -- secondary UI */
+  --text-md:  0.875rem;   /* 14px -- body default */
+  --text-lg:  1rem;       /* 16px -- card titles */
+  --text-xl:  1.375rem;   /* 22px -- page titles */
+  --text-2xl: 2rem;       /* 32px -- the one big number */
+
+  /* ---- Space: a 4px grid. Nothing off-grid. ---- */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.25rem;
+  --s6: 1.5rem;
+  --s8: 2rem;
+  --s10: 2.5rem;
+
+  /* ---- Radius ---- */
+  --r-sm:   6px;
+  --r-md:   8px;
+  --r-lg:   12px;
+  --r-pill: 999px;
+
+  /* ---- Elevation. Restrained: this is a data product, not a toy. ---- */
+  --shadow-card:  0 1px 2px rgba(15, 23, 42, 0.04),
+                  0 1px 3px rgba(15, 23, 42, 0.03);
+  --shadow-pop:   0 4px 16px rgba(15, 23, 42, 0.10);
+
+  /* ---- Layout ---- */
+  --rail-w:          232px;
+  --rail-w-collapsed: 64px;
+  --topbar-h:        60px;
+  --content-max:     1440px;
+}

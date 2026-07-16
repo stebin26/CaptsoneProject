@@ -1,0 +1,61 @@
+/* When a login screen is on the page, hide the shell chrome behind it.
+   :has() lets the shell react to a descendant without any JS. */
+.shell:has(.login-screen) .rail,
+.shell:has(.login-screen) .shell-main > .topbar {
+    display: none;
+}
+
+.shell:has(.login-screen) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* Login screen — full-bleed overlay that hides the shell chrome behind it. */
+
+.login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--canvas);
+    padding: var(--s8);
+    overflow-y: auto;
+    font-family: var(--font);
+}
+
+.login-card-wrap {
+    width: 100%;
+    max-width: 380px;
+}
+
+.login-brand {
+    text-align: center;
+    font-size: var(--text-xl);
+    font-weight: 700;
+    margin: 0 0 var(--s1);
+    color: var(--ink);
+}
+
+.login-subtitle {
+    text-align: center;
+    margin: 0 0 var(--s6);
+    color: var(--ink-muted);
+    font-size: var(--text-md);
+}
+
+.login-status {
+    margin-top: var(--s3);
+    min-height: 1.25rem;
+    font-size: var(--text-sm);
+    color: var(--danger-ink);
+}
+
+.login-divider {
+    text-align: center;
+    margin: var(--s4) 0;
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}

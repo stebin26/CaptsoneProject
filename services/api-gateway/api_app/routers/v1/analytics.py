@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -95,6 +96,7 @@ def _as_int(value: Any) -> int | None:
 def dataset_metrics(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("analytics:read")),
 ) -> list[DomainMetricOut]:
     query = text(
         """
@@ -135,6 +137,7 @@ def dataset_metrics(
 def dataset_overview(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("analytics:read")),
 ) -> AnalyticsOverviewOut:
     metrics = dataset_metrics(dataset_id, session)
 
@@ -158,6 +161,7 @@ def dataset_trend(
     domain: str | None = Query(default=None),
     metric_name: str | None = Query(default=None),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("analytics:read")),
 ) -> list[TrendPointOut]:
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
@@ -202,6 +206,7 @@ def dataset_features(
     domain: str | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=2000),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("analytics:read")),
 ) -> list[FeatureOut]:
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id, "limit": limit}

@@ -404,3 +404,105 @@ def rag_delete_document(dataset_id: int, document_id: int) -> dict[str, Any]:
         return _handle(resp)
     except requests.RequestException as exc:
         raise APIError(f"Failed to delete document: {exc}") from exc
+    
+# ============================================================
+# Agent (Phase 4 — AI copilot)
+# ============================================================
+
+def agent_ask(
+    question: str,
+    dataset_id: int | None = None,
+    session_id: str | None = None,
+) -> dict[str, Any]:
+    # The agent runs a multi-step reasoning loop on a local 3B model, so it is
+    # slow: give it a long read timeout (up to ~4 min) so multi-tool questions
+    # don't get cut off mid-investigation.
+    body: dict[str, Any] = {"question": question}
+    if dataset_id is not None:
+        body["dataset_id"] = dataset_id
+    if session_id is not None:
+        body["session_id"] = session_id
+    try:
+        resp = requests.post(
+            _url("/agent/ask"),
+            json=body,
+            timeout=(5, 240),
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Agent request failed: {exc}") from exc
+
+
+def agent_health() -> dict[str, Any]:
+    try:
+        resp = requests.get(_url("/agent/health"), timeout=(3, 10))
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Agent health check failed: {exc}") from exc
+    
+# ============================================================
+# Executive summary (single aggregating endpoint)
+# ============================================================
+
+def executive_summary(dataset_id: int) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url(f"/executive/{dataset_id}/summary"),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load executive summary: {exc}") from exc
+    
+
+# ============================================================
+# Auth (Item 6 — login, identity, refresh, logout)
+# ============================================================
+
+def login(email: str, password: str) -> dict[str, Any]:
+    try:
+        resp = requests.post(
+            _url("/auth/login"),
+            json={"email": email, "password": password},
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Login failed: {exc}") from exc
+
+
+def auth_me(access_token: str) -> dict[str, Any]:
+    try:
+        resp = requests.get(
+            _url("/auth/me"),
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Failed to load identity: {exc}") from exc
+
+
+def refresh_access(refresh_token: str) -> dict[str, Any]:
+    try:
+        resp = requests.post(
+            _url("/auth/refresh"),
+            json={"refresh_token": refresh_token},
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Token refresh failed: {exc}") from exc
+
+
+def logout(access_token: str, refresh_token: str) -> None:
+    try:
+        resp = requests.post(
+            _url("/auth/logout"),
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={"refresh_token": refresh_token},
+            timeout=_TIMEOUT,
+        )
+        _handle(resp)
+    except requests.RequestException as exc:
+        raise APIError(f"Logout failed: {exc}") from exc

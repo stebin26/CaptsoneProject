@@ -61,6 +61,15 @@ services:
       OPS_ANTHROPIC_API_KEY: ${OPS_ANTHROPIC_API_KEY:-}
       OPS_LLM_ENABLED: ${OPS_LLM_ENABLED:-true}
       OPS_LLM_MODEL: ${OPS_LLM_MODEL:-claude-sonnet-4-6}
+      # llm.py prefixes every key with OPS_ (see _env()), so these MUST carry it.
+      OPS_OLLAMA_HOST: ${OPS_OLLAMA_HOST:-http://host.docker.internal:11434}
+      # 3b is the working default: 8b reasons better but does not finish inside
+      # any usable timeout on CPU. Override in .env if a GPU is available.
+      OPS_AGENT_MODEL: ${OPS_AGENT_MODEL:-llama3.2:3b}
+      OPS_AGENT_TEMPERATURE: ${OPS_AGENT_TEMPERATURE:-0.1}
+      OPS_AGENT_NUM_CTX: ${OPS_AGENT_NUM_CTX:-4096}
+      OPS_AGENT_LLM_TIMEOUT: ${OPS_AGENT_LLM_TIMEOUT:-180}
+      OPS_AGENT_LLM_RETRIES: ${OPS_AGENT_LLM_RETRIES:-3}
     ports:
       - "8000:8000"
     volumes:
@@ -72,6 +81,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 150s
     restart: unless-stopped
 
   dashboard:

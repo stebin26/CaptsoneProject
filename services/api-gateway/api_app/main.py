@@ -15,7 +15,9 @@ from ops_common.db import (
     wait_for_postgres,
 )
 from ops_common.logging import configure_logging, get_logger
-from api_app.routers.v1 import onboard, features, domains, analytics, ml, intelligence, rag
+from api_app.routers.v1 import onboard, features, domains, analytics, ml, intelligence, rag, agent
+from api_app.routers.v1 import executive
+from api_app.auth import routes as auth_routes
 
 logger = get_logger(__name__)
 
@@ -23,6 +25,8 @@ _SCHEMA_PATH = Path("/app/data-hub/postgres/schema.sql")
 _ANALYTICS_PATH = Path("/app/data-hub/duckdb/analytics.sql")
 _ML_SCHEMA_PATH = Path("/app/data-hub/postgres/ml_schema.sql")
 _RAG_SCHEMA_PATH = Path("/app/data-hub/postgres/rag_schema.sql")
+_AGENT_SCHEMA_PATH = Path("/app/data-hub/postgres/agent_schema.sql")
+_AUTH_SCHEMA_PATH = Path("/app/data-hub/postgres/auth_schema.sql")
 
 
 @asynccontextmanager
@@ -52,6 +56,22 @@ async def lifespan(app: FastAPI):
             logger.exception("Failed to apply RAG schema")
     else:
         logger.warning("RAG schema file not found at startup", extra={"path": str(_RAG_SCHEMA_PATH)})
+
+    if _AGENT_SCHEMA_PATH.exists():
+        try:
+            apply_schema(_AGENT_SCHEMA_PATH)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to apply agent schema")
+    else:
+        logger.warning("Agent schema file not found at startup", extra={"path": str(_AGENT_SCHEMA_PATH)})
+    
+    if _AUTH_SCHEMA_PATH.exists():
+        try:
+            apply_schema(_AUTH_SCHEMA_PATH)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to apply auth schema")
+    else:
+        logger.warning("Auth schema file not found at startup", extra={"path": str(_AUTH_SCHEMA_PATH)})
 
     if _ANALYTICS_PATH.exists():
         try:
@@ -122,3 +142,6 @@ app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
 app.include_router(ml.router, prefix="/api/v1", tags=["ml"])
 app.include_router(intelligence.router, prefix="/api/v1", tags=["intelligence"])
 app.include_router(rag.router, prefix="/api/v1", tags=["rag"])
+app.include_router(agent.router, prefix="/api/v1", tags=["agent"])
+app.include_router(executive.router, prefix="/api/v1", tags=["executive"])
+app.include_router(auth_routes.router, prefix="/api/v1", tags=["auth"])

@@ -1,0 +1,76 @@
+/* ============================================================
+   Dash's own components ship with their own look. Bring them
+   into the design system rather than living beside it.
+   ============================================================ */
+
+/* ---- Dropdown ---- */
+
+.Select-control,
+.dash-dropdown .Select-control {
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--r-md) !important;
+  min-height: 38px;
+  background: var(--surface) !important;
+}
+
+.Select-control:hover {
+  border-color: var(--accent-border) !important;
+}
+
+.is-focused:not(.is-open) > .Select-control {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-tint) !important;
+}
+
+.Select-placeholder,
+.Select--single > .Select-control .Select-value {
+  line-height: 36px !important;
+  color: var(--ink) !important;
+}
+
+.Select-placeholder { color: var(--ink-faint) !important; }
+
+.Select-menu-outer {
+  border: 1px solid var(--line) !important;
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow-pop) !important;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.Select-option {
+  font-size: var(--text-md);
+  color: var(--ink);
+}
+
+.Select-option.is-focused { background: var(--accent-tint) !important; }
+
+.Select-option.is-selected {
+  background: var(--accent) !important;
+  color: var(--ink-inverse) !important;
+}
+
+/* ---- Graph: let the card own the chrome ---- */
+
+.js-plotly-plot .plotly .modebar {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.card:hover .js-plotly-plot .plotly .modebar,
+.js-plotly-plot:hover .plotly .modebar {
+  opacity: 1;
+}
+
+/* ---- Loading dots ---- */
+
+._dash-loading-callback,
+.dash-spinner { color: var(--accent) !important; }
+
+/* ---- Kill the default upload border; .dropzone owns it ---- */
+
+.dash-uploader-default,
+#upload-data,
+#doc-upload {
+  border: none;
+}

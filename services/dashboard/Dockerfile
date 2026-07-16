@@ -16,7 +16,12 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8050
 
+# Agent questions take 60-200s on CPU. Gunicorn kills any worker that has not
+# finished a request within --timeout, so this ceiling MUST sit above the
+# client timeout in api_client.py (5, 240) — otherwise the worker dies before
+# the answer arrives and the UI hangs on "Investigating..." forever.
 CMD ["gunicorn", "app.main:server", \
      "--bind", "0.0.0.0:8050", \
      "--workers", "2", \
-     "--timeout", "120"]
+     "--timeout", "300", \
+     "--graceful-timeout", "300"]
