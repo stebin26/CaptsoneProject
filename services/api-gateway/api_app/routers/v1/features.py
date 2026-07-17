@@ -19,6 +19,7 @@ from ops_common.domain.models import (
 )
 from ops_common.domain.registry import features_for_domain
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -93,7 +94,11 @@ def _require_dataset(session: Session, dataset_id: int) -> Dataset:
 # ============================================================
 
 @router.get("/features/{dataset_id}/review", response_model=FeatureReviewOut)
-def feature_review(dataset_id: int, session: Session = Depends(get_db)) -> FeatureReviewOut:
+def feature_review(
+    dataset_id: int,
+    session: Session = Depends(get_db),
+    _user=Depends(require_permission("dataset:read")),
+) -> FeatureReviewOut:
     dataset = _require_dataset(session, dataset_id)
 
     collected_stmt = (
@@ -175,6 +180,7 @@ def _build_coverage(session: Session, dataset_id: int) -> list[DomainCoverageOut
 def add_missed_feature(
     payload: AddFeatureRequest,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("mapping:confirm")),
 ) -> AddFeatureResponse:
     dataset = _require_dataset(session, payload.dataset_id)
 

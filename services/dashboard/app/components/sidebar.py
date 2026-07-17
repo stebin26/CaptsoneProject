@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from dash import dcc, html
 
 from app import ids
@@ -9,21 +11,32 @@ from app.components.nav import NAV, NavItem
 from app.components.primitives import icon
 
 
-def render(pathname: str) -> html.Aside:
+def render(pathname: str, permissions: Iterable[str] | None = None) -> html.Aside:
     return html.Aside(
         id=ids.SHELL_SIDEBAR,
         className="rail",
         children=[
             _brand(),
-            html.Nav(id=ids.SHELL_NAV, className="rail-nav", children=_nav(pathname)),
+            html.Nav(
+                id=ids.SHELL_NAV,
+                className="rail-nav",
+                children=_nav(pathname, permissions),
+            ),
             _foot(),
         ],
     )
 
 
-def nav_children(pathname: str) -> list:
+def nav_children(pathname: str, permissions: Iterable[str] | None = None) -> list:
     """Exposed so the active-state callback can rebuild only the nav."""
-    return _nav(pathname)
+    return _nav(pathname, permissions)
+
+
+def _visible(item: NavItem, perms: set[str]) -> bool:
+    # No permission required -> always visible (covers pending placeholders).
+    if item.permission is None:
+        return True
+    return item.permission in perms
 
 
 def _brand() -> html.Div:
@@ -36,15 +49,17 @@ def _brand() -> html.Div:
     )
 
 
-def _nav(pathname: str) -> list:
+def _nav(pathname: str, permissions: Iterable[str] | None) -> list:
+    perms = set(permissions or [])
     groups = []
     for group in NAV:
+        visible_items = [it for it in group.items if _visible(it, perms)]
+        if not visible_items:
+            continue
         children = []
         if group.label:
-            children.append(
-                html.Div(group.label, className="rail-group-label")
-            )
-        children += [_link(item, pathname) for item in group.items]
+            children.append(html.Div(group.label, className="rail-group-label"))
+        children += [_link(item, pathname) for item in visible_items]
         groups.append(html.Div(children, className="rail-group"))
     return groups
 

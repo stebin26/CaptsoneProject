@@ -28,11 +28,13 @@ from app.constants import DOMAIN_ORDER, domain_label
     Input(ids.REVIEW_INIT, "n_intervals"),
     Input(ids.REVIEW_REFRESH, "data"),
     State(ids.ONBOARDING_STORE, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
 def load_review(
     _init: int | None,
     _refresh: Any,
     store: dict[str, Any] | None,
+    token: str | None,
 ) -> tuple[Any, Any, Any, Any, Any]:
     if not store or "dataset_id" not in store:
         return feedback.empty(
@@ -42,7 +44,7 @@ def load_review(
     dataset_id = store["dataset_id"]
 
     try:
-        review = feature_review(dataset_id)
+        review = feature_review(dataset_id, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load review: {exc}"), "", "", "", ""
 
@@ -53,7 +55,7 @@ def load_review(
         _coverage(coverage),
         _collected(review.get("collected", [])),
         _missed(review.get("missed", [])),
-        _data_charts(dataset_id, coverage),
+        _data_charts(dataset_id, coverage, token),
     )
 
 
@@ -66,6 +68,7 @@ def load_review(
     State(ids.add_metric(ALL), "value"),
     State(ids.ONBOARDING_STORE, "data"),
     State(ids.REVIEW_REFRESH, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def handle_add(
@@ -75,6 +78,7 @@ def handle_add(
     metrics: list[str | None],
     store: dict[str, Any] | None,
     refresh_token: int | None,
+    token: str | None,
 ) -> tuple[Any, Any]:
     hold = (dash.no_update, dash.no_update)
 
@@ -110,6 +114,7 @@ def handle_add(
             column_name=column,
             domain=domain,
             metric_name=metric,
+            token=token,
         )
     except APIError as exc:
         return feedback.error(f"Could not add '{column}': {exc}"), dash.no_update
@@ -258,12 +263,12 @@ def _missed(missed: list[dict[str, Any]]) -> Any:
     return html.Div(cards)
 
 
-def _data_charts(dataset_id: int, coverage: list[dict[str, Any]]) -> Any:
+def _data_charts(dataset_id: int, coverage: list[dict[str, Any]], token: str | None = None) -> Any:
     if not any(c["features_collected"] > 0 for c in coverage):
         return feedback.empty("No hub data to chart yet.")
 
     try:
-        summary = dataset_summary(dataset_id)
+        summary = dataset_summary(dataset_id, token=token)
     except APIError:
         return feedback.empty(
             "Hub charts unavailable \u2014 the analytics layer has not run for "

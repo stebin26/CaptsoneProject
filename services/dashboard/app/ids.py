@@ -36,6 +36,8 @@ SHELL_COLLAPSED = "shell-collapsed"          # dcc.Store, storage_type="local"
 SHELL_SCRIM = "shell-scrim"
 SHELL_MAIN = "shell-main"
 SHELL_INIT = "shell-init"
+SHELL_PAGE_WRAP = "shell-page-wrap"          # wraps page_container; hidden on 403
+SHELL_GUARD_403 = "shell-guard-403"          # permission-denied overlay
 
 TOPBAR_TITLE = "topbar-title"
 TOPBAR_SUBTITLE = "topbar-subtitle"
@@ -260,7 +262,9 @@ PATTERN_TYPES: frozenset[str] = frozenset(
 CALLBACK_FREE: frozenset[str] = frozenset(
     {
         COPILOT_SUGGESTIONS,   # static container rendered inside the layout
-        SHELL_MAIN,            # layout anchor for page_container
+        SHELL_ROOT,            # collapse toggles a class on it clientside via
+                               # getElementById -- no Dash callback references it
+        SHELL_MAIN,            # layout anchor for page_container            # layout anchor for page_container
         SHELL_SIDEBAR,         # the <aside> wrapper; collapse toggles a class
                                # on SHELL_ROOT and the nav rebuilds via SHELL_NAV
         TOPBAR_PROFILE,        # static until auth lands (Item 6)

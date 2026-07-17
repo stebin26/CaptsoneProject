@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -103,6 +104,7 @@ def dataset_forecasts(
     domain: str | None = Query(default=None),
     metric_name: str | None = Query(default=None),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("ml:read")),
 ) -> list[ForecastOut]:
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
@@ -155,6 +157,7 @@ def dataset_anomalies(
     severity: str | None = Query(default=None),
     limit: int = Query(default=500, ge=1, le=5000),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("ml:read")),
 ) -> list[AnomalyOut]:
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id, "limit": limit}
@@ -211,6 +214,7 @@ def dataset_risk_scores(
     domain: str | None = Query(default=None),
     risk_level: str | None = Query(default=None),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("ml:read")),
 ) -> list[RiskScoreOut]:
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
@@ -259,6 +263,7 @@ def dataset_risk_scores(
 def ml_overview(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("ml:read")),
 ) -> MLOverviewOut:
     query = text(
         """
@@ -303,6 +308,7 @@ def domain_intelligence(
     dataset_id: int,
     domain: str,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("ml:read")),
 ) -> DomainIntelligenceOut:
     current_query = text(
         """

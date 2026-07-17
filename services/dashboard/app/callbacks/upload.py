@@ -32,6 +32,7 @@ def show_filename(filename: str | None) -> Any:
     State(ids.UPLOAD_INDUSTRY, "value"),
     State(ids.UPLOAD_DATA, "contents"),
     State(ids.UPLOAD_DATA, "filename"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def handle_upload(
@@ -40,6 +41,7 @@ def handle_upload(
     industry: str | None,
     contents: str | None,
     filename: str | None,
+    token: str | None,
 ) -> tuple[Any, Any, Any]:
     hold = (dash.no_update, dash.no_update, dash.no_update)
 
@@ -61,6 +63,7 @@ def handle_upload(
             filename=filename,
             business_name=business_name,
             industry=industry or None,
+            token=token,
         )
     except APIError as exc:
         return feedback.error(f"Onboarding failed: {exc}"), *hold[1:]

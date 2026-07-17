@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import Input, Output, callback, html
-
+from dash import Input, Output, State, callback, html
 from app import feedback, ids
 from app.api_client import APIError, intelligence, list_datasets
 from app.components import ui
@@ -37,10 +36,11 @@ DIRECTION_TONE: dict[str, str] = {
     Output(ids.BI_DATASET, "options"),
     Output(ids.BI_DATASET, "value"),
     Input(ids.BI_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -54,13 +54,14 @@ def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
     Output(ids.BI_SUMMARY, "children"),
     Output(ids.BI_INSIGHTS, "children"),
     Input(ids.BI_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_intelligence(dataset_id: int | None) -> tuple[Any, Any]:
+def load_intelligence(dataset_id: int | None, token: str | None) -> tuple[Any, Any]:
     if dataset_id is None:
         return "", ""
 
     try:
-        data = intelligence(dataset_id)
+        data = intelligence(dataset_id, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load intelligence: {exc}"), ""
 

@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import Input, Output, callback, html
-
+from dash import Input, Output, State, callback, html
 from app import feedback, ids
 from app.api_client import APIError, executive_summary, list_datasets
 from app.charts import domain_charts
@@ -27,10 +26,11 @@ _BAND_TONE = {"high": "danger", "elevated": "warn", "low": "ok"}
     Output(ids.EXEC_STORE, "options"),
     Output(ids.EXEC_STORE, "value"),
     Input(ids.EXEC_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -52,14 +52,15 @@ def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
     Output(ids.EXEC_FORECASTS, "children"),
     Output(ids.EXEC_INSIGHTS, "children"),
     Input(ids.EXEC_STORE, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_summary(dataset_id: int | None):
+def load_summary(dataset_id: int | None, token: str | None):
     blank = ("", "", "", "", "", "", "", "", "")
     if dataset_id is None:
         return ("", *blank)
 
     try:
-        s = executive_summary(dataset_id)
+        s = executive_summary(dataset_id, token=token)
     except APIError as exc:
         return (feedback.error(f"Could not load the executive summary: {exc}"), *blank)
 

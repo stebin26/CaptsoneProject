@@ -11,6 +11,7 @@ from ops_common.db import get_db, duckdb_scope
 from ops_common.domain.models import Dataset, Domain
 from ops_common.domain.registry import DOMAIN_REGISTRY, get_spec
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -63,7 +64,9 @@ class DomainDataOut(BaseModel):
 # ============================================================
 
 @router.get("/domains", response_model=list[DomainInfoOut])
-def list_domains() -> list[DomainInfoOut]:
+def list_domains(
+    _user=Depends(require_permission("dataset:read")),
+) -> list[DomainInfoOut]:
     out: list[DomainInfoOut] = []
     for spec in DOMAIN_REGISTRY.values():
         out.append(
@@ -77,7 +80,10 @@ def list_domains() -> list[DomainInfoOut]:
 
 
 @router.get("/domains/{domain}", response_model=DomainInfoOut)
-def domain_info(domain: str) -> DomainInfoOut:
+def domain_info(
+    domain: str,
+    _user=Depends(require_permission("dataset:read")),
+) -> DomainInfoOut:
     if domain not in _VALID_DOMAINS:
         raise HTTPException(status_code=404, detail=f"Unknown domain {domain!r}")
     spec = get_spec(domain)
@@ -103,6 +109,7 @@ def _require_dataset(session: Session, dataset_id: int) -> Dataset:
 def dataset_summary(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("dataset:read")),
 ) -> DomainSummaryOut:
     dataset = _require_dataset(session, dataset_id)
 
@@ -148,6 +155,7 @@ def domain_data(
     domain: str,
     limit: int = Query(default=200, ge=1, le=2000),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("dataset:read")),
 ) -> DomainDataOut:
     _require_dataset(session, dataset_id)
 
@@ -206,7 +214,10 @@ class DatasetListItem(BaseModel):
 
 
 @router.get("/datasets", response_model=list[DatasetListItem])
-def list_datasets(session: Session = Depends(get_db)) -> list[DatasetListItem]:
+def list_datasets(
+    session: Session = Depends(get_db),
+    _user=Depends(require_permission("dataset:read")),
+) -> list[DatasetListItem]:
     from ops_common.domain.models import Dataset, FeatureRecord, FeatureStatus
     from sqlalchemy import func
 

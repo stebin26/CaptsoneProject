@@ -14,12 +14,12 @@ class NavItem:
     label: str
     href: str
     icon: str
-    # Short. Sits in the topbar under the page title. One clause, no more --
-    # it must never truncate.
     kicker: str
-    # The full sentence. Lives on the page itself, where there is room for it.
     subtitle: str
     pending: bool = False
+    # Permission required to see this item. None = any authenticated user.
+    # Matches backend permission strings -- rail and API share one source.
+    permission: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,6 +39,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Operational summary",
                 "How the operation is doing right now, across every domain "
                 "present in your data.",
+                permission="analytics:read",
             ),
         ),
     ),
@@ -53,6 +54,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Drop in any business CSV. The platform reads it, profiles every "
                 "column, and works out what kind of data it is \u2014 no schema, "
                 "no setup, no code.",
+                permission="dataset:upload",
             ),
             NavItem(
                 "Mapping",
@@ -62,6 +64,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Every column has been mapped to a universal business domain. "
                 "Review the suggestions, correct anything wrong, and confirm "
                 "\u2014 this is the only manual step in the entire pipeline.",
+                permission="mapping:confirm",
             ),
             NavItem(
                 "Review",
@@ -70,6 +73,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Coverage and gaps",
                 "What we captured, what we missed, and how complete your data "
                 "actually is \u2014 with the option to fill the gaps.",
+                permission="dataset:read",
             ),
             NavItem(
                 "Datasets",
@@ -78,6 +82,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Everything onboarded",
                 "Every business, every upload, side by side \u2014 all sitting in "
                 "the same eight tables, queried by the same code.",
+                permission="dataset:read",
             ),
         ),
     ),
@@ -91,6 +96,7 @@ NAV: tuple[NavGroup, ...] = (
                 "KPIs, trends and outliers",
                 "Domain-by-domain KPIs, trends over time, and the entities that "
                 "stand out \u2014 computed by Spark, orchestrated by Airflow.",
+                permission="analytics:read",
             ),
             NavItem(
                 "Predictions",
@@ -99,6 +105,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Forecasts, anomalies and risk",
                 "Where the numbers are heading, what is behaving abnormally, and "
                 "which assets are most at risk.",
+                permission="ml:read",
             ),
             NavItem(
                 "Intelligence",
@@ -108,6 +115,7 @@ NAV: tuple[NavGroup, ...] = (
                 "How the different parts of the business move together \u2014 a "
                 "knowledge graph across all eight domains, lit up by the ML "
                 "signals in this dataset.",
+                permission="intelligence:read",
             ),
         ),
     ),
@@ -122,6 +130,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Upload your manuals and SOPs, then ask questions in plain "
                 "language. Answers are grounded in your own documents \u2014 or "
                 "it tells you it found nothing.",
+                permission="documents:read",
             ),
             NavItem(
                 "AI Copilot",
@@ -131,6 +140,7 @@ NAV: tuple[NavGroup, ...] = (
                 "Ask anything about your operations. The agent decides which "
                 "tools to use, gathers the evidence itself, and shows you exactly "
                 "what it looked at.",
+                permission="copilot:use",
             ),
         ),
     ),

@@ -23,16 +23,16 @@ from app.constants import SUGGESTED_PROMPTS
     Output(ids.COPILOT_STATUS, "children"),
     Output(ids.COPILOT_DATASET, "options"),
     Input(ids.COPILOT_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def init_page(_init: int | None) -> tuple[Any, list[dict[str, Any]]]:
+def init_page(_init: int | None, token: str | None) -> tuple[Any, list[dict[str, Any]]]:
     """Check the agent is reachable and load datasets for the scope dropdown."""
-    status = _render_status()
+    status = _render_status(token)
 
     try:
-        datasets = list_datasets()
         options = [
             {"label": d["business_name"], "value": d["dataset_id"]}
-            for d in list_datasets()
+            for d in list_datasets(token=token)
         ]
     except APIError:
         options = []
@@ -100,12 +100,14 @@ def submit_question(
     Input(ids.COPILOT_PENDING, "data"),
     State(ids.COPILOT_HISTORY, "data"),
     State(ids.COPILOT_SESSION, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def run_agent_call(
     pending: dict[str, Any] | None,
     history: list[dict[str, Any]] | None,
     session_id: str | None,
+    token: str | None,
 ) -> tuple[Any, list[dict[str, Any]], Any, bool]:
     """Phase 2 -- slow. The actual agent call, 60-200s on a local CPU model."""
     if not pending:
@@ -118,6 +120,7 @@ def run_agent_call(
             question=pending["question"],
             dataset_id=pending.get("dataset_id"),
             session_id=session_id,
+            token=token,
         )
         turn = {
             "role": "assistant",
@@ -152,9 +155,9 @@ def run_agent_call(
 # Readiness banner
 # ============================================================
 
-def _render_status() -> Any:
+def _render_status(token: str | None = None) -> Any:
     try:
-        health = agent_health()
+        health = agent_health(token=token)
     except APIError as exc:
         return feedback.error(f"The copilot is unavailable: {exc}")
 

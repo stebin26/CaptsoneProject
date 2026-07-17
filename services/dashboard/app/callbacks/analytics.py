@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import Input, Output, callback, html
+from dash import Input, Output, State, callback, html
 
 from app import feedback, ids
 from app.api_client import (
@@ -24,10 +24,11 @@ from app.utils import fmt, group_by_domain
     Output(ids.ANALYTICS_DATASET, "options"),
     Output(ids.ANALYTICS_DATASET, "value"),
     Input(ids.ANALYTICS_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -43,15 +44,17 @@ def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
     Output(ids.ANALYTICS_METRIC, "options"),
     Output(ids.ANALYTICS_METRIC, "value"),
     Input(ids.ANALYTICS_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
 def load_metrics(
     dataset_id: int | None,
+    token: str | None,
 ) -> tuple[Any, Any, list[dict[str, Any]], Any]:
     if dataset_id is None:
         return "", "", [], None
 
     try:
-        metrics = analytics_metrics(dataset_id)
+        metrics = analytics_metrics(dataset_id, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load analytics: {exc}"), "", [], None
 
@@ -79,17 +82,18 @@ def load_metrics(
 
 @callback(
     Output(ids.ANALYTICS_TREND_CHART, "children"),
-    Input(ids.ANALYTICS_DATASET, "value"),
+   Input(ids.ANALYTICS_DATASET, "value"),
     Input(ids.ANALYTICS_METRIC, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_trend(dataset_id: int | None, metric_key: str | None) -> Any:
+def load_trend(dataset_id: int | None, metric_key: str | None, token: str | None) -> Any:
     if dataset_id is None or not metric_key:
         return ""
 
     domain, _, metric_name = metric_key.partition("|")
 
     try:
-        points = analytics_trend(dataset_id, domain=domain, metric_name=metric_name)
+        points = analytics_trend(dataset_id, domain=domain, metric_name=metric_name, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load the trend: {exc}")
 
@@ -105,13 +109,14 @@ def load_trend(dataset_id: int | None, metric_key: str | None) -> Any:
 @callback(
     Output(ids.ANALYTICS_FEATURES_TABLE, "children"),
     Input(ids.ANALYTICS_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_features(dataset_id: int | None) -> Any:
+def load_features(dataset_id: int | None, token: str | None) -> Any:
     if dataset_id is None:
         return ""
 
     try:
-        features = analytics_features(dataset_id, limit=50)
+        features = analytics_features(dataset_id, limit=50, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load features: {exc}")
 
@@ -152,13 +157,14 @@ def load_features(dataset_id: int | None) -> Any:
     Output(ids.ANALYTICS_DOMAIN_STATUS, "children"),
     Output(ids.ANALYTICS_DOMAIN_CHARTS, "children"),
     Input(ids.ANALYTICS_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_domain_dashboard(dataset_id: int | None) -> tuple[Any, Any]:
+def load_domain_dashboard(dataset_id: int | None, token: str | None) -> tuple[Any, Any]:
     if dataset_id is None:
         return "", ""
 
     try:
-        features = analytics_features(dataset_id, limit=500)
+        features = analytics_features(dataset_id, limit=500, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load domain data: {exc}"), ""
 

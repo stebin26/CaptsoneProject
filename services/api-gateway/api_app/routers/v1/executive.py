@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 # The risk-index formula lives in the ML layer as a pure function, so it is the
 # single source of truth and can be unit-tested without a database.
@@ -176,6 +177,7 @@ def _compute_index(domain_score: dict[str, float], mean_w: float, max_w: float):
 def executive_summary(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("analytics:read")),
 ) -> ExecutiveSummary:
     meta = _meta(session, dataset_id)
     if meta is None:

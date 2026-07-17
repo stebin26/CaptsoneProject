@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -151,6 +152,7 @@ def _fetch_mapping(session: Session, dataset_id: int) -> dict[str, Any]:
 def cross_domain_intelligence(
     dataset_id: int,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("intelligence:read")),
 ) -> IntelligenceOut:
     try:
         forecasts = _fetch_forecasts(session, dataset_id)

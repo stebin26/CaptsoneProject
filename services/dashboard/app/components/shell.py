@@ -21,7 +21,20 @@ def render(page_container: Any) -> html.Div:
                 children=[
                     topbar.render(),
                     html.Main(
-                        page_container,
+                        [
+                            html.Div(page_container, id=ids.SHELL_PAGE_WRAP),
+                            html.Div(
+                                id=ids.SHELL_GUARD_403,
+                                hidden=True,
+                                style={
+                                    "display": "flex",
+                                    "alignItems": "center",
+                                    "justifyContent": "center",
+                                    "minHeight": "60vh",
+                                    "padding": "48px 24px",
+                                },
+                            ),
+                        ],
                         id=ids.SHELL_MAIN,
                         className="content",
                     ),

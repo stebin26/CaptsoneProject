@@ -4,10 +4,11 @@ import os
 import sys
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -68,7 +69,10 @@ class AgentHealthOut(BaseModel):
 # ============================================================
 
 @router.post("/agent/ask", response_model=AskOut)
-def agent_ask(body: AskIn) -> AskOut:
+def agent_ask(
+    body: AskIn,
+    _user=Depends(require_permission("copilot:use")),
+) -> AskOut:
     # The main copilot endpoint. Validates the question, delegates everything to
     # run_agent, and returns the grounded answer plus the evidence trail so the
     # UI can show which tools were consulted.
@@ -103,7 +107,9 @@ def agent_ask(body: AskIn) -> AskOut:
 
 
 @router.get("/agent/health", response_model=AgentHealthOut)
-def agent_health_endpoint() -> AgentHealthOut:
+def agent_health_endpoint(
+    _user=Depends(require_permission("copilot:use")),
+) -> AgentHealthOut:
     # Lets the copilot page show readiness (and warn about a cold model) before
     # the user sends a question that would otherwise hang on first load.
     try:
@@ -122,7 +128,9 @@ def agent_health_endpoint() -> AgentHealthOut:
 
 
 @router.get("/agent/tools", response_model=list[str])
-def agent_tools() -> list[str]:
+def agent_tools(
+    _user=Depends(require_permission("copilot:use")),
+) -> list[str]:
     # Simple list of tool names the agent can call — handy for the UI to display
     # "this copilot can query analytics, ML, intelligence, documents, and the hub."
     try:

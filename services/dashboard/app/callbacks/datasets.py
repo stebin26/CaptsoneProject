@@ -20,10 +20,11 @@ from app.components import ui
 @callback(
     Output(ids.DATASETS_LIST, "children"),
     Input(ids.DATASETS_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_datasets(_init: int | None) -> Any:
+def load_datasets(_init: int | None, token: str | None) -> Any:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError as exc:
         return feedback.error(f"Could not load datasets: {exc}")
 

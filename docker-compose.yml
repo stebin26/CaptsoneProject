@@ -74,6 +74,10 @@ services:
       - "8000:8000"
     volumes:
       - shared_data:/data
+      # Alembic (Item 7): host-mounted during development so migrations can be
+      # edited without an image rebuild. Final image bakes these in via COPY.
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
     networks:
       - ops_net
     healthcheck:

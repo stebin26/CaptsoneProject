@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from ops_common.config import settings
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -124,6 +125,7 @@ def upload_documents(
     files: list[UploadFile] = File(...),
     business_name: str | None = Form(default=None),
     _session: Session = Depends(get_db),
+    _user=Depends(require_permission("documents:upload")),
 ) -> UploadResponseOut:
     if not files:
         raise HTTPException(status_code=400, detail="No files provided.")
@@ -168,6 +170,7 @@ def upload_documents(
 def get_documents(
     dataset_id: int,
     _session: Session = Depends(get_db),
+    _user=Depends(require_permission("documents:read")),
 ) -> list[DocumentOut]:
     try:
         rows = list_documents(dataset_id)
@@ -200,6 +203,7 @@ def query_documents(
     dataset_id: int,
     body: QueryIn,
     _session: Session = Depends(get_db),
+    _user=Depends(require_permission("documents:read")),
 ) -> QueryResponseOut:
     question = (body.question or "").strip()
     if not question:
@@ -227,6 +231,7 @@ def remove_document(
     dataset_id: int,
     document_id: int,
     _session: Session = Depends(get_db),
+    _user=Depends(require_permission("documents:upload")),
 ) -> dict[str, Any]:
     try:
         deleted = delete_document(dataset_id, document_id)

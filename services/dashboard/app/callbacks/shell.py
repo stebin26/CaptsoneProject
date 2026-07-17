@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from dash import Input, Output, State, callback, clientside_callback, html, no_update
+from dash import Input, Output, State, callback, clientside_callback, dcc, html, no_update
 
 from app import ids
 from app.api_client import APIError, list_datasets, ml_anomalies
@@ -76,13 +76,15 @@ clientside_callback(
     Output(ids.TOPBAR_TITLE, "children"),
     Output(ids.TOPBAR_SUBTITLE, "children"),
     Input(ids.URL, "pathname"),
+    Input(ids.AUTH_USER, "data"),
 )
-def sync_route(pathname: str | None) -> tuple[Any, str, str]:
+def sync_route(pathname: str | None, user: Any) -> tuple[Any, str, str]:
     path = pathname or "/"
     item = BY_HREF.get(path)
     title = item.label if item else "Not found"
     kicker = item.kicker if item else ""
-    return sidebar.nav_children(path), title, kicker
+    permissions = (user or {}).get("permissions", [])
+    return sidebar.nav_children(path, permissions), title, kicker
 
 # ---- Dataset scope ----
 
@@ -91,13 +93,15 @@ def sync_route(pathname: str | None) -> tuple[Any, str, str]:
     Output(ids.TOPBAR_DATASET, "value"),
     Input(ids.SHELL_INIT, "n_intervals"),
     State(ids.ACTIVE_DATASET, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
 def populate_datasets(
     _init: int | None,
     active: int | None,
+    token: str | None,
 ) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -160,8 +164,9 @@ def refresh(
     Output(ids.TOPBAR_BELL_PANEL, "children"),
     Input(ids.ACTIVE_DATASET, "data"),
     Input(ids.REFRESH_TOKEN, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_alerts(dataset_id: int | None, _token: int | None) -> tuple[Any, Any]:
+def load_alerts(dataset_id: int | None, _token: int | None, access: str | None) -> tuple[Any, Any]:
     """Notifications are alerts. There is no second notification system.
 
     The count is the number of open anomalies for the active dataset -- the
@@ -172,7 +177,7 @@ def load_alerts(dataset_id: int | None, _token: int | None) -> tuple[Any, Any]:
         return "", _panel([])
 
     try:
-        anomalies = ml_anomalies(dataset_id, limit=200)
+        anomalies = ml_anomalies(dataset_id, limit=200, token=access)
     except APIError:
         return "", _panel([])
 
@@ -237,3 +242,108 @@ def _panel(anomalies: list[dict[str, Any]], total: int = 0) -> Any:
         )
 
     return [head, *items]
+
+# ---- Page-level permission guard (Item 6, Step 3) ----
+#
+# The sidebar hides menus a user cannot access, but typing a URL directly
+# still loads the page. This is the last UI gate: check the path's required
+# permission against the user's grants, show a 403 instead of the page.
+# Real enforcement is the backend 401/403 -- this only stops unauthorized
+# page chrome from rendering.
+
+@callback(
+    Output(ids.SHELL_PAGE_WRAP, "hidden"),
+    Output(ids.SHELL_GUARD_403, "hidden"),
+    Output(ids.SHELL_GUARD_403, "children"),
+    Input(ids.URL, "pathname"),
+    Input(ids.AUTH_USER, "data"),
+)
+def guard_page(pathname: str | None, user: Any) -> tuple[bool, bool, Any]:
+    path = pathname or "/"
+    item = BY_HREF.get(path)
+
+    # Unmapped path (login, 404) or no permission requirement -> allow.
+    if item is None or item.permission is None:
+        return False, True, no_update
+
+    # Not logged in: the clientside auth guard redirects to /login, so a 403
+    # here would only flash. Allow and let the redirect win.
+    perms = (user or {}).get("permissions") or []
+    if not perms:
+        return False, True, no_update
+
+    if item.permission in perms:
+        return False, True, no_update
+
+    return True, False, _denied(item)
+
+
+def _denied(item: Any) -> Any:
+    return html.Div(
+        style={
+            "maxWidth": "440px",
+            "textAlign": "center",
+            "background": "#fff",
+            "border": "1px solid #e5e7eb",
+            "borderRadius": "12px",
+            "padding": "40px 32px",
+            "boxShadow": "0 1px 3px rgba(0,0,0,.06)",
+        },
+        children=[
+            html.Div(
+                "403",
+                style={
+                    "fontSize": "48px",
+                    "fontWeight": "700",
+                    "color": "#dc2626",
+                    "lineHeight": "1",
+                    "marginBottom": "12px",
+                },
+            ),
+            html.H2(
+                "You don't have access to this page",
+                style={
+                    "fontSize": "20px",
+                    "fontWeight": "600",
+                    "color": "#111827",
+                    "margin": "0 0 8px",
+                },
+            ),
+            html.P(
+                [
+                    f"\u201c{item.label}\u201d requires the ",
+                    html.Code(
+                        item.permission,
+                        style={
+                            "background": "#f3f4f6",
+                            "padding": "1px 6px",
+                            "borderRadius": "4px",
+                            "fontSize": "13px",
+                        },
+                    ),
+                    " permission, which your account does not have. "
+                    "Ask an administrator if you need it.",
+                ],
+                style={
+                    "fontSize": "14px",
+                    "color": "#6b7280",
+                    "lineHeight": "1.6",
+                    "margin": "0 0 20px",
+                },
+            ),
+            dcc.Link(
+                "\u2190 Back to Executive Dashboard",
+                href="/",
+                style={
+                    "display": "inline-block",
+                    "padding": "9px 18px",
+                    "background": "#111827",
+                    "color": "#fff",
+                    "borderRadius": "8px",
+                    "textDecoration": "none",
+                    "fontSize": "14px",
+                    "fontWeight": "500",
+                },
+            ),
+        ],
+    )

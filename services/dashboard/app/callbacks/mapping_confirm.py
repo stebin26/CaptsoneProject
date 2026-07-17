@@ -29,8 +29,9 @@ ROLE_OPTIONS: list[dict[str, str]] = [
     Output(ids.CONFIRM_HEADER, "children"),
     Output(ids.CONFIRM_COLUMNS, "children"),
     Input(ids.ONBOARDING_STORE, "data"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def render_columns(store: dict[str, Any] | None) -> tuple[Any, Any]:
+def render_columns(store: dict[str, Any] | None, token: str | None) -> tuple[Any, Any]:
     if not store or "suggestions" not in store:
         return feedback.empty(
             "No dataset in progress. Upload a file to start, or open an "
@@ -46,7 +47,7 @@ def render_columns(store: dict[str, Any] | None) -> tuple[Any, Any]:
         ),
     )
 
-    options = _domain_options()
+    options = _domain_options(token)
     return header, html.Div(
         [_column_row(s, options) for s in store["suggestions"]]
     )
@@ -62,6 +63,7 @@ def render_columns(store: dict[str, Any] | None) -> tuple[Any, Any]:
     State(ids.confirm_role(ALL), "id"),
     State(ids.confirm_domain(ALL), "value"),
     State(ids.confirm_metric(ALL), "value"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def handle_confirm(
@@ -71,6 +73,7 @@ def handle_confirm(
     role_ids: list[dict[str, Any]],
     domains: list[str | None],
     metrics: list[str | None],
+    token: str | None,
 ) -> tuple[Any, Any, Any]:
     hold = (dash.no_update, dash.no_update, dash.no_update)
 
@@ -103,6 +106,7 @@ def handle_confirm(
             dataset_id=store["dataset_id"],
             stored_path=store["stored_path"],
             columns=columns,
+            token=token,
         )
     except APIError as exc:
         return feedback.error(f"Could not load into the hub: {exc}"), *hold[1:]
@@ -132,12 +136,12 @@ def handle_confirm(
 # Render helpers
 # ============================================================
 
-def _domain_options() -> list[dict[str, str]]:
+def _domain_options(token: str | None = None) -> list[dict[str, str]]:
     """Domains come from the API, not a hardcoded list -- the hub is the truth."""
     try:
         return [
             {"label": domain_label(d["domain"]), "value": d["domain"]}
-            for d in list_domains()
+            for d in list_domains(token=token)
         ]
     except APIError:
         return []

@@ -14,7 +14,7 @@ from ops_common.db import get_db
 from ops_common.logging import get_logger
 from app.pipeline import start_onboarding, complete_onboarding
 from api_app.spark_trigger import trigger_analytics_async
-
+from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
 
@@ -104,6 +104,7 @@ def onboard_start(
     industry: str | None = Form(default=None),
     file: UploadFile = File(...),
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("dataset:upload")),  
 ) -> StartResponse:
     stored = _save_upload(file)
 
@@ -134,6 +135,7 @@ def onboard_start(
 def onboard_confirm(
     payload: ConfirmRequest,
     session: Session = Depends(get_db),
+    _user=Depends(require_permission("mapping:confirm")),
 ) -> CompleteResponse:
     stored = Path(payload.stored_path)
     if not stored.exists():

@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from dash import Input, Output, callback, html
-
+from dash import Input, Output, State, callback, html
 from app import feedback, ids
 from app.api_client import (
     APIError,
@@ -31,10 +30,11 @@ from app.utils import fmt, group
     Output(ids.PRED_DATASET, "options"),
     Output(ids.PRED_DATASET, "value"),
     Input(ids.PRED_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -49,23 +49,24 @@ def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
     Output(ids.PRED_DOMAIN_CHARTS, "children"),
     Output(ids.PRED_TABLE, "children"),
     Input(ids.PRED_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def load_predictions(dataset_id: int | None) -> tuple[Any, Any, Any]:
+def load_predictions(dataset_id: int | None, token: str | None) -> tuple[Any, Any, Any]:
     if dataset_id is None:
         return "", "", ""
 
     try:
-        overview = ml_overview(dataset_id)
-        forecasts = ml_forecasts(dataset_id)
-        anomalies = ml_anomalies(dataset_id, limit=2000)
-        risks = ml_risk_scores(dataset_id)
+        overview = ml_overview(dataset_id, token=token)
+        forecasts = ml_forecasts(dataset_id, token=token)
+        anomalies = ml_anomalies(dataset_id, limit=2000, token=token)
+        risks = ml_risk_scores(dataset_id, token=token)
     except APIError as exc:
         return feedback.error(f"Could not load ML results: {exc}"), "", ""
 
     # Analytics metrics are supporting context, not the point of this page.
     # Their absence degrades the table but must not blank the whole page.
     try:
-        metrics = analytics_metrics(dataset_id)
+        metrics = analytics_metrics(dataset_id, token=token)
     except APIError:
         metrics = []
 

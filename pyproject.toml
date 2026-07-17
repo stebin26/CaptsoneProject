@@ -1,0 +1,26 @@
+# Project-wide coding standards. One config enforces PEP 8, import order,
+# docstring presence, and modern-Python style across every service.
+# Run:  ruff format .   (style)      ruff check .   (lint + docstrings)
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["alembic/versions", "**/__pycache__", "**/*.pyc"]
+
+[tool.ruff.lint]
+# E,W = PEP8 · F = pyflakes · I = import sort · UP = modern syntax
+# B = bug-prone patterns · D = docstring presence (the reviewer's ask)
+select = ["E", "W", "F", "I", "UP", "B", "D"]
+ignore = [
+    "D203",   # one-blank-line-before-class — conflicts with D211
+    "D213",   # multi-line-summary-second-line — conflicts with D212
+    "E501",   # line length is handled by the formatter, not the linter
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]              # tests explain themselves by name
+"**/__init__.py" = ["D104"]    # package __init__ files need no docstring
+"alembic/env.py" = ["D"]       # generated scaffold

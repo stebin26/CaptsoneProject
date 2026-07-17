@@ -36,11 +36,12 @@ _STATUS_TONE: dict[str, str] = {
 @callback(
     Output(ids.DOC_DATASET, "options"),
     Output(ids.DOC_DATASET, "value"),
-    Input(ids.DOC_INIT, "n_intervals"),
+   Input(ids.DOC_INIT, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
     try:
-        datasets = list_datasets()
+        datasets = list_datasets(token=token)
     except APIError:
         return [], None
 
@@ -55,14 +56,16 @@ def populate_datasets(_init: int | None) -> tuple[list[dict[str, Any]], Any]:
     Output(ids.DOC_LIST, "children", allow_duplicate=True),
     Output(ids.DOC_POLL, "disabled", allow_duplicate=True),
     Input(ids.DOC_UPLOAD, "contents"),
-    State(ids.DOC_UPLOAD, "filename"),
+   State(ids.DOC_UPLOAD, "filename"),
     State(ids.DOC_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def handle_upload(
     contents: Any,
     filenames: Any,
     dataset_id: int | None,
+    token: str | None,
 ) -> tuple[Any, Any, Any]:
     hold = (no_update, no_update, no_update)
 
@@ -85,7 +88,7 @@ def handle_upload(
         return feedback.error("Could not read those files."), *hold[1:]
 
     try:
-        response = rag_upload(dataset_id, files)
+        response = rag_upload(dataset_id, files, token=token)
     except APIError as exc:
         return feedback.error(f"Upload failed: {exc}"), *hold[1:]
 
@@ -103,7 +106,8 @@ def handle_upload(
     box = feedback.success(message) if accepted else feedback.error(message)
 
     # Enable polling so the list updates as indexing progresses.
-    return box, _render_list(_fetch(dataset_id)), False
+    # Enable polling so the list updates as indexing progresses.
+    return box, _render_list(_fetch(dataset_id, token)), False
 
 
 @callback(
@@ -111,12 +115,13 @@ def handle_upload(
     Output(ids.DOC_POLL, "disabled"),
     Input(ids.DOC_DATASET, "value"),
     Input(ids.DOC_POLL, "n_intervals"),
+    State(ids.ACCESS_TOKEN, "data"),
 )
-def refresh_list(dataset_id: int | None, _tick: int | None) -> tuple[Any, bool]:
+def refresh_list(dataset_id: int | None, _tick: int | None, token: str | None) -> tuple[Any, bool]:
     if dataset_id is None:
         return "", True
 
-    docs = _fetch(dataset_id)
+    docs = _fetch(dataset_id, token)
     if isinstance(docs, str):
         return feedback.error(docs), True
 
@@ -131,6 +136,7 @@ def refresh_list(dataset_id: int | None, _tick: int | None) -> tuple[Any, bool]:
     Input(ids.DOC_QUESTION, "n_submit"),
     State(ids.DOC_QUESTION, "value"),
     State(ids.DOC_DATASET, "value"),
+    State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
 )
 def ask(
@@ -138,6 +144,7 @@ def ask(
     _submit: int | None,
     question: str | None,
     dataset_id: int | None,
+    token: str | None,
 ) -> Any:
     if not question or not question.strip():
         return no_update
@@ -145,7 +152,7 @@ def ask(
         return feedback.error("Select a dataset first.")
 
     try:
-        response = rag_query(dataset_id, question.strip())
+        response = rag_query(dataset_id, question.strip(), token=token)
     except APIError as exc:
         return feedback.error(f"Could not answer that: {exc}")
 
@@ -156,10 +163,10 @@ def ask(
 # Data access
 # ============================================================
 
-def _fetch(dataset_id: int) -> list[dict[str, Any]] | str:
+def _fetch(dataset_id: int, token: str | None = None) -> list[dict[str, Any]] | str:
     """Fetch the document list once. Returns an error string, never empty-on-error."""
     try:
-        return rag_documents(dataset_id)
+        return rag_documents(dataset_id, token=token)
     except APIError as exc:
         return f"Could not load documents: {exc}"
 
