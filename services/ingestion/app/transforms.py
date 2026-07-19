@@ -1,3 +1,11 @@
+"""Transformation -- reshaping source rows into the hub's universal shape.
+
+This is where an industry-specific file becomes industry-agnostic data. A wide
+source frame, where each mapped column is its own metric, is unpivoted into hub
+rows of ``entity_ref``, ``metric_name``, and ``metric_value``. Because every one
+of the eight hub tables shares that shape, everything downstream can treat data
+from any industry identically.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -5,7 +13,6 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
-
 from ops_common.logging import get_logger
 
 logger = get_logger(__name__)
@@ -13,6 +20,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class HubRow:
+    """One measurement in the hub's universal shape."""
     domain: str
     entity_ref: str
     metric_name: str
@@ -21,6 +29,7 @@ class HubRow:
     recorded_at: datetime | None
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this row as a plain dictionary."""
         return {
             "domain": self.domain,
             "entity_ref": self.entity_ref,
@@ -33,13 +42,25 @@ class HubRow:
 
 @dataclass
 class TransformResult:
+    """The transformed rows plus which metrics landed in which domain."""
     rows: list[HubRow] = field(default_factory=list)
     metrics_by_domain: dict[str, set[str]] = field(default_factory=dict)
 
     def record_metric(self, domain: str, metric_name: str) -> None:
+        """Note that a metric was produced for a domain.
+
+        Args:
+            domain: The domain the metric belongs to.
+            metric_name: The metric that was produced.
+        """
         self.metrics_by_domain.setdefault(domain, set()).add(metric_name)
 
     def summary(self) -> dict[str, Any]:
+        """Return a summary of what the transform produced.
+
+        Returns:
+            The row count and the metrics found per domain.
+        """
         return {
             "row_count": len(self.rows),
             "domains": {d: sorted(m) for d, m in self.metrics_by_domain.items()},
@@ -110,6 +131,18 @@ def transform_to_hub_rows(
     df: pd.DataFrame,
     mapping: list[dict[str, Any]],
 ) -> TransformResult:
+    """Unpivot a source frame into hub rows using its confirmed mapping.
+
+    Each mapped metric column becomes one hub row per source row, tagged with the
+    entity it belongs to and the timestamp it was recorded at.
+
+    Args:
+        df: The validated source frame.
+        mapping: The confirmed column decisions.
+
+    Returns:
+        The hub rows and the metrics recorded per domain.
+    """
     specs = _normalize_specs(mapping)
     metric_specs = [s for s in specs if s.role == "metric" and s.domain]
     entity_specs = [s for s in specs if s.role == "entity"]

@@ -1,24 +1,28 @@
+"""Feature-review API endpoints.
+
+Reports which domain features were collected versus skipped during onboarding,
+and lets a user re-ingest a previously skipped source column as a new feature.
+"""
 from __future__ import annotations
 
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from ops_common.db import get_db
 from ops_common.domain.models import (
     ColumnProfile,
     Dataset,
+    Domain,
     FeatureRecord,
     FeatureStatus,
     MappingStatus,
-    Domain,
-    model_for_domain,
 )
 from ops_common.domain.registry import features_for_domain
 from ops_common.logging import get_logger
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -32,7 +36,9 @@ _VALID_DOMAINS = set(Domain.values())
 # Response models
 # ============================================================
 
+
 class FeatureOut(BaseModel):
+    """One collected domain feature."""
     domain: str
     feature_name: str
     source_column: str
@@ -40,6 +46,7 @@ class FeatureOut(BaseModel):
 
 
 class MissedColumnOut(BaseModel):
+    """One skipped source column available to add as a feature."""
     column_name: str
     data_type: str
     distinct_count: int | None
@@ -49,12 +56,14 @@ class MissedColumnOut(BaseModel):
 
 
 class DomainCoverageOut(BaseModel):
+    """Collected-versus-skipped feature counts for one domain."""
     domain: str
     features_collected: int
     features_skipped: int
 
 
 class FeatureReviewOut(BaseModel):
+    """Feature-review payload: collected, skipped, and coverage."""
     dataset_id: int
     business_name: str
     industry: str | None
@@ -65,6 +74,7 @@ class FeatureReviewOut(BaseModel):
 
 
 class AddFeatureRequest(BaseModel):
+    """Request to add a previously skipped column as a feature."""
     dataset_id: int
     column_name: str
     domain: str
@@ -72,6 +82,7 @@ class AddFeatureRequest(BaseModel):
 
 
 class AddFeatureResponse(BaseModel):
+    """Result of adding a skipped column as a feature."""
     dataset_id: int
     column_name: str
     domain: str
@@ -81,6 +92,7 @@ class AddFeatureResponse(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def _require_dataset(session: Session, dataset_id: int) -> Dataset:
     dataset = session.get(Dataset, dataset_id)
@@ -93,12 +105,26 @@ def _require_dataset(session: Session, dataset_id: int) -> Dataset:
 # Endpoints
 # ============================================================
 
+
 @router.get("/features/{dataset_id}/review", response_model=FeatureReviewOut)
 def feature_review(
     dataset_id: int,
     session: Session = Depends(get_db),
     _user=Depends(require_permission("dataset:read")),
 ) -> FeatureReviewOut:
+    """Return the feature-review payload for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to review.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        The collected features, skipped columns, and per-domain coverage.
+
+    Raises:
+        HTTPException: 404 if the dataset is not found.
+    """
     dataset = _require_dataset(session, dataset_id)
 
     collected_stmt = (
@@ -182,10 +208,26 @@ def add_missed_feature(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("mapping:confirm")),
 ) -> AddFeatureResponse:
+    """Re-ingest a previously skipped column as a new domain feature.
+
+    Args:
+        payload: The dataset, column, target domain, and metric name.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``mapping:confirm``.
+
+    Returns:
+        The number of features added for the column.
+
+    Raises:
+        HTTPException: 400 for an invalid domain or a non-skipped column, 404 if the
+            dataset or column is missing.
+    """
     dataset = _require_dataset(session, payload.dataset_id)
 
     if payload.domain not in _VALID_DOMAINS:
-        raise HTTPException(status_code=400, detail=f"Invalid domain {payload.domain!r}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid domain {payload.domain!r}"
+        )
 
     profile_stmt = select(ColumnProfile).where(
         ColumnProfile.dataset_id == payload.dataset_id,
@@ -227,17 +269,21 @@ def _ingest_single_column(
     dataset: Dataset,
     payload: AddFeatureRequest,
 ) -> int:
+
     import pandas as pd
-    from pathlib import Path
-    from ops_common.config import settings
-    from app.transforms import transform_to_hub_rows
     from app.loaders import _write_hub_rows
+    from app.transforms import transform_to_hub_rows
+    from ops_common.config import settings
 
     matches = sorted(settings.upload_dir.glob("*.csv"))
     if not matches:
-        raise HTTPException(status_code=404, detail="Source file unavailable for re-ingest.")
+        raise HTTPException(
+            status_code=404, detail="Source file unavailable for re-ingest."
+        )
     df = pd.read_csv(matches[-1], low_memory=False)
-    df.columns = [str(c).strip().lower().replace(" ", "_").replace("-", "_") for c in df.columns]
+    df.columns = [
+        str(c).strip().lower().replace(" ", "_").replace("-", "_") for c in df.columns
+    ]
 
     if payload.column_name not in df.columns:
         raise HTTPException(
@@ -247,11 +293,23 @@ def _ingest_single_column(
 
     entity_col = _find_entity_column(session, dataset.id)
 
-    mapping = [{"column_name": payload.column_name, "domain": payload.domain,
-                "metric_name": payload.metric_name, "role": "metric"}]
+    mapping = [
+        {
+            "column_name": payload.column_name,
+            "domain": payload.domain,
+            "metric_name": payload.metric_name,
+            "role": "metric",
+        }
+    ]
     if entity_col:
-        mapping.append({"column_name": entity_col, "domain": payload.domain,
-                        "metric_name": None, "role": "entity"})
+        mapping.append(
+            {
+                "column_name": entity_col,
+                "domain": payload.domain,
+                "metric_name": None,
+                "role": "entity",
+            }
+        )
 
     transform = transform_to_hub_rows(df, mapping)
     _write_hub_rows(session, dataset.id, transform.rows)

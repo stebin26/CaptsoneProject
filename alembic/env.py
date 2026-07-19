@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
-from alembic import context
-
 from ops_common.db import get_engine
+
+from alembic import context
 
 config = context.config
 

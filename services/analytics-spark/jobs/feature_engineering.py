@@ -1,3 +1,10 @@
+"""Spark job computing entity-level features from the hub.
+
+For every entity and metric this derives the observation count, average,
+spread, extremes, latest value, and trend slope, and writes the result to
+``analytics.entity_features``. These features are what the ML layer consumes,
+so this job is the boundary between raw hub readings and modelling.
+"""
 from __future__ import annotations
 
 import os
@@ -6,7 +13,6 @@ import sys
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.window import Window
-
 from spark_session import (
     DOMAIN_TABLES,
     build_spark,
@@ -44,25 +50,32 @@ def _dataset_ids(df: DataFrame) -> list[int]:
 
 
 def compute_entity_features(df: DataFrame, domain: str) -> DataFrame:
+    """Derive per-entity, per-metric features for one domain.
+
+    Rows without a value are excluded, and the trend slope is computed over the
+    time-ordered readings for each entity and metric.
+
+    Args:
+        df: The domain's hub readings.
+        domain: Name of the domain being processed.
+
+    Returns:
+        One feature row per dataset, entity, and metric.
+    """
     base = df.filter(F.col("metric_value").isNotNull())
 
-    ordered = Window.partitionBy(
-        "dataset_id", "entity_ref", "metric_name"
-    ).orderBy("recorded_at")
-
-    with_index = (
-        base.withColumn("rn", F.row_number().over(ordered))
-        .withColumn(
-            "last_value",
-            F.last("metric_value").over(
-                ordered.rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
-            ),
-        )
+    ordered = Window.partitionBy("dataset_id", "entity_ref", "metric_name").orderBy(
+        "recorded_at"
     )
 
-    aggregated = with_index.groupBy(
-        "dataset_id", "entity_ref", "metric_name"
-    ).agg(
+    with_index = base.withColumn("rn", F.row_number().over(ordered)).withColumn(
+        "last_value",
+        F.last("metric_value").over(
+            ordered.rowsBetween(Window.unboundedPreceding, Window.unboundedFollowing)
+        ),
+    )
+
+    aggregated = with_index.groupBy("dataset_id", "entity_ref", "metric_name").agg(
         F.count("*").alias("obs_count"),
         F.avg("metric_value").alias("avg_value"),
         F.stddev("metric_value").alias("std_value"),
@@ -78,11 +91,10 @@ def compute_entity_features(df: DataFrame, domain: str) -> DataFrame:
     )
 
     slope = (
-        (F.col("_sum_xy") - F.col("obs_count") * F.col("_avg_x") * F.col("_avg_y"))
-        / F.nullif(
-            F.col("_sum_xx") - F.col("obs_count") * F.col("_avg_x") * F.col("_avg_x"),
-            F.lit(0.0),
-        )
+        F.col("_sum_xy") - F.col("obs_count") * F.col("_avg_x") * F.col("_avg_y")
+    ) / F.nullif(
+        F.col("_sum_xx") - F.col("obs_count") * F.col("_avg_x") * F.col("_avg_x"),
+        F.lit(0.0),
     )
 
     return (
@@ -93,6 +105,15 @@ def compute_entity_features(df: DataFrame, domain: str) -> DataFrame:
 
 
 def label_with_business(spark: SparkSession, df: DataFrame) -> DataFrame:
+    """Attach business name and industry to feature rows.
+
+    Args:
+        spark: The active Spark session.
+        df: The feature rows to label.
+
+    Returns:
+        The rows joined to their dataset's business details.
+    """
     datasets = read_table(spark, "meta.dataset").select(
         F.col("id").alias("dataset_id"),
         F.col("business_name"),
@@ -120,6 +141,11 @@ def _select_feature_columns(df: DataFrame) -> DataFrame:
 
 
 def run() -> None:
+    """Run the feature engineering job across every hub domain.
+
+    Computes entity-level features per domain and replaces the previous results for
+    the processed scope.
+    """
     target_id = _target_dataset_id()
     spark = build_spark("feature-engineering")
     spark.sparkContext.setLogLevel("WARN")
@@ -158,9 +184,7 @@ def run() -> None:
         )
         row_count = features.count()
 
-        replace_dataset_rows(
-            features, "analytics.entity_features", ds_ids, domain
-        )
+        replace_dataset_rows(features, "analytics.entity_features", ds_ids, domain)
 
         total_rows += row_count
         processed += 1

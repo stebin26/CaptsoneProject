@@ -11,6 +11,14 @@ dash.register_page(__name__, path="/settings", name="Settings")
 
 
 def layout() -> html.Div:
+    """Build the Settings page.
+
+    Currently a placeholder; the page exists so the navigation and permission model
+    stay complete.
+
+    Returns:
+        The page layout.
+    """
     return empty_state(
         title="Settings",
         body=(

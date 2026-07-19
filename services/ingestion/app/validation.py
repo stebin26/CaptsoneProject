@@ -1,3 +1,11 @@
+"""Data validation -- checking a mapping against the data before loading it.
+
+Runs between confirmation and loading, so a mapping that does not match the
+actual file is caught before anything reaches the hub. Issues are separated into
+errors, which stop the load, and warnings, which are reported but allow it: a
+missing mapped column is fatal, whereas a mostly-null entity column is worth
+flagging without blocking an otherwise usable dataset.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -5,7 +13,6 @@ from enum import Enum
 from typing import Any
 
 import pandas as pd
-
 from ops_common.domain.models import Domain
 from ops_common.logging import get_logger
 
@@ -14,19 +21,22 @@ logger = get_logger(__name__)
 _VALID_DOMAINS = set(Domain.values())
 
 
-class Severity(str, Enum):
+class Severity(str, Enum): # noqa: UP042
+    """Whether an issue blocks the load or is merely reported."""
     ERROR = "error"
     WARNING = "warning"
 
 
 @dataclass
 class ValidationIssue:
+    """One validation finding, with its severity and the column involved."""
     severity: Severity
     code: str
     message: str
     column: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this issue as a plain dictionary."""
         return {
             "severity": self.severity.value,
             "code": self.code,
@@ -37,24 +47,37 @@ class ValidationIssue:
 
 @dataclass
 class ValidationReport:
+    """Every issue found while validating a dataset against its mapping."""
     issues: list[ValidationIssue] = field(default_factory=list)
 
     @property
     def errors(self) -> list[ValidationIssue]:
+        """Return the issues that block the load."""
         return [i for i in self.issues if i.severity is Severity.ERROR]
 
     @property
     def warnings(self) -> list[ValidationIssue]:
+        """Return the issues that are reported but do not block the load."""
         return [i for i in self.issues if i.severity is Severity.WARNING]
 
     @property
     def ok(self) -> bool:
+        """Return whether the dataset passed validation."""
         return len(self.errors) == 0
 
     def add(self, severity: Severity, code: str, message: str, column: str | None = None) -> None:
+        """Record one validation issue.
+
+        Args:
+            severity: Whether the issue blocks the load.
+            code: Short machine-readable identifier for the issue.
+            message: Human-readable description.
+            column: The column involved, when the issue is column-specific.
+        """
         self.issues.append(ValidationIssue(severity, code, message, column))
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this issue as a plain dictionary."""
         return {
             "ok": self.ok,
             "error_count": len(self.errors),
@@ -65,6 +88,7 @@ class ValidationReport:
 
 @dataclass
 class MappingSpec:
+    """One column's mapping decision, in the shape validation needs."""
     column_name: str
     domain: str | None
     metric_name: str | None
@@ -89,6 +113,18 @@ def validate_dataframe(
     df: pd.DataFrame,
     mapping: list[dict[str, Any]],
 ) -> ValidationReport:
+    """Validate a frame against its confirmed mapping.
+
+    Checks that mapped columns exist, that metric columns carry usable values, and
+    that entity columns are populated enough to be meaningful.
+
+    Args:
+        df: The frame about to be loaded.
+        mapping: The confirmed column decisions.
+
+    Returns:
+        A report of every issue found.
+    """
     report = ValidationReport()
     specs = _normalize_specs(mapping)
 
@@ -184,6 +220,14 @@ def _validate_entity_column(df: pd.DataFrame, spec: MappingSpec, report: Validat
 
 
 def raise_if_invalid(report: ValidationReport) -> None:
+    """Stop the load if validation found blocking errors.
+
+    Args:
+        report: The validation report to check.
+
+    Raises:
+        ValueError: If the report contains any errors.
+    """
     if not report.ok:
         messages = "; ".join(f"[{i.code}] {i.message}" for i in report.errors)
         raise ValueError(f"Validation failed: {messages}")

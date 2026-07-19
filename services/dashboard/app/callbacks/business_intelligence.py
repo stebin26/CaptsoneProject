@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from dash import Input, Output, State, callback, html
+
 from app import feedback, ids
 from app.api_client import APIError, intelligence, list_datasets
 from app.components import ui
@@ -26,7 +27,7 @@ DIRECTION_ARROW: dict[str, str] = {
 
 # Rising and falling are not good and bad. Which is which depends on the metric.
 DIRECTION_TONE: dict[str, str] = {
-    "down": "trend-up",     # something falling that matters -- coloured as a concern
+    "down": "trend-up",  # something falling that matters -- coloured as a concern
     "up": "trend-down",
     "flat": "trend-flat",
 }
@@ -38,7 +39,18 @@ DIRECTION_TONE: dict[str, str] = {
     Input(ids.BI_INIT, "n_intervals"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(
+    _init: int | None, token: str | None
+) -> tuple[list[dict[str, Any]], Any]:
+    """Fill the dataset selector and preselect the first entry.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        token: Caller's access token.
+
+    Returns:
+        The selector options and the initially selected dataset.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError:
@@ -57,6 +69,15 @@ def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[s
     State(ids.ACCESS_TOKEN, "data"),
 )
 def load_intelligence(dataset_id: int | None, token: str | None) -> tuple[Any, Any]:
+    """Load and render the cross-domain insights for a dataset.
+
+    Args:
+        dataset_id: Selected dataset.
+        token: Caller's access token.
+
+    Returns:
+        The rendered insights, or a message when none are available.
+    """
     if dataset_id is None:
         return "", ""
 
@@ -86,6 +107,7 @@ def load_intelligence(dataset_id: int | None, token: str | None) -> tuple[Any, A
 # ============================================================
 # Render helpers
 # ============================================================
+
 
 def _summary(
     data: dict[str, Any],
@@ -197,7 +219,8 @@ def _impacted(impacted: list[dict[str, Any]]) -> html.Div:
         term = imp.get("term") or domain_label(domain)
         strength = (imp.get("strength") or "").replace("_", " ")
         chips.append(
-            ui.domain_chip(domain, suffix=strength) if domain
+            ui.domain_chip(domain, suffix=strength)
+            if domain
             else html.Span(f"{term} \u00b7 {strength}", className="badge badge-neutral")
         )
 

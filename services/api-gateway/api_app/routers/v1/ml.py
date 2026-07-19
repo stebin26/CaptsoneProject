@@ -1,14 +1,19 @@
+"""Machine-learning API endpoints backed by the ``ml.*`` tables.
+
+Serves forecasts, anomalies, and risk scores, plus an ML overview and a
+per-domain intelligence roll-up.
+"""
 from __future__ import annotations
 
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from ops_common.db import get_db
+from ops_common.logging import get_logger
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db
-from ops_common.logging import get_logger
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -20,7 +25,9 @@ router = APIRouter()
 # Response models
 # ============================================================
 
+
 class ForecastOut(BaseModel):
+    """One forecast point for a domain metric."""
     dataset_id: int
     domain: str
     metric_name: str
@@ -32,6 +39,7 @@ class ForecastOut(BaseModel):
 
 
 class AnomalyOut(BaseModel):
+    """One detected anomaly (alert) for a domain metric."""
     dataset_id: int
     domain: str
     entity_ref: str | None
@@ -45,6 +53,7 @@ class AnomalyOut(BaseModel):
 
 
 class RiskScoreOut(BaseModel):
+    """One entity risk score with its contributing factors."""
     dataset_id: int
     domain: str
     entity_ref: str | None
@@ -55,6 +64,7 @@ class RiskScoreOut(BaseModel):
 
 
 class DomainIntelligenceOut(BaseModel):
+    """Per-domain roll-up of current, future, alerts, and risks."""
     domain: str
     current: list[dict[str, Any]]
     future: list[ForecastOut]
@@ -63,6 +73,7 @@ class DomainIntelligenceOut(BaseModel):
 
 
 class MLOverviewOut(BaseModel):
+    """ML overview counts for a dataset across its domains."""
     dataset_id: int
     business_name: str | None
     industry: str | None
@@ -75,6 +86,7 @@ class MLOverviewOut(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def _as_float(value: Any) -> float | None:
     if value is None:
@@ -98,6 +110,7 @@ def _as_int(value: Any) -> int | None:
 # Endpoints — Future (forecasts)
 # ============================================================
 
+
 @router.get("/ml/{dataset_id}/forecasts", response_model=list[ForecastOut])
 def dataset_forecasts(
     dataset_id: int,
@@ -106,6 +119,21 @@ def dataset_forecasts(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("ml:read")),
 ) -> list[ForecastOut]:
+    """Return forecasts for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Optional domain filter.
+        metric_name: Optional metric filter.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``ml:read``.
+
+    Returns:
+        Forecast points, ordered by domain, metric, and date.
+
+    Raises:
+        HTTPException: 503 if the ML store cannot be read.
+    """
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
     if domain:
@@ -129,7 +157,7 @@ def dataset_forecasts(
         rows = session.execute(query, params).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read ml.forecasts")
-        raise HTTPException(status_code=503, detail="ML layer unavailable.")
+        raise HTTPException(status_code=503, detail="ML layer unavailable.") from None
 
     return [
         ForecastOut(
@@ -150,6 +178,7 @@ def dataset_forecasts(
 # Endpoints — Alerts (anomalies)
 # ============================================================
 
+
 @router.get("/ml/{dataset_id}/anomalies", response_model=list[AnomalyOut])
 def dataset_anomalies(
     dataset_id: int,
@@ -159,6 +188,22 @@ def dataset_anomalies(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("ml:read")),
 ) -> list[AnomalyOut]:
+    """Return anomalies for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Optional domain filter.
+        severity: Optional severity filter.
+        limit: Maximum number of anomalies to return.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``ml:read``.
+
+    Returns:
+        Anomalies, most severe first.
+
+    Raises:
+        HTTPException: 503 if the ML store cannot be read.
+    """
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id, "limit": limit}
     if domain:
@@ -185,7 +230,7 @@ def dataset_anomalies(
         rows = session.execute(query, params).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read ml.anomalies")
-        raise HTTPException(status_code=503, detail="ML layer unavailable.")
+        raise HTTPException(status_code=503, detail="ML layer unavailable.") from None
 
     return [
         AnomalyOut(
@@ -208,6 +253,7 @@ def dataset_anomalies(
 # Endpoints — Risk scores
 # ============================================================
 
+
 @router.get("/ml/{dataset_id}/risk-scores", response_model=list[RiskScoreOut])
 def dataset_risk_scores(
     dataset_id: int,
@@ -216,6 +262,21 @@ def dataset_risk_scores(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("ml:read")),
 ) -> list[RiskScoreOut]:
+    """Return risk scores for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Optional domain filter.
+        risk_level: Optional risk-level filter.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``ml:read``.
+
+    Returns:
+        Risk scores, highest first.
+
+    Raises:
+        HTTPException: 503 if the ML store cannot be read.
+    """
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
     if domain:
@@ -239,7 +300,7 @@ def dataset_risk_scores(
         rows = session.execute(query, params).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read ml.risk_scores")
-        raise HTTPException(status_code=503, detail="ML layer unavailable.")
+        raise HTTPException(status_code=503, detail="ML layer unavailable.") from None
 
     return [
         RiskScoreOut(
@@ -259,12 +320,26 @@ def dataset_risk_scores(
 # Endpoints — Overview + per-domain intelligence
 # ============================================================
 
+
 @router.get("/ml/{dataset_id}/overview", response_model=MLOverviewOut)
 def ml_overview(
     dataset_id: int,
     session: Session = Depends(get_db),
     _user=Depends(require_permission("ml:read")),
 ) -> MLOverviewOut:
+    """Return ML overview counts for a dataset across its domains.
+
+    Args:
+        dataset_id: Id of the dataset to summarize.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``ml:read``.
+
+    Returns:
+        Forecast, anomaly, and high-risk counts plus the active domains.
+
+    Raises:
+        HTTPException: 503 if the ML store cannot be read.
+    """
     query = text(
         """
         SELECT
@@ -290,7 +365,7 @@ def ml_overview(
         domain_rows = session.execute(domains_query, {"d": dataset_id}).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read ML overview")
-        raise HTTPException(status_code=503, detail="ML layer unavailable.")
+        raise HTTPException(status_code=503, detail="ML layer unavailable.") from None
 
     return MLOverviewOut(
         dataset_id=dataset_id,
@@ -310,6 +385,20 @@ def domain_intelligence(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("ml:read")),
 ) -> DomainIntelligenceOut:
+    """Return a per-domain roll-up of current metrics, forecasts, alerts, and risks.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Domain to roll up.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``ml:read``.
+
+    Returns:
+        The domain's current metrics, forecasts, alerts, and risks.
+
+    Raises:
+        HTTPException: 503 if the analytics store cannot be read.
+    """
     current_query = text(
         """
         SELECT domain, metric_name, row_count, distinct_entities,
@@ -325,7 +414,7 @@ def domain_intelligence(
         ).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read analytics.domain_metrics")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     current = [
         {

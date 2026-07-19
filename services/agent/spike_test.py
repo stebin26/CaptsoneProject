@@ -1,6 +1,5 @@
 # services/agent/spike_test.py
-"""
-SPIKE TEST — throwaway. Delete after the tool-calling decision is made.
+"""SPIKE TEST — throwaway. Delete after the tool-calling decision is made.
 
 Purpose: answer ONE question before we build the rest of Phase 4 —
     "Can llama3.2:3b reliably call the analytics tools through our graph?"
@@ -41,7 +40,6 @@ from .tools.analytics_tool import (
     ANALYTICS_TOOL_SCHEMAS,
 )
 
-
 # ============================================================
 # Test battery — each case knows its expected FIRST tool
 # ============================================================
@@ -49,10 +47,12 @@ from .tools.analytics_tool import (
 # 'accept' lists tools that are also defensible as a first move, so we don't
 # punish reasonable alternatives (e.g. going straight to features).
 
+
 @dataclass
 class Case:
+    """One probe question with its ideal and acceptable first tools."""
     question: str
-    expect: str            # the ideal first tool
+    expect: str  # the ideal first tool
     accept: tuple[str, ...]  # also-acceptable first tools
 
 
@@ -114,8 +114,10 @@ CASES: list[Case] = [
 # Grading
 # ============================================================
 
+
 @dataclass
 class Outcome:
+    """The result of running one probe: which tool ran and whether it was right."""
     case: Case
     first_tool: str | None
     correct: bool
@@ -155,6 +157,7 @@ def _grade(case: Case, result: dict) -> Outcome:
 # Runner
 # ============================================================
 
+
 def _run_case(case: Case, dataset_id: int) -> Outcome:
     result = run_once(
         question=case.question,
@@ -167,12 +170,16 @@ def _run_case(case: Case, dataset_id: int) -> Outcome:
 
 def _print_case(idx: int, outcome: Outcome) -> None:
     mark = "PASS" if outcome.acceptable else "FAIL"
-    exact = "exact" if outcome.correct else ("accepted" if outcome.acceptable else "wrong")
+    exact = (
+        "exact" if outcome.correct else ("accepted" if outcome.acceptable else "wrong")
+    )
     print(f"\n[{idx:02d}] {mark} ({exact})")
     print(f"     Q: {outcome.case.question}")
     print(f"     expected first tool : {outcome.case.expect}")
     print(f"     actual  first tool  : {outcome.first_tool}")
-    print(f"     tool sequence       : {' -> '.join(outcome.tools_sequence) or '(none)'}")
+    print(
+        f"     tool sequence       : {' -> '.join(outcome.tools_sequence) or '(none)'}"
+    )
     print(f"     steps               : {outcome.steps}")
     print(f"     answer              : {_truncate(outcome.answer, 160)}")
 
@@ -199,8 +206,11 @@ def _summary(outcomes: list[Outcome]) -> bool:
 
     # The decision gate. Exact >= 8/10 is the pass bar we set up front.
     passed = exact >= 8 and called == total
-    verdict = "PASS — build the full agent on this." if passed else \
-              "FAIL — weigh a larger tool-tuned model before proceeding."
+    verdict = (
+        "PASS — build the full agent on this."
+        if passed
+        else "FAIL — weigh a larger tool-tuned model before proceeding."
+    )
     print(f"  VERDICT: {verdict}")
     print("=" * 60)
     return passed
@@ -209,6 +219,7 @@ def _summary(outcomes: list[Outcome]) -> bool:
 # ============================================================
 # Preflight — fail fast with a clear message if the model isn't reachable
 # ============================================================
+
 
 def _preflight() -> bool:
     client = get_llm()
@@ -232,10 +243,22 @@ def _preflight() -> bool:
 # CLI
 # ============================================================
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Phase 4 agent tool-calling spike test.")
-    parser.add_argument("--dataset", type=int, default=542, help="dataset_id to probe (default 542).")
-    parser.add_argument("--only", type=int, default=None, help="run a single case by 1-based index.")
+    """Run the spike battery and report tool-calling accuracy.
+
+    Returns:
+        A process exit code: 0 on success, non-zero on failure.
+    """
+    parser = argparse.ArgumentParser(
+        description="Phase 4 agent tool-calling spike test."
+    )
+    parser.add_argument(
+        "--dataset", type=int, default=542, help="dataset_id to probe (default 542)."
+    )
+    parser.add_argument(
+        "--only", type=int, default=None, help="run a single case by 1-based index."
+    )
     parser.add_argument("--list", action="store_true", help="list cases and exit.")
     args = parser.parse_args()
 
@@ -270,7 +293,9 @@ def main() -> int:
         outcomes.append(outcome)
 
     elapsed = time.time() - t0
-    print(f"\nCompleted in {elapsed:.1f}s ({elapsed / max(len(selected),1):.1f}s per case).")
+    print(
+        f"\nCompleted in {elapsed:.1f}s ({elapsed / max(len(selected), 1):.1f}s per case)."
+    )
 
     if args.only:
         # Single-case mode is for eyeballing, not a verdict.

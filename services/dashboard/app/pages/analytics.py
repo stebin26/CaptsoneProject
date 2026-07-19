@@ -16,6 +16,13 @@ dash.register_page(__name__, path="/analytics", name="Analytics")
 
 
 def layout() -> html.Div:
+    """Build the Analytics page.
+
+    Shows a dataset's domain metrics, daily trends, and entity features.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("What the data says", className="page-title"),
         ui.lede(
@@ -24,7 +31,6 @@ def layout() -> html.Div:
             "model has run yet; this is the ground truth everything else "
             "reasons over."
         ),
-
         ui.field(
             "Dataset",
             dcc.Dropdown(
@@ -35,10 +41,8 @@ def layout() -> html.Div:
             ),
         ),
         dcc.Interval(id=ids.ANALYTICS_INIT, interval=300, max_intervals=1),
-
         html.Div(id=ids.ANALYTICS_SUMMARY),
         html.Div(id=ids.ANALYTICS_METRICS_CHART),
-
         ui.section(
             "Trend over time",
             ui.field(
@@ -52,7 +56,6 @@ def layout() -> html.Div:
             ),
             html.Div(id=ids.ANALYTICS_TREND_CHART),
         ),
-
         ui.rule(),
         ui.section(
             "Engineered features",
@@ -63,7 +66,6 @@ def layout() -> html.Div:
                 "underperforming one. This table is what the ML layer trains on."
             ),
         ),
-
         ui.rule(),
         ui.section(
             "Every active domain",

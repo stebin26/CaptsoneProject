@@ -15,6 +15,9 @@ ignore = [
     "D203",   # one-blank-line-before-class — conflicts with D211
     "D213",   # multi-line-summary-second-line — conflicts with D212
     "E501",   # line length is handled by the formatter, not the linter
+    "B008",   # Depends()/Query() in defaults is the correct FastAPI idiom
+    "UP042",  # str+Enum mixin kept deliberately; StrEnum changes str() output
+
 ]
 
 [tool.ruff.lint.pydocstyle]

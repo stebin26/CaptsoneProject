@@ -1,18 +1,24 @@
+"""The copilot agent's public entry point.
+
+Takes one manager-level question and returns one grounded answer with the
+evidence trail behind it. Two context-shaping steps run before the reasoning
+loop -- prior conversation turns are loaded from memory, and the tool surface is
+narrowed to the groups the question actually implies -- because a 3B local model
+stays fast and accurate only when it is given a small, relevant decision space.
+"""
 from __future__ import annotations
 
 import os
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
-from .graph import run_once
-from .tools import ALL_TOOL_FUNCTIONS, ALL_TOOL_SCHEMAS
-from .tools.selector import all_tools, select_tools
-from . import memory
 
 from ops_common.logging import get_logger
 
+from . import memory
 from .graph import run_once
 from .tools import ALL_TOOL_FUNCTIONS, ALL_TOOL_SCHEMAS
+from .tools.selector import all_tools, select_tools
 
 logger = get_logger(__name__)
 
@@ -21,8 +27,10 @@ logger = get_logger(__name__)
 # Public result shape
 # ============================================================
 
+
 @dataclass
 class EvidenceStep:
+    """One tool execution recorded in the answer's evidence trail."""
     tool: str
     arguments: dict[str, Any]
     ok: bool
@@ -31,6 +39,12 @@ class EvidenceStep:
 
 @dataclass
 class AgentAnswer:
+    """A completed agent run: the answer plus how it was reached.
+
+    Carries the evidence trail, which tools ran, and the elapsed time, so the
+    interface can show the user what the answer is based on rather than asking them
+    to trust it.
+    """
     question: str
     answer: str
     dataset_id: int | None
@@ -41,6 +55,7 @@ class AgentAnswer:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Return the answer as a plain dictionary for serialization."""
         d = asdict(self)
         return d
 
@@ -48,6 +63,7 @@ class AgentAnswer:
 # ============================================================
 # Public entry point
 # ============================================================
+
 
 def run_agent(
     question: str,
@@ -64,6 +80,21 @@ def run_agent(
     #   - MEMORY: fold in the last few turns so follow-ups ("why is that?") work.
     # Both are best-effort: a failure in either degrades gracefully rather than
     # blocking the answer.
+    """Answer one question and return the grounded result.
+
+    Loads any prior turns for the session, narrows the tool surface to the groups
+    the question implies, runs the reasoning loop, and records the exchange back to
+    memory.
+
+    Args:
+        question: The manager's natural-language question.
+        session_id: Conversation id used to load and save memory.
+        dataset_id: Dataset to scope the question to; resolved by the agent when
+            omitted.
+
+    Returns:
+        The answer together with its evidence trail.
+    """
     q = (question or "").strip()
     if not q:
         return AgentAnswer(
@@ -128,7 +159,11 @@ def run_agent(
 
     logger.info(
         "run_agent done — groups=%s exposed=%d steps=%s tools=%s elapsed=%.1fs",
-        groups, len(functions), answer.steps, tools_used, elapsed,
+        groups,
+        len(functions),
+        answer.steps,
+        tools_used,
+        elapsed,
     )
 
     # Persist this exchange for future turns (best-effort; won't raise).
@@ -150,9 +185,12 @@ def _tools_for(question: str) -> tuple[list[dict[str, Any]], dict[str, Any], lis
     except Exception:  # noqa: BLE001
         logger.exception("Tool selection failed; exposing all tools.")
         return ALL_TOOL_SCHEMAS, ALL_TOOL_FUNCTIONS, ["all (selector error)"]
+
+
 # ============================================================
 # Dataset resolution
 # ============================================================
+
 
 def _resolve_dataset(dataset_id: int | None) -> int | None:
     # If the caller gave an explicit dataset, trust it. Otherwise, try to pick a
@@ -186,6 +224,7 @@ def _resolve_dataset(dataset_id: int | None) -> int | None:
 # Shaping helpers
 # ============================================================
 
+
 def _shape_evidence(raw_evidence: list[dict[str, Any]]) -> list[EvidenceStep]:
     steps: list[EvidenceStep] = []
     for e in raw_evidence:
@@ -214,10 +253,19 @@ def _dedupe_preserving_order(items: list[str]) -> list[str]:
 # Lightweight self-check (used by the API health path / demo)
 # ============================================================
 
+
 def agent_health() -> dict[str, Any]:
     # Confirms the agent's brain is reachable and reports how many tools are
     # registered. Used by the copilot page / API to show readiness before a user
     # sends a question that would otherwise hang on a cold model.
+    """Report whether the agent's model is reachable and how many tools are live.
+
+    Used by the copilot page before a question is sent, so a cold model shows as a
+    warning rather than an apparent hang.
+
+    Returns:
+        A readiness snapshot of the model and tool registry.
+    """
     from .llm import get_llm
 
     health = get_llm().health_check()

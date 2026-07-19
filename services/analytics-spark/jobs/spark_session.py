@@ -1,3 +1,10 @@
+"""Spark session construction and JDBC access to the hub.
+
+Centralises how every Spark job reaches Postgres: one place builds the session,
+one place builds the JDBC URL and credentials, and one place performs reads and
+writes. Jobs therefore never hardcode connection details, and switching hosts is
+a single environment change.
+"""
 from __future__ import annotations
 
 import os
@@ -34,6 +41,14 @@ def _jdbc_properties() -> dict[str, str]:
 
 
 def build_spark(app_name: str = "ops-analytics") -> SparkSession:
+    """Build or return the Spark session for a job.
+
+    Args:
+        app_name: Application name shown in the Spark UI.
+
+    Returns:
+        The active Spark session.
+    """
     builder = (
         SparkSession.builder.appName(app_name)
         .config("spark.sql.session.timeZone", "UTC")
@@ -46,6 +61,15 @@ def build_spark(app_name: str = "ops-analytics") -> SparkSession:
 
 
 def read_table(spark: SparkSession, table: str) -> DataFrame:
+    """Read a whole table from Postgres over JDBC.
+
+    Args:
+        spark: The active Spark session.
+        table: Fully qualified table name.
+
+    Returns:
+        The table as a DataFrame.
+    """
     return spark.read.jdbc(
         url=_jdbc_url(),
         table=table,
@@ -54,6 +78,16 @@ def read_table(spark: SparkSession, table: str) -> DataFrame:
 
 
 def read_query(spark: SparkSession, query: str, alias: str = "subq") -> DataFrame:
+    """Read the result of a SQL query from Postgres over JDBC.
+
+    Args:
+        spark: The active Spark session.
+        query: The SQL query to push down.
+        alias: Alias for the generated subquery.
+
+    Returns:
+        The query result as a DataFrame.
+    """
     subquery = f"({query}) AS {alias}"
     return spark.read.jdbc(
         url=_jdbc_url(),
@@ -63,6 +97,17 @@ def read_query(spark: SparkSession, query: str, alias: str = "subq") -> DataFram
 
 
 def table_exists(spark: SparkSession, table: str) -> bool:
+    """Check whether a table can be read.
+
+    Used to skip optional tables rather than fail a job when one is absent.
+
+    Args:
+        spark: The active Spark session.
+        table: Fully qualified table name.
+
+    Returns:
+        True if the table could be queried, False otherwise.
+    """
     try:
         read_query(spark, f"SELECT 1 FROM {table} LIMIT 1")
         return True
@@ -71,6 +116,13 @@ def table_exists(spark: SparkSession, table: str) -> bool:
 
 
 def write_table(df: DataFrame, table: str, mode: str = "append") -> None:
+    """Write a DataFrame to Postgres over JDBC.
+
+    Args:
+        df: The rows to write.
+        table: Fully qualified target table.
+        mode: Spark save mode.
+    """
     df.write.jdbc(
         url=_jdbc_url(),
         table=table,
@@ -85,6 +137,17 @@ def replace_dataset_rows(
     dataset_ids: list[int],
     domain: str | None = None,
 ) -> None:
+    """Replace a dataset's rows in a table, then append the new ones.
+
+    Deleting the previous scope first makes a re-run idempotent: results are
+    replaced rather than duplicated.
+
+    Args:
+        df: The rows to write.
+        table: Fully qualified target table.
+        dataset_ids: Datasets whose existing rows should be cleared.
+        domain: Optional domain to narrow the delete to.
+    """
     if dataset_ids:
         _delete_existing(table, dataset_ids, domain)
     write_table(df, table, mode="append")

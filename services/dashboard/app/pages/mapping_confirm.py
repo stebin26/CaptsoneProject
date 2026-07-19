@@ -13,6 +13,14 @@ dash.register_page(__name__, path="/confirm", name="Mapping")
 
 
 def layout() -> html.Div:
+    """Build the Mapping Confirmation page.
+
+    The human decision point of onboarding: the suggested column mapping is
+    reviewed and confirmed once before any data is loaded.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         ui.lede(BY_HREF["/confirm"].subtitle),
         html.Div(id=ids.CONFIRM_HEADER),

@@ -1,3 +1,9 @@
+"""Text extraction -- PDF, DOCX, and plain text to text with page metadata.
+
+First stage of the RAG ingest pipeline. Page numbers are preserved through
+extraction so an answer can later cite the exact page it came from, which is
+what makes a grounded answer verifiable rather than merely plausible.
+"""
 # Text extraction — PDF / DOCX / TXT to plain text with page metadata.
 # First stage of the RAG ingest pipeline; feeds the chunker.
 
@@ -9,26 +15,40 @@ from pathlib import Path
 
 @dataclass
 class ExtractedPage:
+    """One page of extracted text with its page number."""
     page_number: int
     text: str
 
 
 @dataclass
 class ExtractedDocument:
+    """A document after extraction: its pages plus identifying metadata."""
     filename: str
     file_type: str
     pages: list[ExtractedPage] = field(default_factory=list)
 
     @property
     def full_text(self) -> str:
+        """Return every non-empty page joined into one string."""
         return "\n\n".join(p.text for p in self.pages if p.text.strip())
 
     @property
     def page_count(self) -> int:
+        """Return the number of extracted pages."""
         return len(self.pages)
 
 
 def detect_file_type(filename: str) -> str:
+    """Determine a document's type from its filename.
+
+    Markdown is reported as plain text, since it is extracted the same way.
+
+    Args:
+        filename: Name of the file being ingested.
+
+    Returns:
+        The normalized file type, or 'unknown' when there is no extension.
+    """
     ext = Path(filename).suffix.lower().lstrip(".")
     if ext in ("pdf", "docx", "txt", "md"):
         return "txt" if ext == "md" else ext
@@ -38,6 +58,7 @@ def detect_file_type(filename: str) -> str:
 # ---------------------------------------------------------------------------
 # Per-format extractors
 # ---------------------------------------------------------------------------
+
 
 def _extract_pdf(path: Path) -> list[ExtractedPage]:
     from pypdf import PdfReader
@@ -73,6 +94,7 @@ def _extract_txt(path: Path) -> list[ExtractedPage]:
 # Cleaning + entry point
 # ---------------------------------------------------------------------------
 
+
 def _clean(text: str) -> str:
     # Normalize whitespace, drop null bytes, collapse excessive blank lines.
     text = text.replace("\x00", " ")
@@ -90,7 +112,9 @@ def _clean(text: str) -> str:
     return "\n".join(cleaned).strip()
 
 
-def extract_document(path: str | Path, filename: str | None = None) -> ExtractedDocument:
+def extract_document(
+    path: str | Path, filename: str | None = None
+) -> ExtractedDocument:
     """Extract text from a supported file. Raises ValueError on unsupported type."""
     p = Path(path)
     name = filename or p.name

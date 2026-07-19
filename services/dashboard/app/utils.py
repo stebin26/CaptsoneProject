@@ -18,6 +18,14 @@ def fmt(value: Any, places: int = 2) -> str:
 
 
 def fmt_int(value: Any) -> str:
+    """Format a value as a thousands-separated integer.
+
+    Args:
+        value: The value to format.
+
+    Returns:
+        The formatted string, or a dash when the value is missing.
+    """
     if value is None:
         return EM_DASH
     try:
@@ -27,6 +35,15 @@ def fmt_int(value: Any) -> str:
 
 
 def fmt_pct(value: Any, places: int = 1) -> str:
+    """Format a value as a signed percentage.
+
+    Args:
+        value: The value to format.
+        places: Decimal places to show.
+
+    Returns:
+        The formatted string, or a dash when the value is missing.
+    """
     if value is None:
         return EM_DASH
     try:
@@ -43,6 +60,14 @@ def avg_by_entity(rows: list[dict[str, Any]]) -> tuple[list[str], list[float]]:
 
 
 def group_by_domain(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """Group rows by their domain.
+
+    Args:
+        rows: The rows to group.
+
+    Returns:
+        The rows keyed by domain.
+    """
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(row["domain"], []).append(row)
@@ -50,7 +75,18 @@ def group_by_domain(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]
 
 
 def rgba(hex_color: str, alpha: float) -> str:
-    """Convert #RRGGBB to an rgba() string. Used for chart confidence bands."""
+    """Convert a hex colour into a CSS colour string with transparency.
+
+    Used for chart confidence bands, where the band must sit behind the line
+    without hiding it.
+
+    Args:
+        hex_color: Colour in #RRGGBB form.
+        alpha: Opacity between 0 and 1.
+
+    Returns:
+        The colour as a CSS string, or a neutral grey if the input is malformed.
+    """
     h = hex_color.lstrip("#")
     if len(h) != 6:
         return f"rgba(120,120,120,{alpha})"

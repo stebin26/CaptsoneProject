@@ -1,3 +1,9 @@
+"""Airflow DAG that auto-onboards CSV files dropped into the upload directory.
+
+Runs on a schedule, discovers unprocessed CSVs, and takes each through the full
+onboarding pipeline using the suggested mapping auto-confirmed. This is the
+unattended counterpart to the dashboard's interactive upload flow.
+"""
 from __future__ import annotations
 
 import os
@@ -28,6 +34,8 @@ SUPPORTED_SUFFIXES = (".csv",)
     tags=["ingestion", "phase-2"],
 )
 def ingestion_pipeline():
+    """Define the ingestion DAG: discover CSV drops, then onboard each one."""
+
     @task
     def discover_files() -> list[str]:
         if not os.path.isdir(UPLOAD_DIR):
@@ -44,8 +52,8 @@ def ingestion_pipeline():
 
     @task
     def ingest_file(path: str) -> dict:
-        from ops_common.db import session_scope
         from app.pipeline import complete_onboarding, start_onboarding
+        from ops_common.db import session_scope
 
         business_name = _derive_business_name(path)
 
@@ -128,8 +136,7 @@ def _auto_confirm(suggestions: list[dict]) -> list[dict]:
         role = s.get("role", "skip")
 
         is_time = any(
-            tok in column.lower()
-            for tok in ("date", "time", "timestamp", "_at", "_on")
+            tok in column.lower() for tok in ("date", "time", "timestamp", "_at", "_on")
         )
 
         if is_time:

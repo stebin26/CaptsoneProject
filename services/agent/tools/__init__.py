@@ -4,10 +4,9 @@ from typing import Any
 
 from ops_common.logging import get_logger
 
-from .base import ToolFn, ToolResult, dispatch, tool_error, tool_ok
-
 # Import each tool module's schemas + functions.
 from .analytics_tool import ANALYTICS_TOOL_FUNCTIONS, ANALYTICS_TOOL_SCHEMAS
+from .base import ToolFn, ToolResult, dispatch, tool_error, tool_ok
 from .hub_tool import HUB_TOOL_FUNCTIONS, HUB_TOOL_SCHEMAS
 from .intelligence_tool import (
     INTELLIGENCE_TOOL_FUNCTIONS,
@@ -26,11 +25,11 @@ logger = get_logger(__name__)
 # with discovery/analytics (the usual first moves) and end with document search.
 
 ALL_TOOL_SCHEMAS: list[dict[str, Any]] = [
-    *HUB_TOOL_SCHEMAS,           # discovery (list datasets) + raw ground truth
-    *ANALYTICS_TOOL_SCHEMAS,     # current state (overview, trend, features)
-    *ML_TOOL_SCHEMAS,            # future + alerts (forecast, anomalies, risk)
+    *HUB_TOOL_SCHEMAS,  # discovery (list datasets) + raw ground truth
+    *ANALYTICS_TOOL_SCHEMAS,  # current state (overview, trend, features)
+    *ML_TOOL_SCHEMAS,  # future + alerts (forecast, anomalies, risk)
     *INTELLIGENCE_TOOL_SCHEMAS,  # cross-domain "why" / root cause
-    *RAG_TOOL_SCHEMAS,           # document-grounded knowledge
+    *RAG_TOOL_SCHEMAS,  # document-grounded knowledge
 ]
 
 ALL_TOOL_FUNCTIONS: dict[str, ToolFn] = {
@@ -46,10 +45,11 @@ ALL_TOOL_FUNCTIONS: dict[str, ToolFn] = {
 # Consistency check — fail loud at import, not at inference
 # ============================================================
 
+
 def _schema_names(schemas: list[dict[str, Any]]) -> list[str]:
     names: list[str] = []
     for s in schemas:
-        fn = (s.get("function") or {})
+        fn = s.get("function") or {}
         name = fn.get("name")
         if name:
             names.append(name)
@@ -93,15 +93,31 @@ _validate_registry()
 # Convenience helpers
 # ============================================================
 
+
 def get_all_schemas() -> list[dict[str, Any]]:
+    """Return every registered tool schema.
+
+    Returns:
+        The schemas for all tools.
+    """
     return ALL_TOOL_SCHEMAS
 
 
 def get_all_functions() -> dict[str, ToolFn]:
+    """Return every registered tool implementation by name.
+
+    Returns:
+        A mapping of tool name to callable.
+    """
     return ALL_TOOL_FUNCTIONS
 
 
 def tool_names() -> list[str]:
+    """Return every registered tool name, sorted.
+
+    Returns:
+        The tool names.
+    """
     return sorted(ALL_TOOL_FUNCTIONS)
 
 

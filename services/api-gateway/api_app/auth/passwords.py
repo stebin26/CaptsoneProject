@@ -1,5 +1,10 @@
 # services/api-gateway/api_app/auth/passwords.py
-# Password hashing and verification (bcrypt, direct — no passlib).
+"""Password hashing and verification.
+
+Uses bcrypt directly (no passlib). bcrypt has a hard 72-byte input limit and
+silently truncates longer inputs, so over-length passwords are rejected rather
+than allowed to collide.
+"""
 
 from __future__ import annotations
 

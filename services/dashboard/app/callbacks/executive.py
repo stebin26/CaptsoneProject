@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 from dash import Input, Output, State, callback, html
+
 from app import feedback, ids
 from app.api_client import APIError, executive_summary, list_datasets
 from app.charts import domain_charts
@@ -28,7 +29,18 @@ _BAND_TONE = {"high": "danger", "elevated": "warn", "low": "ok"}
     Input(ids.EXEC_INIT, "n_intervals"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(
+    _init: int | None, token: str | None
+) -> tuple[list[dict[str, Any]], Any]:
+    """Fill the dataset selector and preselect the first entry.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        token: Caller's access token.
+
+    Returns:
+        The selector options and the initially selected dataset.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError:
@@ -55,6 +67,18 @@ def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[s
     State(ids.ACCESS_TOKEN, "data"),
 )
 def load_summary(dataset_id: int | None, token: str | None):
+    """Load the executive summary and fill every panel on the page.
+
+    One API call feeds all panels, so the first screen does not fan out into
+    separate round trips.
+
+    Args:
+        dataset_id: Selected dataset.
+        token: Caller's access token.
+
+    Returns:
+        The rendered content for each panel of the dashboard.
+    """
     blank = ("", "", "", "", "", "", "", "", "")
     if dataset_id is None:
         return ("", *blank)
@@ -81,6 +105,7 @@ def load_summary(dataset_id: int | None, token: str | None):
 # ============================================================
 # KPI tiles
 # ============================================================
+
 
 def _kpi_risk(idx: dict[str, Any]) -> Any:
     tone = _BAND_TONE.get(idx["band"], "")
@@ -115,6 +140,7 @@ def _kpi_freshness(s: dict[str, Any]) -> Any:
 # Domain health
 # ============================================================
 
+
 def _domain_health(rows: list[dict[str, Any]]) -> Any:
     by_domain = {r["domain"]: r for r in rows}
     chips = []
@@ -137,6 +163,7 @@ def _domain_health(rows: list[dict[str, Any]]) -> Any:
 # ============================================================
 # Tables
 # ============================================================
+
 
 def _top_risks(rows: list[dict[str, Any]]) -> Any:
     if not rows:
@@ -184,6 +211,7 @@ def _active_alerts(rows: list[dict[str, Any]]) -> Any:
 # Forecasts + insights
 # ============================================================
 
+
 def _forecasts(rows: list[dict[str, Any]]) -> Any:
     if not rows:
         return feedback.empty("No forecasts yet. Run the ML orchestration DAG.")
@@ -202,17 +230,28 @@ def _forecasts(rows: list[dict[str, Any]]) -> Any:
         header = html.Div(
             [
                 ui.domain_chip(f["domain"]),
-                html.Span(f["metric_name"], className="card-title",
-                          style={"marginLeft": "0.5rem"}),
+                html.Span(
+                    f["metric_name"],
+                    className="card-title",
+                    style={"marginLeft": "0.5rem"},
+                ),
             ],
-            style={"display": "flex", "alignItems": "center",
-                   "marginBottom": "0.25rem"},
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "marginBottom": "0.25rem",
+            },
         )
         delta = html.Div(
             [
-                html.Span(f"{fmt(f.get('last_value'))} \u2192 {fmt(f.get('next_value'))}  "),
                 html.Span(
-                    [f"{fmt(pct, 1)}%  " if pct is not None else "", ui.trend(pct, rising_is_bad)]
+                    f"{fmt(f.get('last_value'))} \u2192 {fmt(f.get('next_value'))}  "
+                ),
+                html.Span(
+                    [
+                        f"{fmt(pct, 1)}%  " if pct is not None else "",
+                        ui.trend(pct, rising_is_bad),
+                    ]
                 ),
             ],
             className="kpi-note",
@@ -236,8 +275,10 @@ def _insights(rows: list[dict[str, Any]]) -> Any:
                 html.Div(
                     [
                         ui.domain_chip(t["root"]),
-                        html.Span(t["root_term"], style={"fontWeight": 600,
-                                                         "marginLeft": "0.5rem"}),
+                        html.Span(
+                            t["root_term"],
+                            style={"fontWeight": 600, "marginLeft": "0.5rem"},
+                        ),
                     ],
                     style={"marginBottom": "0.5rem"},
                 ),

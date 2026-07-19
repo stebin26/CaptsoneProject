@@ -1,3 +1,11 @@
+"""Conversation memory for the copilot, stored in Postgres.
+
+Gives the agent continuity across turns so a follow-up like 'and why did that
+happen?' resolves against what was just discussed. History is capped at a
+configurable number of recent turns: an unbounded transcript would crowd out the
+question itself in a small model's context window. Storage is server-side rather
+than in the browser, so a session survives a page reload.
+"""
 # services/agent/memory.py
 from __future__ import annotations
 
@@ -6,10 +14,9 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import text
-
 from ops_common.db import session_scope
 from ops_common.logging import get_logger
+from sqlalchemy import text
 
 logger = get_logger(__name__)
 
@@ -22,8 +29,10 @@ def _history_limit() -> int:
 # Public shapes
 # ============================================================
 
+
 @dataclass
 class Turn:
+    """One stored turn of a conversation, with the evidence behind it."""
     role: str
     content: str
     dataset_id: int | None = None
@@ -37,7 +46,17 @@ class Turn:
 # READ — load prior turns for a session
 # ============================================================
 
+
 def load_history(session_id: str | None, limit: int | None = None) -> list[Turn]:
+    """Load the most recent turns for a session.
+
+    Args:
+        session_id: Conversation to load; nothing is loaded when absent.
+        limit: Maximum turns to return; defaults to the configured cap.
+
+    Returns:
+        The turns in chronological order, or an empty list.
+    """
     if not session_id:
         return []
 
@@ -58,7 +77,9 @@ def load_history(session_id: str | None, limit: int | None = None) -> list[Turn]
                 {"sid": session_id, "lim": cap},
             ).fetchall()
     except Exception:  # noqa: BLE001
-        logger.warning("Memory load failed for session %s; continuing stateless.", session_id)
+        logger.warning(
+            "Memory load failed for session %s; continuing stateless.", session_id
+        )
         return []
 
     turns: list[Turn] = []
@@ -78,6 +99,17 @@ def load_history(session_id: str | None, limit: int | None = None) -> list[Turn]
 
 
 def load_full_conversation(session_id: str | None) -> list[Turn]:
+    """Load every stored turn for a session, uncapped.
+
+    Used for transcript display rather than prompting, where the context limit does
+    not apply.
+
+    Args:
+        session_id: Conversation to load; nothing is loaded when absent.
+
+    Returns:
+        All turns in chronological order, or an empty list.
+    """
     if not session_id:
         return []
     try:
@@ -100,9 +132,13 @@ def load_full_conversation(session_id: str | None) -> list[Turn]:
 
     return [
         Turn(
-            role=r[0], content=r[1], dataset_id=r[2],
-            tools_used=_loads(r[3]), evidence=_loads(r[4]),
-            steps=r[5], elapsed_sec=r[6],
+            role=r[0],
+            content=r[1],
+            dataset_id=r[2],
+            tools_used=_loads(r[3]),
+            evidence=_loads(r[4]),
+            steps=r[5],
+            elapsed_sec=r[6],
         )
         for r in rows
     ]
@@ -112,11 +148,19 @@ def load_full_conversation(session_id: str | None) -> list[Turn]:
 # WRITE — persist a completed turn pair
 # ============================================================
 
+
 def save_exchange(
     session_id: str | None,
     question: str,
     answer_turn: dict[str, Any],
 ) -> None:
+    """Persist one question and its answer to the session's history.
+
+    Args:
+        session_id: Conversation to append to; nothing is saved when absent.
+        question: The user's question.
+        answer_turn: The answer together with its evidence and timing.
+    """
     if not session_id:
         return
 
@@ -183,14 +227,25 @@ def save_exchange(
                 },
             )
     except Exception:  # noqa: BLE001
-        logger.warning("Memory save failed for session %s; answer was still returned.", session_id)
+        logger.warning(
+            "Memory save failed for session %s; answer was still returned.", session_id
+        )
 
 
 # ============================================================
 # Prompt assembly
 # ============================================================
 
+
 def as_context_messages(turns: list[Turn]) -> list[dict[str, str]]:
+    """Convert stored turns into prompt messages for the model.
+
+    Args:
+        turns: The turns to convert.
+
+    Returns:
+        User and assistant messages in the model's expected shape.
+    """
     messages: list[dict[str, str]] = []
     for t in turns:
         if t.role == "user":
@@ -203,6 +258,7 @@ def as_context_messages(turns: list[Turn]) -> list[dict[str, str]]:
 # ============================================================
 # Internals
 # ============================================================
+
 
 def _next_turn_index(session: Any, session_id: str) -> int:
     row = session.execute(

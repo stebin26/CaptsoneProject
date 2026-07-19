@@ -47,6 +47,15 @@ def init_page(_init: int | None, token: str | None) -> tuple[Any, list[dict[str,
     prevent_initial_call=True,
 )
 def fill_suggestion(clicks: list[int], _current: str | None) -> Any:
+    """Put a clicked suggestion chip into the question box.
+
+    Args:
+        clicks: Click counts for each suggestion chip.
+        _current: The current question text.
+
+    Returns:
+        The chosen suggestion as the new question text.
+    """
     if not any(clicks):
         return no_update
 
@@ -155,6 +164,7 @@ def run_agent_call(
 # Readiness banner
 # ============================================================
 
+
 def _render_status(token: str | None = None) -> Any:
     try:
         health = agent_health(token=token)
@@ -182,6 +192,7 @@ def _render_status(token: str | None = None) -> Any:
 # ============================================================
 # Transcript
 # ============================================================
+
 
 def _render_transcript(
     history: list[dict[str, Any]],
@@ -280,4 +291,4 @@ def _thinking_turn() -> html.Div:
             style={"display": "flex", "alignItems": "center", "gap": "0.5rem"},
         ),
         className="turn turn-agent",
-    ) 
+    )

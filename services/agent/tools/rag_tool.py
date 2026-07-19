@@ -1,11 +1,13 @@
+"""Document tools -- the agent's access to the uploaded documents.
+
+The numbers can say downtime rose; only the documents can say what an error code
+means or what the procedure requires. These tools wrap the RAG endpoints so the
+agent can consult that written knowledge and cite it, keeping document answers
+grounded in the same way the API's own document assistant is.
+"""
 from __future__ import annotations
 
 from typing import Any
-
-from ops_common.db import session_scope
-from ops_common.logging import get_logger
-
-from .base import ToolResult, tool_error, tool_ok
 
 # Reuse the router's own functions so there is ONE source of truth for RAG
 # querying and document listing.
@@ -14,6 +16,10 @@ from api_app.routers.v1.rag import (
     get_documents,
     query_documents,
 )
+from ops_common.db import session_scope
+from ops_common.logging import get_logger
+
+from .base import ToolResult, tool_error, tool_ok
 
 logger = get_logger(__name__)
 
@@ -22,10 +28,20 @@ logger = get_logger(__name__)
 # Tool 1 — search documents (grounded Q&A over uploaded docs)
 # ============================================================
 
+
 def search_documents(dataset_id: int, question: str) -> ToolResult:
     # The agent uses this for knowledge questions whose answer lives in text, not
     # numbers: procedures, definitions, codes, policies. The RAG layer stays the
     # authority on grounding — we never soften a "not found" into an invented answer.
+    """Answer a question from the dataset's uploaded documents.
+
+    Args:
+        dataset_id: Dataset whose documents to search.
+        question: The question to answer from the documents.
+
+    Returns:
+        The grounded answer with its cited sources.
+    """
     q = (question or "").strip()
     if not q:
         return tool_error("A question is required to search the documents.")
@@ -37,9 +53,7 @@ def search_documents(dataset_id: int, question: str) -> ToolResult:
             result = query_documents(dataset_id, QueryIn(question=q), _session=session)
     except Exception as exc:  # noqa: BLE001
         logger.exception("search_documents failed for dataset_id=%s", dataset_id)
-        return tool_error(
-            f"Could not search documents for dataset {dataset_id}: {exc}"
-        )
+        return tool_error(f"Could not search documents for dataset {dataset_id}: {exc}")
 
     # RAG explicitly reports whether it could ground the answer. If it could not
     # (no relevant chunks), pass that through honestly rather than as a real answer.
@@ -57,10 +71,13 @@ def search_documents(dataset_id: int, question: str) -> ToolResult:
         }
         for s in result.sources
     ]
-    source_txt = "; ".join(
-        f"{s['filename']}" + (f" p.{s['page']}" if s["page"] is not None else "")
-        for s in sources
-    ) or "unspecified source"
+    source_txt = (
+        "; ".join(
+            f"{s['filename']}" + (f" p.{s['page']}" if s["page"] is not None else "")
+            for s in sources
+        )
+        or "unspecified source"
+    )
 
     # The summary the model reads IS the grounded answer plus where it came from,
     # so the agent can fold it into its final response with a citation.
@@ -83,23 +100,31 @@ def search_documents(dataset_id: int, question: str) -> ToolResult:
 # Tool 2 — list documents (what is available to search)
 # ============================================================
 
+
 def list_documents_tool(dataset_id: int) -> ToolResult:
     # Lets the agent check whether any documents exist / are indexed before
     # promising a document-grounded answer. Useful when search returns nothing:
     # is it "no relevant passage" or "no documents at all".
+    """List the documents indexed for a dataset.
+
+    Lets the agent tell the user what written knowledge is available before
+    searching it.
+
+    Args:
+        dataset_id: Dataset whose documents to list.
+
+    Returns:
+        A summary of the indexed documents.
+    """
     try:
         with session_scope() as session:
             docs = get_documents(dataset_id, _session=session)
     except Exception as exc:  # noqa: BLE001
         logger.exception("list_documents_tool failed for dataset_id=%s", dataset_id)
-        return tool_error(
-            f"Could not list documents for dataset {dataset_id}: {exc}"
-        )
+        return tool_error(f"Could not list documents for dataset {dataset_id}: {exc}")
 
     if not docs:
-        return tool_error(
-            f"No documents have been uploaded for dataset {dataset_id}."
-        )
+        return tool_error(f"No documents have been uploaded for dataset {dataset_id}.")
 
     indexed = [d for d in docs if d.status == "indexed"]
     listed = [
@@ -190,6 +215,7 @@ RAG_TOOL_FUNCTIONS = {
 # ============================================================
 # Small formatting helper
 # ============================================================
+
 
 def _round(value: float | None, places: int = 4) -> float | None:
     if value is None:

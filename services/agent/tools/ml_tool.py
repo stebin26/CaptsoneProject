@@ -1,11 +1,13 @@
+"""ML tools -- the agent's access to forecasts, alerts, and risk.
+
+These turn the Level 1 model outputs into short statements the agent can reason
+over: what is projected to happen, what has already been flagged as unusual, and
+which entities carry the most degradation risk. As elsewhere, the router's own
+query functions are reused so the tools and the API can never disagree.
+"""
 from __future__ import annotations
 
 from typing import Any
-
-from ops_common.db import session_scope
-from ops_common.logging import get_logger
-
-from .base import ToolResult, domain_hint_for_schema, normalize_domain, tool_error, tool_ok
 
 # Reuse the router's own query functions so there is ONE source of truth for
 # ML reads. These take a SQLAlchemy session, which we supply from session_scope.
@@ -15,6 +17,16 @@ from api_app.routers.v1.ml import (
     dataset_risk_scores,
     ml_overview,
 )
+from ops_common.db import session_scope
+from ops_common.logging import get_logger
+
+from .base import (
+    ToolResult,
+    domain_hint_for_schema,
+    normalize_domain,
+    tool_error,
+    tool_ok,
+)
 
 logger = get_logger(__name__)
 
@@ -23,9 +35,18 @@ logger = get_logger(__name__)
 # Tool 1 — ML overview (how much signal exists, and where)
 # ============================================================
 
+
 def ml_overview_tool(dataset_id: int) -> ToolResult:
     # The agent's first ML look: does this dataset even have predictions, and
     # which domains carry forecast/anomaly/risk signal worth drilling into.
+    """Summarize a dataset's forecast, alert, and risk counts.
+
+    Args:
+        dataset_id: Dataset to summarize.
+
+    Returns:
+        A summary of the ML signals available.
+    """
     try:
         with session_scope() as session:
             overview = ml_overview(dataset_id, session)
@@ -33,7 +54,9 @@ def ml_overview_tool(dataset_id: int) -> ToolResult:
         logger.exception("ml_overview_tool failed for dataset_id=%s", dataset_id)
         return tool_error(f"Could not read ML overview for dataset {dataset_id}: {exc}")
 
-    total_signal = overview.forecast_count + overview.anomaly_count + overview.high_risk_count
+    total_signal = (
+        overview.forecast_count + overview.anomaly_count + overview.high_risk_count
+    )
     if total_signal == 0:
         return tool_error(
             f"No ML results for dataset {dataset_id}. The ML pipeline may not "
@@ -68,6 +91,7 @@ def ml_overview_tool(dataset_id: int) -> ToolResult:
 # Tool 2 — ML alerts (anomalies + risk: the "what is wrong" view)
 # ============================================================
 
+
 def ml_alerts(dataset_id: int, domain: str | None = None) -> ToolResult:
     # Combine anomalies and risk scores into one "problems" picture — this is
     # what the agent needs for "what's going wrong / what should I worry about"
@@ -76,6 +100,15 @@ def ml_alerts(dataset_id: int, domain: str | None = None) -> ToolResult:
     # The model's domain word is normalized (downtime -> maintenance). An
     # unrecognized word becomes None, dropping the filter so we scan every
     # domain rather than returning nothing.
+    """Describe the anomalies flagged for a dataset.
+
+    Args:
+        dataset_id: Dataset to read.
+        domain: Optional domain to focus on.
+
+    Returns:
+        A summary of the flagged anomalies and their severities.
+    """
     resolved = normalize_domain(domain)
     widened = domain is not None and resolved is None
 
@@ -93,7 +126,9 @@ def ml_alerts(dataset_id: int, domain: str | None = None) -> ToolResult:
 
     if not anomalies and not risks:
         scope = f" in domain '{resolved}'" if resolved else ""
-        return tool_error(f"No anomalies or risk scores for dataset {dataset_id}{scope}.")
+        return tool_error(
+            f"No anomalies or risk scores for dataset {dataset_id}{scope}."
+        )
 
     # Anomalies are already severity-sorted by the router (high first). Take the
     # top few and describe them compactly.
@@ -166,9 +201,11 @@ def ml_alerts(dataset_id: int, domain: str | None = None) -> ToolResult:
         },
     )
 
+
 # ============================================================
 # Tool 3 — ML forecast (the "where it is heading" view)
 # ============================================================
+
 
 def ml_forecast(
     dataset_id: int,
@@ -178,6 +215,19 @@ def ml_forecast(
     # Forward projection per metric. For the agent we describe the direction and
     # end-point of each forecast series rather than every dated point. Domain
     # word normalized; unknown word widens the search instead of emptying it.
+    """Describe where each forecast series is heading.
+
+    Reports direction and endpoint per series rather than every dated point. An
+    unrecognised domain word widens the search instead of emptying it.
+
+    Args:
+        dataset_id: Dataset to read.
+        domain: Optional domain to focus on.
+        metric_name: Optional metric to focus on.
+
+    Returns:
+        A summary of the projected movement.
+    """
     resolved = normalize_domain(domain)
     widened = domain is not None and resolved is None
 
@@ -209,7 +259,9 @@ def ml_forecast(
                 metric_dropped = True
                 logger.info(
                     "Metric %r matched no forecasts; retrying without metric "
-                    "filter (domain=%s)", metric_name, resolved
+                    "filter (domain=%s)",
+                    metric_name,
+                    resolved,
                 )
                 forecasts = dataset_forecasts(
                     dataset_id, domain=resolved, metric_name=None, session=session
@@ -332,7 +384,8 @@ ML_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dataset_id": {"type": "integer", "description": "The dataset id."},
                     "domain": {
                         "type": "string",
-                        "description": "Optional domain filter. " + domain_hint_for_schema(),
+                        "description": "Optional domain filter. "
+                        + domain_hint_for_schema(),
                     },
                 },
                 "required": ["dataset_id"],
@@ -356,7 +409,8 @@ ML_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dataset_id": {"type": "integer", "description": "The dataset id."},
                     "domain": {
                         "type": "string",
-                        "description": "Optional domain filter. " + domain_hint_for_schema(),
+                        "description": "Optional domain filter. "
+                        + domain_hint_for_schema(),
                     },
                     "metric_name": {
                         "type": "string",
@@ -387,6 +441,7 @@ ML_TOOL_FUNCTIONS = {
 # ============================================================
 # Small formatting helpers
 # ============================================================
+
 
 def _round(value: float | None, places: int = 2) -> float | None:
     if value is None:
@@ -436,6 +491,7 @@ def _describe_scope(domain: str | None, metric_name: str | None) -> str:
     if metric_name:
         bits.append(f" for metric '{metric_name}'")
     return "".join(bits)
+
 
 # When an unknown domain widens the search to every domain, cap how many series
 # reach the model — the same signal-over-noise guard used in analytics_tool.

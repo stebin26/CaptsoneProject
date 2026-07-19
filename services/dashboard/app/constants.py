@@ -27,7 +27,19 @@ DOMAIN_LABELS: dict[str, str] = {
 
 
 def domain_label(domain: str) -> str:
+    """Return the display label for a domain.
+
+    Falls back to a title-cased version of the raw name, so an unexpected domain
+    still renders readably rather than breaking the page.
+
+    Args:
+        domain: The domain name.
+
+    Returns:
+        The label to show the user.
+    """
     return DOMAIN_LABELS.get(domain.lower(), domain.replace("_", " ").title())
+
 
 # Seed prompts for the copilot. Each one exercises a different tool path:
 # hub, ML, causal analytics, and cross-domain intelligence.

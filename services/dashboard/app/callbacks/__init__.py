@@ -10,8 +10,8 @@ is what registers the callbacks; nothing here is called directly.
 """
 
 from app.callbacks import (  # noqa: F401
-    auth,
     analytics,
+    auth,
     business_intelligence,
     copilot,
     datasets,

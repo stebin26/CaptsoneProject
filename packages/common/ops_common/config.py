@@ -1,13 +1,27 @@
+"""Application-wide settings, loaded from the environment.
+
+Every service reads its configuration from this one module, so a value is
+defined in exactly one place. Settings are read from environment variables
+prefixed with ``OPS_`` (falling back to ``.env``), and the module-level
+``settings`` singleton is the object services import.
+"""
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, PostgresDsn, computed_field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Environment-driven configuration for the whole platform.
+
+    Groups settings by concern: environment, Postgres, DuckDB, API gateway, LLM,
+    RAG, authentication, and filesystem paths. Connection strings are derived
+    rather than configured separately, so host and credentials can never drift
+    between the SQLAlchemy, raw Postgres, and DuckDB attach paths.
+    """
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -43,16 +57,15 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=1024)
     llm_enabled: bool = Field(default=True)
 
-
     # ---- RAG (Level 3 — document assistant) ----
     # Single config block; embedder, schema dimension, retriever and QA chain
     # all read from here. Switching model = change model + dimension only.
-    embedding_provider: str = Field(default="local")            # 'local' | 'anthropic' | 'openai'
+    embedding_provider: str = Field(default="local")  # 'local' | 'anthropic' | 'openai'
     embedding_model: str = Field(default="all-MiniLM-L6-v2")
-    embedding_dimension: int = Field(default=384)               # must match the model + rag.embeddings column
-    rag_chunk_size: int = Field(default=600)                    # tokens (approx) per chunk
+    embedding_dimension: int = Field(default=384)  # must match the model + rag.embeddings column
+    rag_chunk_size: int = Field(default=600)  # tokens (approx) per chunk
     rag_chunk_overlap: int = Field(default=100)
-    rag_top_k: int = Field(default=5)                           # chunks retrieved per query
+    rag_top_k: int = Field(default=5)  # chunks retrieved per query
     rag_max_answer_tokens: int = Field(default=800)
 
     # ---- RAG answer LLM (provider-configurable) ----
@@ -66,29 +79,28 @@ class Settings(BaseSettings):
     # Off by default so the Business Intelligence page loads instantly on templates.
     # RAG still uses the LLM (llm_enabled) regardless of this flag.
     intelligence_llm_polish: bool = Field(default=False)
-    
+
     # ---- Auth / JWT (Item 6) ----
     # DEV DEFAULT ONLY — override OPS_JWT_SECRET in .env for any real deployment.
     jwt_secret: str = Field(default="dev-insecure-change-me-in-production")
     jwt_algorithm: str = Field(default="HS256")
-    access_token_expire_minutes: int = Field(default=30)       # short-lived access token
-    refresh_token_expire_days: int = Field(default=7)          # DB-stored, revocable
+    access_token_expire_minutes: int = Field(default=30)  # short-lived access token
+    refresh_token_expire_days: int = Field(default=7)  # DB-stored, revocable
     # Google OAuth (Phase 2 — unused until OAuth is wired; safe to leave blank)
     google_client_id: str = Field(default="")
     google_client_secret: str = Field(default="")
-    
+
     # ---- Paths ----
     project_root: Path = Field(default=Path(__file__).resolve().parents[4])
     upload_dir: Path = Field(default=Path("/data/uploads"))
     rag_upload_dir: Path = Field(default=Path("/data/rag_uploads"))
-    mapping_config_dir: Path = Field(
-        default=Path(__file__).resolve().parent / "mapping_configs"
-    )
+    mapping_config_dir: Path = Field(default=Path(__file__).resolve().parent / "mapping_configs")
 
     # ---- Derived connection strings ----
     @computed_field  # type: ignore[prop-decorator]
     @property
     def postgres_dsn(self) -> str:
+        """Return the plain Postgres connection string."""
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -97,6 +109,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def sqlalchemy_dsn(self) -> str:
+        """Return the SQLAlchemy (psycopg) connection string."""
         return (
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -105,6 +118,7 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def duckdb_attach_dsn(self) -> str:
+        """Return the key-value connection string DuckDB uses to attach Postgres."""
         return (
             f"dbname={self.postgres_db} host={self.postgres_host} "
             f"port={self.postgres_port} user={self.postgres_user} "
@@ -112,6 +126,11 @@ class Settings(BaseSettings):
         )
 
     def ensure_dirs(self) -> None:
+        """Create the configured working directories if they do not yet exist.
+
+        Covers the upload, RAG upload, and mapping-config directories plus the parent
+        of the DuckDB file, so a fresh container never fails on a missing path.
+        """
         self.upload_dir.mkdir(parents=True, exist_ok=True)
         self.rag_upload_dir.mkdir(parents=True, exist_ok=True)
         self.mapping_config_dir.mkdir(parents=True, exist_ok=True)
@@ -120,6 +139,13 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """Build the settings singleton and prepare its directories.
+
+    Cached so the environment is parsed once per process.
+
+    Returns:
+        The process-wide ``Settings`` instance.
+    """
     settings = Settings()
     settings.ensure_dirs()
     return settings

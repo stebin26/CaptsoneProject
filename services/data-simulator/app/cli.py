@@ -1,3 +1,8 @@
+"""Command-line interface for the data simulator.
+
+Generates realistic sample CSVs for the supported industries so the platform can
+be demonstrated and tested end to end without a real factory feed.
+"""
 from __future__ import annotations
 
 import argparse
@@ -6,6 +11,7 @@ from pathlib import Path
 
 from ops_common.config import settings
 from ops_common.logging import configure_logging, get_logger
+
 from app.generators import (
     INDUSTRY_SPECS,
     GeneratorConfig,
@@ -87,7 +93,9 @@ def _cmd_seed(args: argparse.Namespace) -> int:
         path = generate_to_csv(industry, out_dir, config)
         written.append(path)
 
-    logger.info("Seeded sample data", extra={"count": len(written), "dir": str(out_dir)})
+    logger.info(
+        "Seeded sample data", extra={"count": len(written), "dir": str(out_dir)}
+    )
     print(f"Seeded {len(written)} sample CSVs into {out_dir}:")
     for p in written:
         print(f"  {p.name}")
@@ -96,6 +104,14 @@ def _cmd_seed(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the simulator CLI.
+
+    Args:
+        argv: Argument list to parse; defaults to the process arguments.
+
+    Returns:
+        A process exit code: 0 on success, 1 on failure.
+    """
     configure_logging()
     parser = _build_parser()
     args = parser.parse_args(argv)

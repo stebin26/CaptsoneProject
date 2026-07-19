@@ -12,6 +12,18 @@ from app.components.primitives import icon
 
 
 def render(pathname: str, permissions: Iterable[str] | None = None) -> html.Aside:
+    """Render the navigation rail for the current route and permissions.
+
+    Entries the caller lacks permission for are omitted, so the rail shows only
+    what the user can actually open.
+
+    Args:
+        pathname: The current route, used to highlight the active entry.
+        permissions: Permission codes held by the caller.
+
+    Returns:
+        The rendered navigation rail.
+    """
     return html.Aside(
         id=ids.SHELL_SIDEBAR,
         className="rail",

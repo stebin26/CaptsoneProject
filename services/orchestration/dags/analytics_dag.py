@@ -1,11 +1,18 @@
+"""Airflow DAG that runs the Spark analytics jobs over the hub.
+
+Submits domain analytics and feature engineering to the Spark cluster. Triggered
+by the API after an onboarding completes, or run manually as a batch. A
+``dataset_id`` in the trigger conf scopes the run to that one dataset; without
+it every dataset is reprocessed.
+"""
 from __future__ import annotations
 
 import os
 from datetime import timedelta
 
 import pendulum
-from airflow.sdk import dag
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
+from airflow.sdk import dag
 
 DEFAULT_ARGS = {
     "owner": "ops-platform",
@@ -47,6 +54,7 @@ DATASET_ARG = "{{ dag_run.conf.get('dataset_id', '') if dag_run else '' }}"
     tags=["analytics", "spark", "phase-2"],
 )
 def analytics_pipeline():
+    """Define the analytics DAG: domain analytics, then feature engineering."""
     domain_analytics = SparkSubmitOperator(
         task_id="domain_analytics",
         application=f"{JOBS_DIR}/domain_analytics.py",

@@ -16,10 +16,16 @@ dash.register_page(__name__, path="/intelligence", name="Intelligence")
 
 
 def layout() -> html.Div:
+    """Build the Business Intelligence page.
+
+    Shows the cross-domain insights: what is driving what, in business language.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("How it all connects", className="page-title"),
         ui.lede(BY_HREF["/intelligence"].subtitle),
-
         ui.field(
             "Dataset",
             dcc.Dropdown(
@@ -30,7 +36,6 @@ def layout() -> html.Div:
             ),
         ),
         dcc.Interval(id=ids.BI_INIT, interval=300, max_intervals=1),
-
         html.Div(id=ids.BI_SUMMARY),
         html.Div(id=ids.BI_INSIGHTS),
     )

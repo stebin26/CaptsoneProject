@@ -29,7 +29,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import dash
 import dash._callback as dash_callback
@@ -49,6 +50,7 @@ DASH_INTERNAL_PREFIX = "_pages_"
 # ============================================================
 # Walking layouts
 # ============================================================
+
 
 def _walk(node: Any) -> Iterator[Component]:
     """Yield every Dash component in a tree, depth-first."""
@@ -94,6 +96,7 @@ def collect_layout_ids() -> tuple[set[str], set[str]]:
 # ============================================================
 # Reading the callback registry
 # ============================================================
+
 
 def _parse_id(raw: str) -> str | dict[str, Any]:
     """Dict IDs arrive from the registry as JSON strings. Decode them."""
@@ -154,6 +157,7 @@ def collect_callback_ids() -> tuple[set[str], set[str]]:
 # The check
 # ============================================================
 
+
 def verify() -> list[str]:
     """Return a list of problems. An empty list means the contract holds."""
     layout_flat, _layout_types = collect_layout_ids()
@@ -195,7 +199,17 @@ def verify() -> list[str]:
 
     return problems
 
+
 def main() -> int:
+    """Run the layout-versus-callback consistency check.
+
+    Reports any component id a callback references but no layout renders, and any
+    rendered id no callback uses. Catching that mismatch here is what keeps a
+    renamed id from silently breaking a page at runtime.
+
+    Returns:
+        A process exit code: 0 when layouts and callbacks agree.
+    """
     layout_flat, layout_types = collect_layout_ids()
     callback_flat, callback_types = collect_callback_ids()
     problems = verify()

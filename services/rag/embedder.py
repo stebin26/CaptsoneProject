@@ -1,3 +1,11 @@
+"""Embedder -- turns text into vectors for storage and retrieval.
+
+Third stage of the RAG ingest pipeline, and also used at query time to embed the
+user's question so both sides of the similarity search share one vector space.
+The provider is configurable with a local sentence-transformers model as the
+default, which keeps embedding free, offline, and on-premise. The model is baked
+into the image and cached per process, so no network call happens at runtime.
+"""
 # Embedder — turns text into vectors. Configurable provider (local default),
 # dimension follows config. Third stage of the RAG ingest pipeline; also used
 # by the retriever to embed queries.
@@ -13,12 +21,14 @@ logger = get_logger(__name__)
 
 
 class EmbeddingError(RuntimeError):
+    """Raised when text cannot be embedded."""
     pass
 
 
 # ---------------------------------------------------------------------------
 # Local sentence-transformers backend
 # ---------------------------------------------------------------------------
+
 
 @lru_cache(maxsize=1)
 def _local_model():
@@ -42,7 +52,7 @@ def _embed_local(texts: list[str]) -> list[list[float]]:
         texts,
         batch_size=32,
         show_progress_bar=False,
-        normalize_embeddings=True,   # cosine-ready unit vectors
+        normalize_embeddings=True,  # cosine-ready unit vectors
         convert_to_numpy=True,
     )
     return [v.tolist() for v in vectors]
@@ -51,6 +61,7 @@ def _embed_local(texts: list[str]) -> list[list[float]]:
 # ---------------------------------------------------------------------------
 # API backends (optional future providers, config-switchable)
 # ---------------------------------------------------------------------------
+
 
 def _embed_openai(texts: list[str]) -> list[list[float]]:
     try:
@@ -75,6 +86,7 @@ def _embed_voyage(texts: list[str]) -> list[list[float]]:
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
+
 
 def _dispatch(texts: list[str]) -> list[list[float]]:
     provider = settings.embedding_provider.lower()
@@ -124,4 +136,5 @@ def embed_query(text: str) -> list[float]:
 
 
 def model_name() -> str:
+    """Return the name of the configured embedding model."""
     return settings.embedding_model

@@ -27,10 +27,10 @@ import requests
 # ------------------------------------------------------------
 
 _C = {
-    "head": "\033[1;36m",   # bold cyan
-    "ok": "\033[1;32m",     # bold green
-    "warn": "\033[1;33m",   # bold yellow
-    "err": "\033[1;31m",    # bold red
+    "head": "\033[1;36m",  # bold cyan
+    "ok": "\033[1;32m",  # bold green
+    "warn": "\033[1;33m",  # bold yellow
+    "err": "\033[1;31m",  # bold red
     "dim": "\033[2m",
     "reset": "\033[0m",
 }
@@ -41,23 +41,49 @@ def _c(tag: str, text: str) -> str:
 
 
 def step(n: int, title: str) -> None:
+    """Print a numbered step heading.
+
+    Args:
+        n: Step number.
+        title: What the step demonstrates.
+    """
     print(f"\n{_c('head', f'[{n}] {title}')}")
     print(_c("dim", "-" * 60))
 
 
 def ok(msg: str) -> None:
+    """Print a success line.
+
+    Args:
+        msg: The result to report.
+    """
     print(f"  {_c('ok', 'OK')}  {msg}")
 
 
 def warn(msg: str) -> None:
+    """Print a warning line for a non-fatal problem.
+
+    Args:
+        msg: The warning to report.
+    """
     print(f"  {_c('warn', '!!')}  {msg}")
 
 
 def fail(msg: str) -> None:
+    """Print a failure line.
+
+    Args:
+        msg: The failure to report.
+    """
     print(f"  {_c('err', 'XX')}  {msg}")
 
 
 def die(msg: str) -> None:
+    """Report a fatal problem and stop the demo.
+
+    Args:
+        msg: The failure that makes continuing pointless.
+    """
     fail(msg)
     print(_c("err", "\nDemo aborted."))
     sys.exit(1)
@@ -67,8 +93,18 @@ def die(msg: str) -> None:
 # HTTP client -- bearer token carried across calls.
 # ------------------------------------------------------------
 
+
 class Client:
+    """Minimal HTTP client that carries the bearer token across calls.
+
+    Kept dependency-free beyond requests so the demo runs anywhere the stack does.
+    """
     def __init__(self, api_base: str) -> None:
+        """Prepare the client for one API base URL.
+
+        Args:
+            api_base: Base URL of the API gateway.
+        """
         self.api = api_base.rstrip("/")
         self.v1 = f"{self.api}/api/v1"
         self.token: str | None = None
@@ -80,19 +116,57 @@ class Client:
         return {}
 
     def get(self, path: str, auth: bool = True, **kw: Any) -> requests.Response:
-        return requests.get(f"{self.v1}{path}", headers=self._headers(auth),
-                            timeout=kw.pop("timeout", (5, 240)), **kw)
+        """Send an authenticated GET to the versioned API.
+
+        Args:
+            path: Path below the versioned API root.
+            auth: Send the bearer token with the request.
+            **kw: Extra arguments passed through to requests.
+
+        Returns:
+            The HTTP response.
+        """
+        return requests.get(
+            f"{self.v1}{path}",
+            headers=self._headers(auth),
+            timeout=kw.pop("timeout", (5, 240)),
+            **kw,
+        )
 
     def post(self, path: str, auth: bool = True, **kw: Any) -> requests.Response:
-        return requests.post(f"{self.v1}{path}", headers=self._headers(auth),
-                             timeout=kw.pop("timeout", (5, 240)), **kw)
+        """Send an authenticated POST to the versioned API.
+
+        Args:
+            path: Path below the versioned API root.
+            auth: Send the bearer token with the request.
+            **kw: Extra arguments passed through to requests.
+
+        Returns:
+            The HTTP response.
+        """
+        return requests.post(
+            f"{self.v1}{path}",
+            headers=self._headers(auth),
+            timeout=kw.pop("timeout", (5, 240)),
+            **kw,
+        )
 
 
 # ------------------------------------------------------------
 # Steps
 # ------------------------------------------------------------
 
+
 def wait_for_health(cli: Client, retries: int = 30) -> None:
+    """Wait until the API answers its health probe.
+
+    The API attaches DuckDB at startup, which takes a while, so the demo waits
+    rather than failing on a stack that is merely still booting.
+
+    Args:
+        cli: The demo HTTP client.
+        retries: How many times to poll before giving up.
+    """
     step(1, "Preflight — is the API up?")
     url = f"{cli.api}/health"
     for i in range(retries):
@@ -105,10 +179,17 @@ def wait_for_health(cli: Client, retries: int = 30) -> None:
             pass
         print(_c("dim", f"  ...waiting for API ({i + 1}/{retries})"))
         time.sleep(3)
-    die(f"API never became healthy at {url}. Is the stack running? (docker compose up -d)")
+    die(
+        f"API never became healthy at {url}. Is the stack running? (docker compose up -d)"
+    )
 
 
 def prove_rbac_blocks_anon(cli: Client) -> None:
+    """Show that a protected endpoint rejects an anonymous caller.
+
+    Args:
+        cli: The demo HTTP client.
+    """
     step(2, "Security — a protected endpoint rejects anonymous callers")
     r = cli.get("/domains", auth=False)
     if r.status_code == 401:
@@ -118,6 +199,16 @@ def prove_rbac_blocks_anon(cli: Client) -> None:
 
 
 def do_login(cli: Client, email: str, password: str) -> dict[str, Any]:
+    """Log in, store the tokens, and report the caller's access.
+
+    Args:
+        cli: The demo HTTP client.
+        email: Email to sign in with.
+        password: Password to sign in with.
+
+    Returns:
+        The authenticated user's identity, roles, and permissions.
+    """
     step(3, "Auth — log in and load identity")
     r = cli.post("/auth/login", auth=False, json={"email": email, "password": password})
     if not r.ok:
@@ -137,6 +228,14 @@ def do_login(cli: Client, email: str, password: str) -> dict[str, Any]:
 
 
 def prove_rbac_allows_authed(cli: Client) -> None:
+    """Show that the same endpoint succeeds once a token is present.
+
+    Run straight after the anonymous attempt, so the pair demonstrates RBAC rather
+    than merely asserting it.
+
+    Args:
+        cli: The demo HTTP client.
+    """
     step(4, "Security — the same endpoint now succeeds with a token")
     r = cli.get("/domains")
     if r.ok:
@@ -146,6 +245,14 @@ def prove_rbac_allows_authed(cli: Client) -> None:
 
 
 def pick_dataset(cli: Client) -> int | None:
+    """List the onboarded datasets and choose one for the walkthrough.
+
+    Args:
+        cli: The demo HTTP client.
+
+    Returns:
+        The chosen dataset id, or None when nothing has been onboarded.
+    """
     step(5, "Data hub — list onboarded datasets")
     r = cli.get("/datasets")
     if not r.ok:
@@ -155,30 +262,52 @@ def pick_dataset(cli: Client) -> int | None:
         warn("No datasets found. The seed step may not have run.")
         return None
     for d in datasets:
-        print(_c("dim",
-                 f"     #{d['dataset_id']:<3} {d['business_name']:<22} "
-                 f"{d.get('industry') or '-':<14} "
-                 f"collected={d['features_collected']} skipped={d['features_skipped']}"))
+        print(
+            _c(
+                "dim",
+                f"     #{d['dataset_id']:<3} {d['business_name']:<22} "
+                f"{d.get('industry') or '-':<14} "
+                f"collected={d['features_collected']} skipped={d['features_skipped']}",
+            )
+        )
     chosen = datasets[0]["dataset_id"]
     ok(f"Using dataset #{chosen} ({datasets[0]['business_name']}) for the walkthrough")
     return chosen
 
 
 def show_analytics(cli: Client, ds: int) -> None:
+    """Show the Spark-computed metrics and trends for a dataset.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to display.
+    """
     step(6, "Analytics — Spark-computed KPIs and trends")
     r = cli.get(f"/analytics/{ds}/metrics")
     if r.ok:
         metrics = r.json()
         ok(f"{len(metrics)} metric summaries across domains")
         for m in metrics[:5]:
-            print(_c("dim",
-                     f"     {m.get('domain','?'):<12} {m.get('metric_name','?'):<20} "
-                     f"avg={m.get('metric_avg')}"))
+            print(
+                _c(
+                    "dim",
+                    f"     {m.get('domain', '?'):<12} {m.get('metric_name', '?'):<20} "
+                    f"avg={m.get('metric_avg')}",
+                )
+            )
     else:
-        warn(f"analytics metrics ({r.status_code}) — has the analytics DAG run for this dataset?")
+        warn(
+            f"analytics metrics ({r.status_code}) — has the analytics DAG run for this dataset?"
+        )
 
 
 def show_ml(cli: Client, ds: int) -> None:
+    """Show the forecasts, anomalies, and risk scores for a dataset.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to display.
+    """
     step(7, "ML — forecasts, anomalies, risk")
     fr = cli.get(f"/ml/{ds}/forecasts")
     an = cli.get(f"/ml/{ds}/anomalies", params={"limit": 500})
@@ -200,6 +329,12 @@ def show_ml(cli: Client, ds: int) -> None:
 
 
 def show_intelligence(cli: Client, ds: int) -> None:
+    """Show the cross-domain insights for a dataset.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to display.
+    """
     step(8, "Intelligence — cross-domain relationships")
     r = cli.get(f"/intelligence/{ds}", timeout=(5, 180))
     if r.ok:
@@ -211,6 +346,12 @@ def show_intelligence(cli: Client, ds: int) -> None:
 
 
 def show_executive(cli: Client, ds: int) -> None:
+    """Show the executive summary, assembled in a single call.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to display.
+    """
     step(9, "Executive summary — the whole operation in one call")
     r = cli.get(f"/executive/{ds}/summary")
     if not r.ok:
@@ -219,13 +360,23 @@ def show_executive(cli: Client, ds: int) -> None:
     s = r.json()
     idx = s.get("risk_index", {})
     ok(f"Business: {s.get('business_name')}  ({s.get('industry') or 'n/a'})")
-    ok(f"Operational Risk Index: {idx.get('value')} ({idx.get('band')}) — "
-       f"{s.get('active_domain_count')} active domains")
-    ok(f"Open alerts: {s.get('open_alert_count')}  |  entities at risk: {s.get('entities_at_risk')}"
-       f"  |  insights: {s.get('insight_count')}")
+    ok(
+        f"Operational Risk Index: {idx.get('value')} ({idx.get('band')}) — "
+        f"{s.get('active_domain_count')} active domains"
+    )
+    ok(
+        f"Open alerts: {s.get('open_alert_count')}  |  entities at risk: {s.get('entities_at_risk')}"
+        f"  |  insights: {s.get('insight_count')}"
+    )
 
 
 def show_rag(cli: Client, ds: int) -> None:
+    """Show the indexed documents and a grounded answer from them.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to display.
+    """
     step(10, "RAG — document assistant (grounded Q&A)")
     r = cli.get(f"/rag/{ds}/documents")
     if not r.ok:
@@ -234,23 +385,49 @@ def show_rag(cli: Client, ds: int) -> None:
     docs = r.json()
     ok(f"{len(docs)} document(s) indexed for this dataset")
     if not docs:
-        print(_c("dim", "     (upload a manual on the Documents page to see grounded answers)"))
+        print(
+            _c(
+                "dim",
+                "     (upload a manual on the Documents page to see grounded answers)",
+            )
+        )
 
 
 def ask_agent(cli: Client, ds: int) -> None:
+    """Ask the copilot a question and show the evidence behind its answer.
+
+    Skipped when the local model is unreachable, so a missing Ollama cannot fail
+    the rest of the demo.
+
+    Args:
+        cli: The demo HTTP client.
+        ds: Dataset to ask about.
+    """
     step(11, "AI Copilot — natural-language investigation (local LLM)")
     h = cli.get("/agent/health", timeout=(3, 10))
     if not h.ok or not h.json().get("llm_reachable"):
-        warn("Agent LLM not reachable (Ollama not running?). Skipping the copilot step.")
-        print(_c("dim", "     Start Ollama with llama3.2:3b to enable this, or use --skip-agent."))
+        warn(
+            "Agent LLM not reachable (Ollama not running?). Skipping the copilot step."
+        )
+        print(
+            _c(
+                "dim",
+                "     Start Ollama with llama3.2:3b to enable this, or use --skip-agent.",
+            )
+        )
         return
-    ok(f"Agent ready — model {h.json().get('model')}, {h.json().get('tool_count')} tools")
+    ok(
+        f"Agent ready — model {h.json().get('model')}, {h.json().get('tool_count')} tools"
+    )
 
     question = "Which domain has the highest risk, and what is driving it?"
     print(_c("dim", f"     Asking: {question!r}"))
-    print(_c("dim", "     (a multi-step loop on a 3B CPU model — this can take a minute)"))
-    r = cli.post("/agent/ask", json={"question": question, "dataset_id": ds},
-                 timeout=(5, 240))
+    print(
+        _c("dim", "     (a multi-step loop on a 3B CPU model — this can take a minute)")
+    )
+    r = cli.post(
+        "/agent/ask", json={"question": question, "dataset_id": ds}, timeout=(5, 240)
+    )
     if not r.ok:
         warn(f"agent ask ({r.status_code}): {r.text[:200]}")
         return
@@ -265,15 +442,22 @@ def ask_agent(cli: Client, ds: int) -> None:
 # Main
 # ------------------------------------------------------------
 
+
 def main() -> None:
+    """Parse the arguments and run every demo step in order."""
     p = argparse.ArgumentParser(description="End-to-end demo of the platform.")
     p.add_argument("--api", default="http://localhost:8000", help="API base URL")
     p.add_argument("--email", default="admin@ops.com")
     p.add_argument("--password", default="ChangeMe123")
-    p.add_argument("--dataset", type=int, default=None,
-                   help="Force a dataset id (default: first available)")
-    p.add_argument("--skip-agent", action="store_true",
-                   help="Skip the slow local-LLM copilot step")
+    p.add_argument(
+        "--dataset",
+        type=int,
+        default=None,
+        help="Force a dataset id (default: first available)",
+    )
+    p.add_argument(
+        "--skip-agent", action="store_true", help="Skip the slow local-LLM copilot step"
+    )
     args = p.parse_args()
 
     print(_c("head", "\n=========================================================="))
@@ -299,7 +483,7 @@ def main() -> None:
     if not args.skip_agent:
         ask_agent(cli, ds)
 
-    print(_c("ok", "\n==========================================================")); 
+    print(_c("ok", "\n=========================================================="))
     print(_c("ok", " Demo complete — every layer exercised end to end."))
     print(_c("ok", "=========================================================="))
 

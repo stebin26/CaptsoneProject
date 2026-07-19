@@ -16,13 +16,19 @@ dash.register_page(__name__, path="/copilot", name="AI Copilot")
 
 
 def layout() -> html.Div:
+    """Build the Copilot page.
+
+    Where a manager asks a question in plain language and sees the answer together
+    with the evidence behind it.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("Ask, and see the working", className="page-title"),
         ui.lede(BY_HREF["/copilot"].subtitle),
-
         html.Div(id=ids.COPILOT_STATUS),
         dcc.Interval(id=ids.COPILOT_INIT, interval=300, max_intervals=1),
-
         ui.field(
             "Scope",
             dcc.Dropdown(
@@ -32,9 +38,7 @@ def layout() -> html.Div:
                 clearable=True,
             ),
         ),
-
         html.Div(id=ids.COPILOT_TRANSCRIPT, className="transcript"),
-
         html.Div(
             [
                 html.Span(
@@ -53,7 +57,6 @@ def layout() -> html.Div:
                 "margin": "0.75rem 0",
             },
         ),
-
         html.Div(
             [
                 dcc.Textarea(
@@ -78,7 +81,6 @@ def layout() -> html.Div:
             className="kpi-note",
             style={"marginTop": "0.5rem"},
         ),
-
         # The session id lets the agent resolve "that" against the previous turn.
         dcc.Store(id=ids.COPILOT_HISTORY, data=[]),
         dcc.Store(id=ids.COPILOT_SESSION, data=str(uuid.uuid4())),

@@ -88,6 +88,19 @@ def chart_forecast(
     color: str,
     fill: bool,
 ) -> go.Figure | None:
+    """Build a forecast chart with its confidence band.
+
+    The band is drawn rather than only the central line, so the projection reads as
+    an estimate with uncertainty instead of a promise.
+
+    Args:
+        forecasts: The forecast points with their bounds.
+        color: Series colour.
+        fill: Colour for the confidence band.
+
+    Returns:
+        The built figure, or nothing when there is nothing to plot.
+    """
     if not forecasts:
         return None
 
@@ -135,6 +148,15 @@ def chart_risk_bar(
     risks: list[dict[str, Any]],
     horizontal: bool,
 ) -> go.Figure | None:
+    """Build a bar chart of entity risk scores.
+
+    Args:
+        risks: The risk scores to plot.
+        horizontal: Draw the bars horizontally.
+
+    Returns:
+        The built figure, or nothing when there is nothing to plot.
+    """
     if not risks:
         return None
 
@@ -164,6 +186,14 @@ def chart_risk_bar(
 def chart_anomaly_scatter(
     anomalies: list[dict[str, Any]],
 ) -> go.Figure | None:
+    """Build a scatter chart of anomalies over time, coloured by severity.
+
+    Args:
+        anomalies: The anomalies to plot.
+
+    Returns:
+        The built figure, or nothing when there is nothing to plot.
+    """
     if not anomalies:
         return None
 

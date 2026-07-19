@@ -1,29 +1,34 @@
 # services/api-gateway/api_app/auth/routes.py
-# Auth endpoints: register (admin), login, refresh, logout, logout-all, me.
+"""Authentication and session endpoints for the API gateway.
+
+Exposes the local email/password auth surface: admin-only user registration,
+login, access-token refresh, single-session and all-session logout, and an
+identity lookup for the current caller. Access tokens are short-lived JWTs;
+refresh tokens are opaque, hashed, and stored in ``auth.refresh_tokens`` so they
+can be revoked server-side. Role and permission resolution is read fresh from the
+database at token-issue time, keeping RBAC the single source of truth.
+"""
 
 from __future__ import annotations
 
-from typing import Any
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
+from ops_common.db import get_db
+from ops_common.logging import get_logger
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db
-from ops_common.logging import get_logger
-
-from api_app.auth.passwords import hash_password, verify_password
-from api_app.auth.jwt_handler import (
-    create_access_token,
-    create_refresh_token,
-    hash_refresh_token,
-)
 from api_app.auth.dependencies import (
     CurrentUser,
     get_current_user,
     require_permission,
 )
+from api_app.auth.jwt_handler import (
+    create_access_token,
+    create_refresh_token,
+    hash_refresh_token,
+)
+from api_app.auth.passwords import hash_password, verify_password
 
 logger = get_logger(__name__)
 
@@ -34,7 +39,10 @@ router = APIRouter()
 # Request / response models
 # ============================================================
 
+
 class RegisterIn(BaseModel):
+    """Request body for admin-driven user registration."""
+
     email: EmailStr
     password: str
     full_name: str | None = None
@@ -42,30 +50,42 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
+    """Request body for email/password login."""
+
     email: EmailStr
     password: str
 
 
 class RefreshIn(BaseModel):
+    """Request body carrying a refresh token to exchange for a new access token."""
+
     refresh_token: str
 
 
 class LogoutIn(BaseModel):
+    """Request body carrying the refresh token to revoke on logout."""
+
     refresh_token: str
 
 
 class TokenOut(BaseModel):
+    """Response returning a new access token paired with its refresh token."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
 
 class AccessOut(BaseModel):
+    """Response returning a standalone access token (used by refresh)."""
+
     access_token: str
     token_type: str = "bearer"
 
 
 class MeOut(BaseModel):
+    """Response describing the authenticated caller's identity and access."""
+
     user_id: int
     email: str
     full_name: str | None
@@ -77,7 +97,17 @@ class MeOut(BaseModel):
 # Helpers
 # ============================================================
 
+
 def _fetch_roles(session: Session, user_id: int) -> list[str]:
+    """Return the role names assigned to a user, ordered alphabetically.
+
+    Args:
+        session: Active database session.
+        user_id: Id of the user whose roles are being read.
+
+    Returns:
+        The user's role names; empty if the user has no roles.
+    """
     rows = session.execute(
         text(
             """
@@ -94,6 +124,15 @@ def _fetch_roles(session: Session, user_id: int) -> list[str]:
 
 
 def _fetch_permissions(session: Session, user_id: int) -> list[str]:
+    """Return the distinct permission codes granted to a user via their roles.
+
+    Args:
+        session: Active database session.
+        user_id: Id of the user whose permissions are being read.
+
+    Returns:
+        The distinct permission codes, ordered alphabetically; empty if none.
+    """
     rows = session.execute(
         text(
             """
@@ -110,9 +149,24 @@ def _fetch_permissions(session: Session, user_id: int) -> list[str]:
     return [r[0] for r in rows]
 
 
-def _issue_tokens(session: Session, request: Request,
-                  user_id: int, email: str) -> TokenOut:
-    """Mint an access JWT + a DB-stored refresh token for a verified user."""
+def _issue_tokens(
+    session: Session, request: Request, user_id: int, email: str
+) -> TokenOut:
+    """Mint an access JWT and a DB-stored refresh token for a verified user.
+
+    Resolves the user's roles and permissions, embeds them in a short-lived
+    access token, persists a hashed refresh token (with the caller's user-agent
+    and IP for auditing), stamps ``last_login``, and commits.
+
+    Args:
+        session: Active database session.
+        request: Incoming request, used to capture user-agent and client IP.
+        user_id: Id of the authenticated user.
+        email: Email of the authenticated user, embedded in the access token.
+
+    Returns:
+        A ``TokenOut`` with the access token and the raw (unhashed) refresh token.
+    """
     roles = _fetch_roles(session, user_id)
     permissions = _fetch_permissions(session, user_id)
 
@@ -148,13 +202,31 @@ def _issue_tokens(session: Session, request: Request,
 # Endpoints
 # ============================================================
 
+
 @router.post("/auth/register", response_model=MeOut, status_code=201)
 def register(
     body: RegisterIn,
     session: Session = Depends(get_db),
     _admin: CurrentUser = Depends(require_permission("user:manage")),
 ) -> MeOut:
-    """Admin-only: create a local email/password user and assign roles."""
+    """Create a local email/password user and assign roles (admin only).
+
+    Guarded by the ``user:manage`` permission. Rejects duplicate emails and
+    unknown role names before creating the user, then attaches the requested
+    roles.
+
+    Args:
+        body: New user's email, password, optional name, and requested roles.
+        session: Active database session.
+        _admin: Authenticated admin caller, injected to enforce the permission.
+
+    Returns:
+        The created user's identity, roles, and resolved permissions.
+
+    Raises:
+        HTTPException: 409 if the email exists, 400 if a role is unknown or the
+            password is rejected by the hashing policy.
+    """
     exists = session.execute(
         text("SELECT 1 FROM auth.users WHERE email = :e"),
         {"e": body.email},
@@ -175,7 +247,7 @@ def register(
     try:
         pw_hash = hash_password(body.password)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     user_id = session.execute(
         text(
@@ -215,7 +287,22 @@ def login(
     request: Request,
     session: Session = Depends(get_db),
 ) -> TokenOut:
-    """Email/password login → access + refresh tokens."""
+    """Authenticate an email/password user and issue access + refresh tokens.
+
+    Uses one generic error for both a missing user and a wrong password to avoid
+    user enumeration.
+
+    Args:
+        body: Login credentials.
+        request: Incoming request, used to audit the issued refresh token.
+        session: Active database session.
+
+    Returns:
+        Freshly issued access and refresh tokens.
+
+    Raises:
+        HTTPException: 401 on invalid credentials, 403 if the account is inactive.
+    """
     row = session.execute(
         text(
             """
@@ -241,7 +328,23 @@ def refresh(
     body: RefreshIn,
     session: Session = Depends(get_db),
 ) -> AccessOut:
-    """Exchange a valid, unrevoked refresh token for a fresh access token."""
+    """Exchange a valid, unrevoked refresh token for a fresh access token.
+
+    The refresh token is hashed and matched against a live row that is neither
+    revoked nor expired; roles and permissions are re-read so the new access
+    token reflects the user's current access.
+
+    Args:
+        body: The refresh token to redeem.
+        session: Active database session.
+
+    Returns:
+        A new access token.
+
+    Raises:
+        HTTPException: 401 if the token is invalid or expired, 403 if the account
+            is inactive.
+    """
     token_hash = hash_refresh_token(body.refresh_token)
     row = session.execute(
         text(
@@ -275,7 +378,15 @@ def logout(
     session: Session = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> None:
-    """Revoke a single refresh token (this device/session)."""
+    """Revoke a single refresh token, ending this device's session.
+
+    Scoped to the caller's own tokens, so one user cannot revoke another's.
+
+    Args:
+        body: The refresh token to revoke.
+        session: Active database session.
+        user: Authenticated caller, used to scope the revocation.
+    """
     session.execute(
         text(
             """
@@ -294,7 +405,12 @@ def logout_all(
     session: Session = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> None:
-    """Revoke every active session for the caller (logout from all devices)."""
+    """Revoke every active session for the caller (logout from all devices).
+
+    Args:
+        session: Active database session.
+        user: Authenticated caller whose sessions are being revoked.
+    """
     session.execute(
         text(
             """
@@ -313,7 +429,15 @@ def me(
     session: Session = Depends(get_db),
     user: CurrentUser = Depends(get_current_user),
 ) -> MeOut:
-    """Return the authenticated caller's identity, roles, and permissions."""
+    """Return the authenticated caller's identity, roles, and permissions.
+
+    Args:
+        session: Active database session.
+        user: Authenticated caller, resolved from the access token.
+
+    Returns:
+        The caller's id, email, name, roles, and permissions.
+    """
     row = session.execute(
         text("SELECT full_name FROM auth.users WHERE id = :id"),
         {"id": user.user_id},

@@ -1,16 +1,21 @@
+"""Domain registry and hub-data API endpoints.
+
+Serves the static universal-domain catalog and reads entity-level hub data
+through the DuckDB analytics views, plus a dataset listing for the browse page.
+"""
 from __future__ import annotations
 
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from ops_common.db import duckdb_scope, get_db
+from ops_common.domain.models import Dataset, Domain
+from ops_common.domain.registry import DOMAIN_REGISTRY, get_spec
+from ops_common.logging import get_logger
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db, duckdb_scope
-from ops_common.domain.models import Dataset, Domain
-from ops_common.domain.registry import DOMAIN_REGISTRY, get_spec
-from ops_common.logging import get_logger
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -24,13 +29,16 @@ _VALID_DOMAINS = set(Domain.values())
 # Response models
 # ============================================================
 
+
 class DomainInfoOut(BaseModel):
+    """Static catalog entry for one universal domain."""
     domain: str
     description: str
     features: list[str]
 
 
 class MetricSummaryOut(BaseModel):
+    """Aggregate summary for one metric within a domain."""
     domain: str
     metric_name: str
     observations: int
@@ -41,12 +49,14 @@ class MetricSummaryOut(BaseModel):
 
 
 class DomainSummaryOut(BaseModel):
+    """Per-domain metric summary for a dataset."""
     dataset_id: int
     business_name: str
     metrics: list[MetricSummaryOut]
 
 
 class MetricPointOut(BaseModel):
+    """One entity-level metric reading from the hub."""
     entity_ref: str
     metric_name: str
     metric_value: float | None
@@ -54,6 +64,7 @@ class MetricPointOut(BaseModel):
 
 
 class DomainDataOut(BaseModel):
+    """Entity-level hub readings for one domain of a dataset."""
     dataset_id: int
     domain: str
     points: list[MetricPointOut]
@@ -63,10 +74,19 @@ class DomainDataOut(BaseModel):
 # Static registry endpoints
 # ============================================================
 
+
 @router.get("/domains", response_model=list[DomainInfoOut])
 def list_domains(
     _user=Depends(require_permission("dataset:read")),
 ) -> list[DomainInfoOut]:
+    """Return the static catalog of universal domains and their features.
+
+    Args:
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        One catalog entry per universal domain.
+    """
     out: list[DomainInfoOut] = []
     for spec in DOMAIN_REGISTRY.values():
         out.append(
@@ -84,6 +104,18 @@ def domain_info(
     domain: str,
     _user=Depends(require_permission("dataset:read")),
 ) -> DomainInfoOut:
+    """Return the catalog entry for one domain.
+
+    Args:
+        domain: Name of the domain to describe.
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        The domain's description and feature list.
+
+    Raises:
+        HTTPException: 404 if the domain is unknown.
+    """
     if domain not in _VALID_DOMAINS:
         raise HTTPException(status_code=404, detail=f"Unknown domain {domain!r}")
     spec = get_spec(domain)
@@ -98,6 +130,7 @@ def domain_info(
 # Hub data endpoints (read through DuckDB analytics views)
 # ============================================================
 
+
 def _require_dataset(session: Session, dataset_id: int) -> Dataset:
     dataset = session.get(Dataset, dataset_id)
     if dataset is None:
@@ -111,6 +144,19 @@ def dataset_summary(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("dataset:read")),
 ) -> DomainSummaryOut:
+    """Return a per-domain metric summary for a dataset from the hub.
+
+    Args:
+        dataset_id: Id of the dataset to summarize.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        The dataset's per-domain metric summary.
+
+    Raises:
+        HTTPException: 404 if the dataset is missing, 503 if analytics is unavailable.
+    """
     dataset = _require_dataset(session, dataset_id)
 
     query = """
@@ -127,7 +173,7 @@ def dataset_summary(
             rows = conn.execute(query, [dataset_id]).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read domain summary from DuckDB")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     for r in rows:
         metrics.append(
@@ -157,6 +203,22 @@ def domain_data(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("dataset:read")),
 ) -> DomainDataOut:
+    """Return entity-level hub readings for one domain of a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Domain to read readings from.
+        limit: Maximum number of readings to return.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        Entity-level readings for the domain.
+
+    Raises:
+        HTTPException: 404 if the dataset or domain is unknown, 503 if analytics is
+            unavailable.
+    """
     _require_dataset(session, dataset_id)
 
     if domain not in _VALID_DOMAINS:
@@ -175,7 +237,7 @@ def domain_data(
             rows = conn.execute(query, [dataset_id, domain, limit]).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read domain data from DuckDB")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     points = [
         MetricPointOut(
@@ -198,11 +260,14 @@ def _as_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
 
+
 # ============================================================
 # Dataset listing (for the Datasets browse page)
 # ============================================================
 
+
 class DatasetListItem(BaseModel):
+    """One row in the dataset browse listing."""
     dataset_id: int
     business_name: str
     industry: str | None
@@ -218,12 +283,21 @@ def list_datasets(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("dataset:read")),
 ) -> list[DatasetListItem]:
+    """Return all datasets with their collected/skipped feature counts.
+
+    Args:
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``dataset:read``.
+
+    Returns:
+        One listing row per dataset, newest first.
+    """
     from ops_common.domain.models import Dataset, FeatureRecord, FeatureStatus
     from sqlalchemy import func
 
-    datasets = session.execute(
-        select(Dataset).order_by(Dataset.id.desc())
-    ).scalars().all()
+    datasets = (
+        session.execute(select(Dataset).order_by(Dataset.id.desc())).scalars().all()
+    )
 
     counts: dict[int, dict[str, int]] = {}
     rows = session.execute(

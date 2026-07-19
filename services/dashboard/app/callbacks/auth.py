@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import dash
 from dash import Input, Output, State, callback, clientside_callback, html
+
 from app import feedback, ids
-from app.api_client import APIError, auth_me, login as api_login
+from app.api_client import APIError, auth_me
+from app.api_client import login as api_login
 
 _PUBLIC_PATHS = frozenset({"/login"})
 
@@ -24,6 +24,17 @@ _PUBLIC_PATHS = frozenset({"/login"})
     prevent_initial_call=True,
 )
 def handle_login(n_clicks, n_submit, email, password):
+    """Authenticate the user and store the issued tokens.
+
+    Args:
+        n_clicks: Sign-in button clicks.
+        n_submit: Enter presses in the password field.
+        email: Entered email address.
+        password: Entered password.
+
+    Returns:
+        The stored tokens and profile on success, or an error message.
+    """
     no = dash.no_update
     if not (n_clicks or n_submit):
         return no, no, no, no
@@ -52,6 +63,14 @@ def handle_login(n_clicks, n_submit, email, password):
     prevent_initial_call=True,
 )
 def google_login(n_clicks):
+    """Report that Google sign-in is not yet available.
+
+    Args:
+        n_clicks: Button clicks.
+
+    Returns:
+        A message explaining the option is not enabled.
+    """
     if not n_clicks:
         return dash.no_update
     return html.Span("Google sign-in coming soon.", className="msg-success")
@@ -79,6 +98,7 @@ clientside_callback(
 
 # ---- Logout: clear tokens, guard sends to /login ----
 
+
 @callback(
     Output(ids.ACCESS_TOKEN, "data", allow_duplicate=True),
     Output(ids.AUTH_REFRESH_TOKEN, "data", allow_duplicate=True),
@@ -87,6 +107,14 @@ clientside_callback(
     prevent_initial_call=True,
 )
 def handle_logout(n_clicks):
+    """Revoke the session and clear the stored tokens.
+
+    Args:
+        n_clicks: Sign-out button clicks.
+
+    Returns:
+        The cleared stores and the redirect target.
+    """
     if not n_clicks:
         return dash.no_update, dash.no_update, dash.no_update
     # Clearing the token makes the guard redirect to /login on the next tick.
@@ -95,11 +123,20 @@ def handle_logout(n_clicks):
 
 # ---- Show the signed-in user's name in the topbar ----
 
+
 @callback(
     Output(ids.TOPBAR_USER_NAME, "children"),
     Input(ids.AUTH_USER, "data"),
 )
 def show_user(user):
+    """Render the signed-in user's name and role in the top bar.
+
+    Args:
+        user: The stored user profile.
+
+    Returns:
+        The rendered identity, or nothing when signed out.
+    """
     if not user:
         return ""
     return user.get("full_name") or user.get("email") or "User"

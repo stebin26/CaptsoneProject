@@ -1,20 +1,30 @@
+"""Mapping confirmation -- turning reviewed suggestions into saved configuration.
+
+The user confirms or corrects the suggested mapping once, and the result is
+persisted as a versioned config. That saved config is the 'declaration, not
+code' artifact at the heart of the platform's portability: the same business can
+re-onboard without redoing the work, and a new industry needs a config rather
+than new code. Every decision is validated before it is stored, so an incomplete
+mapping cannot reach the hub.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from ops_common.domain.models import (
     ColumnProfile as ColumnProfileModel,
+)
+from ops_common.domain.models import (
     Dataset,
+    Domain,
     MappingConfig,
     MappingStatus,
 )
-from ops_common.domain.models import Domain
 from ops_common.logging import get_logger
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -23,13 +33,22 @@ _VALID_DOMAINS = set(Domain.values())
 
 @dataclass
 class ConfirmedColumn:
+    """One column's confirmed mapping decision."""
     column_name: str
     domain: str | None
     metric_name: str | None
     role: str  # "metric", "entity", "skip"
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ConfirmedColumn":
+    def from_dict(cls, data: dict[str, Any]) -> ConfirmedColumn:
+        """Build a confirmed column from a request payload.
+
+        Args:
+            data: The column decision as submitted.
+
+        Returns:
+            The parsed decision.
+        """
         return cls(
             column_name=data["column_name"],
             domain=data.get("domain"),
@@ -38,19 +57,24 @@ class ConfirmedColumn:
         )
 
     def validate(self) -> None:
+        """Check this decision is internally consistent.
+
+        Raises:
+            ValueError: If the role is unknown, a mapped column has no valid domain, or
+                a metric column has no metric name.
+        """
         if self.role not in ("metric", "entity", "skip"):
             raise ValueError(f"Invalid role {self.role!r} for column {self.column_name!r}")
         if self.role != "skip":
             if self.domain not in _VALID_DOMAINS:
-                raise ValueError(
-                    f"Invalid domain {self.domain!r} for column {self.column_name!r}"
-                )
+                raise ValueError(f"Invalid domain {self.domain!r} for column {self.column_name!r}")
         if self.role == "metric" and not self.metric_name:
             raise ValueError(f"Metric column {self.column_name!r} needs a metric_name")
 
 
 @dataclass
 class ConfirmationResult:
+    """Summary of a confirmation: what was mapped, skipped, and versioned."""
     dataset_id: int
     business_name: str
     config_version: int
@@ -59,6 +83,7 @@ class ConfirmationResult:
     entity_count: int
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this result as a plain dictionary."""
         return {
             "dataset_id": self.dataset_id,
             "business_name": self.business_name,
@@ -78,7 +103,7 @@ def _status_for_role(role: str) -> str:
 def _build_config(business_name: str, columns: list[ConfirmedColumn]) -> dict[str, Any]:
     return {
         "business_name": business_name,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "columns": [
             {
                 "column_name": c.column_name,
@@ -107,6 +132,22 @@ def confirm_mappings(
     dataset_id: int,
     columns: list[ConfirmedColumn],
 ) -> ConfirmationResult:
+    """Persist a dataset's confirmed mapping as a new config version.
+
+    Validates every decision, updates each column's mapping status, and saves the
+    resulting configuration.
+
+    Args:
+        session: Active database session.
+        dataset_id: Dataset being confirmed.
+        columns: The confirmed column decisions.
+
+    Returns:
+        A summary of what was confirmed and the new config version.
+
+    Raises:
+        ValueError: If the dataset is missing or a decision is invalid.
+    """
     dataset = session.get(Dataset, dataset_id)
     if dataset is None:
         raise ValueError(f"Dataset {dataset_id} not found")
@@ -114,12 +155,8 @@ def confirm_mappings(
     for col in columns:
         col.validate()
 
-    profile_stmt = select(ColumnProfileModel).where(
-        ColumnProfileModel.dataset_id == dataset_id
-    )
-    profiles = {
-        p.column_name: p for p in session.execute(profile_stmt).scalars().all()
-    }
+    profile_stmt = select(ColumnProfileModel).where(ColumnProfileModel.dataset_id == dataset_id)
+    profiles = {p.column_name: p for p in session.execute(profile_stmt).scalars().all()}
 
     confirmed = skipped = entities = 0
 

@@ -1,19 +1,31 @@
+"""Hub tools -- the agent's access to the raw, unmodelled data.
+
+These answer 'what data is even here?' before any analysis is attempted, which
+is how the agent resolves an unspecified dataset and grounds itself. Like the
+other tools, they call the router's own functions so hub reads have one source
+of truth.
+"""
 from __future__ import annotations
 
 from typing import Any
-
-from fastapi import HTTPException
-
-from ops_common.db import session_scope
-from ops_common.logging import get_logger
-
-from .base import ToolResult, domain_hint_for_schema, normalize_domain, tool_error, tool_ok
 
 # Reuse the router's own functions so there is ONE source of truth for hub reads.
 from api_app.routers.v1.domains import (
     dataset_summary,
     domain_data,
     list_datasets,
+)
+from fastapi import HTTPException
+from ops_common.db import session_scope
+from ops_common.logging import get_logger
+
+from .base import (
+    CANONICAL_DOMAINS,
+    ToolResult,
+    domain_hint_for_schema,
+    normalize_domain,
+    tool_error,
+    tool_ok,
 )
 
 logger = get_logger(__name__)
@@ -23,10 +35,19 @@ logger = get_logger(__name__)
 # Tool 1 — list datasets (discovery)
 # ============================================================
 
+
 def list_datasets_tool() -> ToolResult:
     # No arguments: the agent uses this to discover what data exists, e.g. when
     # the user asks about "the factory data" without giving an id, or to confirm
     # a dataset_id is valid before drilling in.
+    """List the datasets available to query.
+
+    Lets the agent resolve which dataset a question refers to when the caller did
+    not say.
+
+    Returns:
+        A summary of the available datasets.
+    """
     try:
         with session_scope() as session:
             datasets = list_datasets(session)
@@ -48,13 +69,10 @@ def list_datasets_tool() -> ToolResult:
         for d in datasets
     ]
 
-    summary = (
-        f"{len(datasets)} dataset(s) available: "
-        + "; ".join(
-            f"id {d['dataset_id']} = {d['business_name']}"
-            + (f" ({d['industry']})" if d["industry"] else "")
-            for d in listed[:12]
-        )
+    summary = f"{len(datasets)} dataset(s) available: " + "; ".join(
+        f"id {d['dataset_id']} = {d['business_name']}"
+        + (f" ({d['industry']})" if d["industry"] else "")
+        for d in listed[:12]
     )
     return tool_ok(
         summary=summary,
@@ -66,10 +84,19 @@ def list_datasets_tool() -> ToolResult:
 # Tool 2 — hub summary (quick per-metric shape of a dataset)
 # ============================================================
 
+
 def hub_summary(dataset_id: int) -> ToolResult:
     # A compact per-metric summary straight from the hub (observations + basic
     # aggregates). Lighter than analytics_overview and works even before the
     # analytics pipeline runs, since it reads the hub views directly.
+    """Summarize which domains and metrics a dataset actually contains.
+
+    Args:
+        dataset_id: Dataset to summarize.
+
+    Returns:
+        A summary of the dataset's hub coverage.
+    """
     try:
         with session_scope() as session:
             result = _call_with_dataset_guard(dataset_summary, session, dataset_id)
@@ -117,6 +144,7 @@ def hub_summary(dataset_id: int) -> ToolResult:
 # Tool 3 — hub domain data (raw entity readings — ground truth)
 # ============================================================
 
+
 def hub_domain_data(dataset_id: int, domain: str, limit: int = 200) -> ToolResult:
     # Raw per-entity readings for one domain. The agent reaches here when derived
     # layers are not enough and it needs the actual values. Capped + summarized
@@ -127,6 +155,19 @@ def hub_domain_data(dataset_id: int, domain: str, limit: int = 200) -> ToolResul
     # drop the filter — instead we sweep every domain and return the ones that
     # actually hold data, which keeps the fail-open promise: an unknown word
     # widens the search, it never returns nothing.
+    """Read entity-level readings from one domain of a dataset.
+
+    An unrecognised domain word sweeps every domain rather than returning nothing,
+    so a vague question still produces evidence.
+
+    Args:
+        dataset_id: Dataset to read.
+        domain: Domain to read from.
+        limit: Maximum readings to consider.
+
+    Returns:
+        A summary of the readings found.
+    """
     resolved = normalize_domain(domain)
 
     if resolved is None:
@@ -144,7 +185,9 @@ def hub_domain_data(dataset_id: int, domain: str, limit: int = 200) -> ToolResul
             f"Cannot read domain '{resolved}' for dataset {dataset_id}: {exc.detail}"
         )
     except Exception as exc:  # noqa: BLE001
-        logger.exception("hub_domain_data failed for dataset_id=%s domain=%s", dataset_id, resolved)
+        logger.exception(
+            "hub_domain_data failed for dataset_id=%s domain=%s", dataset_id, resolved
+        )
         return tool_error(f"Could not read hub data for dataset {dataset_id}: {exc}")
 
     if not result.points:
@@ -189,7 +232,11 @@ def _hub_sweep_all_domains(
             for dom in CANONICAL_DOMAINS:
                 try:
                     result = _call_with_dataset_guard(
-                        domain_data, session, dataset_id, domain=dom, limit=per_domain_cap
+                        domain_data,
+                        session,
+                        dataset_id,
+                        domain=dom,
+                        limit=per_domain_cap,
                     )
                 except _DatasetMissing:
                     return tool_error(f"Dataset {dataset_id} not found.")
@@ -215,14 +262,14 @@ def _hub_sweep_all_domains(
         return tool_error(f"Could not read hub data for dataset {dataset_id}: {exc}")
 
     if not found:
-        return tool_error(f"Dataset {dataset_id} has no raw hub readings in any domain.")
+        return tool_error(
+            f"Dataset {dataset_id} has no raw hub readings in any domain."
+        )
 
     summary = (
         f"Dataset {dataset_id} — '{requested}' is not a known domain, so I checked "
         f"all of them. Data exists in: "
-        + "; ".join(
-            f"{f['domain']} ({', '.join(f['metrics'])})" for f in found
-        )
+        + "; ".join(f"{f['domain']} ({', '.join(f['metrics'])})" for f in found)
         + ". Ask again naming one of these domains for the raw readings."
     )
     return tool_ok(
@@ -235,6 +282,7 @@ def _hub_sweep_all_domains(
             "domains_with_data": found,
         },
     )
+
 
 # ============================================================
 # Tool schemas — what the LLM reads to decide the call
@@ -293,7 +341,8 @@ HUB_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dataset_id": {"type": "integer", "description": "The dataset id."},
                     "domain": {
                         "type": "string",
-                        "description": "The domain to read raw data from. " + domain_hint_for_schema(),
+                        "description": "The domain to read raw data from. "
+                        + domain_hint_for_schema(),
                     },
                     "limit": {
                         "type": "integer",
@@ -322,11 +371,14 @@ HUB_TOOL_FUNCTIONS = {
 # missing. In-process we translate that into a clean tool error rather than
 # letting a 404 bubble up as a raw exception.
 
+
 class _DatasetMissing(Exception):
     pass
 
 
-def _call_with_dataset_guard(fn: Any, session: Any, dataset_id: int, **kwargs: Any) -> Any:
+def _call_with_dataset_guard(
+    fn: Any, session: Any, dataset_id: int, **kwargs: Any
+) -> Any:
     try:
         return fn(dataset_id, session=session, **kwargs)
     except HTTPException as exc:
@@ -334,7 +386,10 @@ def _call_with_dataset_guard(fn: Any, session: Any, dataset_id: int, **kwargs: A
             raise _DatasetMissing() from exc
         raise
 
-def _summarize_points(points: list[Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+
+def _summarize_points(
+    points: list[Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     # Collapse raw readings into per-entity counts + a tiny concrete sample.
     # Shared by the single-domain read and the all-domain sweep so both compress
     # the same way.
@@ -347,7 +402,11 @@ def _summarize_points(points: list[Any]) -> tuple[list[dict[str, Any]], list[dic
         bucket["metrics"].add(p.metric_name)
 
     entities = [
-        {"entity": b["entity"], "readings": b["readings"], "metrics": sorted(b["metrics"])}
+        {
+            "entity": b["entity"],
+            "readings": b["readings"],
+            "metrics": sorted(b["metrics"]),
+        }
         for b in per_entity.values()
     ]
     sample = [
@@ -361,9 +420,11 @@ def _summarize_points(points: list[Any]) -> tuple[list[dict[str, Any]], list[dic
     ]
     return entities, sample
 
+
 # ============================================================
 # Small formatting helper
 # ============================================================
+
 
 def _round(value: float | None, places: int = 2) -> float | None:
     if value is None:

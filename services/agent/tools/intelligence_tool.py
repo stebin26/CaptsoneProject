@@ -1,6 +1,5 @@
 # services/agent/tools/intelligence_tool.py
-"""
-Intelligence tool — the agent's window into the Phase 3 cross-domain engine.
+"""Intelligence tool — the agent's window into the Phase 3 cross-domain engine.
 
 This is the tool that makes the agent more than a dashboard reader. The other
 tools report on ONE domain at a time; this one reports on how domains AFFECT
@@ -21,14 +20,13 @@ from __future__ import annotations
 
 from typing import Any
 
+# Reuse the router's own function so there is ONE source of truth for how
+# insights are produced (inference engine + translator run inside it).
+from api_app.routers.v1.intelligence import cross_domain_intelligence
 from ops_common.db import session_scope
 from ops_common.logging import get_logger
 
 from .base import ToolResult, tool_error, tool_ok
-
-# Reuse the router's own function so there is ONE source of truth for how
-# insights are produced (inference engine + translator run inside it).
-from api_app.routers.v1.intelligence import cross_domain_intelligence
 
 logger = get_logger(__name__)
 
@@ -37,11 +35,24 @@ logger = get_logger(__name__)
 # Tool — cross-domain insights (the "how it connects" view)
 # ============================================================
 
+
 def cross_domain_insights(dataset_id: int) -> ToolResult:
     # The agent reaches for this on "why" and "root cause" questions, where a
     # single-domain look is not enough and the answer lies in domain-to-domain
     # influence. Returns the ranked insights already translated to the business's
     # own terms by the engine.
+    """Report how a dataset's domains are affecting each other.
+
+    Runs the cross-domain inference and compresses the resulting insights into a
+    short ranked summary, so the model can weave a root-cause story without
+    drowning in the full insight payload.
+
+    Args:
+        dataset_id: Dataset to analyze.
+
+    Returns:
+        A ranked summary of the cross-domain insights.
+    """
     try:
         with session_scope() as session:
             result = cross_domain_intelligence(dataset_id, session)
@@ -91,17 +102,19 @@ def cross_domain_insights(dataset_id: int) -> ToolResult:
     # Build a one-line-per-insight summary the model can reason and quote from.
     summary_lines: list[str] = []
     for d in described:
-        targets = ", ".join(
-            f"{imp['term']} ({imp['strength']}, {imp['effect']})"
-            for imp in d["impacted"]
-        ) or "no clear downstream"
+        targets = (
+            ", ".join(
+                f"{imp['term']} ({imp['strength']}, {imp['effect']})"
+                for imp in d["impacted"]
+            )
+            or "no clear downstream"
+        )
         summary_lines.append(f"{d['root_term']} {d['direction']} → {targets}")
 
     summary = (
         f"Dataset {dataset_id} — {business} ({industry}). "
         f"{result.insight_count} cross-domain insight(s) over domains "
-        f"{', '.join(result.active_domains)}. Top: "
-        + " | ".join(summary_lines)
+        f"{', '.join(result.active_domains)}. Top: " + " | ".join(summary_lines)
     )
     return tool_ok(
         summary=summary,
@@ -157,6 +170,7 @@ INTELLIGENCE_TOOL_FUNCTIONS = {
 # ============================================================
 # Small formatting helper
 # ============================================================
+
 
 def _round(value: float | None, places: int = 3) -> float | None:
     if value is None:

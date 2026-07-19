@@ -1,3 +1,12 @@
+"""Mapping suggester -- proposing which domain each column belongs to.
+
+This is the automation behind onboarding a new business without writing code:
+the column profiles are described to an LLM, which classifies each column into
+one of the eight universal domains. Because a cloud model must never be a hard
+dependency, a keyword fallback using the domain registry's aliases produces a
+usable mapping with the LLM disabled or unreachable -- the platform still runs
+fully offline, just with lower-confidence suggestions the user reviews anyway.
+"""
 from __future__ import annotations
 
 import json
@@ -11,6 +20,7 @@ from ops_common.domain.registry import (
     registry_as_prompt_context,
 )
 from ops_common.logging import get_logger
+
 from app.profiling.profiler import ColumnProfile, DatasetProfile
 
 logger = get_logger(__name__)
@@ -20,6 +30,11 @@ _VALID_DOMAINS = set(Domain.values())
 
 @dataclass
 class ColumnSuggestion:
+    """A proposed mapping for one column, with its confidence and origin.
+
+    ``source`` records whether the suggestion came from the model, the keyword
+    fallback, or nothing, so the interface can show how it was arrived at.
+    """
     column_name: str
     suggested_domain: str | None
     suggested_metric: str | None
@@ -28,6 +43,7 @@ class ColumnSuggestion:
     source: str  # "llm", "keyword", or "none"
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this suggestion as a plain dictionary."""
         return {
             "column_name": self.column_name,
             "suggested_domain": self.suggested_domain,
@@ -40,9 +56,11 @@ class ColumnSuggestion:
 
 @dataclass
 class SuggestionResult:
+    """The suggested mapping for every column of a dataset."""
     suggestions: list[ColumnSuggestion] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this suggestion as a plain dictionary."""
         return {"suggestions": [s.to_dict() for s in self.suggestions]}
 
 
@@ -149,9 +167,7 @@ def _metric_name(column_name: str) -> str:
 
 
 def _keyword_fallback(profile: DatasetProfile) -> SuggestionResult:
-    return SuggestionResult(
-        suggestions=[_keyword_suggestion(c) for c in profile.columns]
-    )
+    return SuggestionResult(suggestions=[_keyword_suggestion(c) for c in profile.columns])
 
 
 def _call_llm(prompt: str) -> str | None:
@@ -236,6 +252,17 @@ def _parse_llm_response(raw: str, profile: DatasetProfile) -> SuggestionResult |
 
 
 def suggest_mappings(profile: DatasetProfile) -> SuggestionResult:
+    """Suggest a domain and metric for every profiled column.
+
+    Uses the LLM when enabled, falling back to keyword matching against the domain
+    registry's aliases otherwise or on failure.
+
+    Args:
+        profile: The dataset profile to classify.
+
+    Returns:
+        One suggestion per column.
+    """
     if not settings.llm_enabled:
         logger.info("LLM disabled, using keyword fallback")
         return _keyword_fallback(profile)

@@ -15,6 +15,11 @@ from app.components.primitives import icon
 
 
 def render() -> html.Header:
+    """Render the top bar with the page title and global controls.
+
+    Returns:
+        The rendered top bar.
+    """
     return html.Header(
         className="topbar",
         children=[

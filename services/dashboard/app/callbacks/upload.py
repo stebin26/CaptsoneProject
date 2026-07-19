@@ -18,6 +18,14 @@ from app.api_client import APIError, start_onboarding
     prevent_initial_call=True,
 )
 def show_filename(filename: str | None) -> Any:
+    """Show the name of the file the user selected.
+
+    Args:
+        filename: The selected filename.
+
+    Returns:
+        The rendered filename, or nothing when none is selected.
+    """
     if not filename:
         return ""
     return html.Span(f"Selected: {filename}", className="msg-success")
@@ -43,6 +51,19 @@ def handle_upload(
     filename: str | None,
     token: str | None,
 ) -> tuple[Any, Any, Any]:
+    """Upload the CSV, start onboarding, and move to the mapping review.
+
+    Args:
+        n_clicks: Upload button clicks.
+        business_name: Business the dataset belongs to.
+        industry: Optional industry label.
+        contents: Base64 contents of the selected file.
+        filename: Name of the selected file.
+        token: Caller's access token.
+
+    Returns:
+        The result message, the onboarding store, and the redirect target.
+    """
     hold = (dash.no_update, dash.no_update, dash.no_update)
 
     if not n_clicks:

@@ -1,3 +1,11 @@
+"""Column profiling -- reading a dataset's shape before anything is mapped.
+
+Walks every column and records its inferred type, distinct and null counts, and
+a few sample values, plus the flags (numeric, datetime, identifier) the mapping
+suggester relies on. Profiling first is what makes automatic onboarding
+possible: the suggester classifies columns from evidence about the data rather
+than from the column name alone.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -5,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-
 from ops_common.logging import get_logger
 
 logger = get_logger(__name__)
@@ -20,6 +27,7 @@ _DATETIME_HINT_TOKENS = ("date", "time", "timestamp", "_at", "_on", "dt")
 # and three boolean flags (numeric? datetime? identifier?) the suggester uses.
 @dataclass
 class ColumnProfile:
+    """The profile of one column: its type, counts, samples, and flags."""
     column_name: str
     data_type: str
     distinct_count: int
@@ -32,6 +40,7 @@ class ColumnProfile:
 
     # Serialize to a plain dict (for JSON storage / API response).
     def to_dict(self) -> dict[str, Any]:
+        """Return this profile as a plain dictionary."""
         return {
             "column_name": self.column_name,
             "data_type": self.data_type,
@@ -49,11 +58,13 @@ class ColumnProfile:
 # list of per-column profiles above.
 @dataclass
 class DatasetProfile:
+    """The profile of a whole dataset: its source, size, and column profiles."""
     source_filename: str
     row_count: int
     columns: list[ColumnProfile] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
+        """Return this profile as a plain dictionary."""
         return {
             "source_filename": self.source_filename,
             "row_count": self.row_count,
@@ -104,7 +115,9 @@ def _infer_logical_type(series: pd.Series, column_name: str) -> tuple[str, bool,
 # Decide if a column is an identifier (an entity key like machine_id).
 # Rule: name ends in _id/_ref OR the values are ≥95% unique.
 # Identifiers become the entity_ref in the hub, not a metric.
-def _is_identifier(series: pd.Series, distinct_count: int, total_count: int, column_name: str) -> bool:
+def _is_identifier(
+    series: pd.Series, distinct_count: int, total_count: int, column_name: str
+) -> bool:
     name_lower = column_name.lower()
     if name_lower.endswith("_id") or name_lower == "id" or name_lower.endswith("_ref"):
         return True
@@ -136,6 +149,15 @@ def _sample_values(series: pd.Series) -> list[Any]:
 # The main entry: walk every column, build its ColumnProfile, and assemble
 # the DatasetProfile. This is what the suggester consumes next.
 def profile_dataframe(df: pd.DataFrame, source_filename: str) -> DatasetProfile:
+    """Profile every column of a frame.
+
+    Args:
+        df: The frame to profile.
+        source_filename: Name of the file the frame came from.
+
+    Returns:
+        The dataset profile the suggester consumes next.
+    """
     total = len(df)
     columns: list[ColumnProfile] = []
 
@@ -173,6 +195,18 @@ def profile_dataframe(df: pd.DataFrame, source_filename: str) -> DatasetProfile:
 # Convenience: profile straight from a CSV path. Reads the file, strips
 # whitespace from headers, then runs profile_dataframe.
 def profile_csv(path: str | Path, source_filename: str | None = None) -> DatasetProfile:
+    """Profile a CSV file directly from disk.
+
+    Args:
+        path: Path to the CSV file.
+        source_filename: Name to record; defaults to the file's own name.
+
+    Returns:
+        The dataset profile.
+
+    Raises:
+        FileNotFoundError: If the CSV does not exist.
+    """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"CSV not found: {path}")

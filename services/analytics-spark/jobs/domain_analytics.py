@@ -1,3 +1,11 @@
+"""Spark job computing per-domain metric summaries and daily trends.
+
+Reads all eight hub tables, aggregates each domain's metrics into summary and
+daily-trend shapes, labels them with the owning business, and writes the result
+to ``analytics.domain_metrics`` and ``analytics.daily_trend``. Running with a
+dataset id processes only that dataset; running without one reprocesses every
+dataset.
+"""
 from __future__ import annotations
 
 import os
@@ -5,7 +13,6 @@ import sys
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
-
 from spark_session import (
     DOMAIN_TABLES,
     build_spark,
@@ -43,6 +50,15 @@ def _dataset_ids(df: DataFrame) -> list[int]:
 
 
 def compute_metric_aggregates(df: DataFrame, domain: str) -> DataFrame:
+    """Aggregate one domain's readings into per-metric summary rows.
+
+    Args:
+        df: The domain's hub readings.
+        domain: Name of the domain being aggregated.
+
+    Returns:
+        One summary row per dataset and metric.
+    """
     return (
         df.groupBy("dataset_id", "metric_name")
         .agg(
@@ -61,6 +77,18 @@ def compute_metric_aggregates(df: DataFrame, domain: str) -> DataFrame:
 
 
 def compute_daily_trend(df: DataFrame, domain: str) -> DataFrame:
+    """Aggregate one domain's readings into daily trend points.
+
+    Rows without a timestamp are excluded, since they cannot be placed on a
+    timeline.
+
+    Args:
+        df: The domain's hub readings.
+        domain: Name of the domain being aggregated.
+
+    Returns:
+        One trend row per dataset, metric, and day.
+    """
     return (
         df.filter(F.col("recorded_at").isNotNull())
         .withColumn("day", F.to_date("recorded_at"))
@@ -75,6 +103,15 @@ def compute_daily_trend(df: DataFrame, domain: str) -> DataFrame:
 
 
 def label_with_business(spark: SparkSession, df: DataFrame) -> DataFrame:
+    """Attach business name and industry to analytics rows.
+
+    Args:
+        spark: The active Spark session.
+        df: The analytics rows to label.
+
+    Returns:
+        The rows joined to their dataset's business details.
+    """
     datasets = read_table(spark, "meta.dataset").select(
         F.col("id").alias("dataset_id"),
         F.col("business_name"),
@@ -115,6 +152,11 @@ def _select_trend_columns(df: DataFrame) -> DataFrame:
 
 
 def run() -> None:
+    """Run the domain analytics job across every hub domain.
+
+    Computes summaries and daily trends per domain and replaces the previous
+    results for the processed scope.
+    """
     target_id = _target_dataset_id()
     spark = build_spark("domain-analytics")
     spark.sparkContext.setLogLevel("WARN")

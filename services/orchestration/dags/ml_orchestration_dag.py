@@ -1,3 +1,12 @@
+"""Airflow DAG that recomputes the Level 1 ML outputs.
+
+Runs forecasting, anomaly detection, and risk scoring in that order (risk
+scoring consumes the anomalies the previous task wrote) and refreshes
+``ml.forecasts``, ``ml.anomalies``, and ``ml.risk_scores``. The jobs are
+imported and run in-process by PythonOperator -- no Spark and no extra
+container. A ``dataset_id`` in the trigger conf scopes the run; without it the
+full batch is recomputed.
+"""
 # ML Orchestration DAG — scheduled recompute of Phase 3 Level 1 outputs.
 # Runs forecasting, anomaly detection, and risk scoring (in that order) on the
 # latest features and refreshes ml.forecasts / ml.anomalies / ml.risk_scores.
@@ -52,14 +61,13 @@ with DAG(
     dag_id="ml_orchestration_pipeline",
     description="Phase 3 Level 1 — forecasting, anomaly detection, risk scoring",
     default_args=default_args,
-    schedule=None,                       # triggered on upload (incremental) or manually
+    schedule=None,  # triggered on upload (incremental) or manually
     start_date=datetime(2024, 1, 1),
     catchup=False,
-    max_active_runs=1,                   # a stuck full run must not overlap incremental runs
-    is_paused_upon_creation=True,        # kept paused by default, per Phase 2 lesson
+    max_active_runs=1,  # a stuck full run must not overlap incremental runs
+    is_paused_upon_creation=True,  # kept paused by default, per Phase 2 lesson
     tags=["phase3", "ml", "level1"],
 ) as dag:
-
     # Task 1 — Future column. Fits per-series forecasts from analytics.daily_trend.
     forecasting = PythonOperator(
         task_id="forecasting",

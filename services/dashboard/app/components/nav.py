@@ -11,6 +11,11 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class NavItem:
+    """One navigation entry: where it goes and who may see it.
+
+    The permission string matches the backend's, so the rail and the API enforce
+    the same rule from one definition rather than two that can drift.
+    """
     label: str
     href: str
     icon: str
@@ -24,6 +29,7 @@ class NavItem:
 
 @dataclass(frozen=True)
 class NavGroup:
+    """A titled group of navigation entries."""
     label: str | None
     items: tuple[NavItem, ...]
 
@@ -176,6 +182,4 @@ NAV: tuple[NavGroup, ...] = (
 )
 
 # Flat lookup: path -> item. Used by the topbar to title the current page.
-BY_HREF: dict[str, NavItem] = {
-    item.href: item for group in NAV for item in group.items
-}
+BY_HREF: dict[str, NavItem] = {item.href: item for group in NAV for item in group.items}

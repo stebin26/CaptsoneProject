@@ -1,3 +1,11 @@
+"""Insight translator (Level 2).
+
+Converts the inference engine's generic, domain-level output into business
+language using the dataset's own mapped column and business terms. Templates
+produce the grounded default wording; an optional single Ollama call polishes
+phrasing only. The model never invents facts -- if it is off or fails, the
+template wording stands on its own.
+"""
 # Insight translator (Level 2). Converts generic domain-level inference output into
 # human-readable business insights using the dataset's own mapped column/business
 # terms. Templates produce the grounded default wording; an optional single Ollama
@@ -46,6 +54,7 @@ _STRENGTH_WORD = {
 # Business-term resolution
 # ---------------------------------------------------------------------------
 
+
 def build_term_map(
     metrics: list[dict[str, Any]] | None = None,
     mapping: dict[str, Any] | None = None,
@@ -86,6 +95,7 @@ def _term(term_map: dict[str, str], domain: str) -> str:
 # ---------------------------------------------------------------------------
 # Insight → template sentence (grounded default)
 # ---------------------------------------------------------------------------
+
 
 def translate_insight(
     insight: dict[str, Any],
@@ -293,6 +303,7 @@ def _apply_polish(translated: list[dict[str, Any]]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # End-to-end
 # ---------------------------------------------------------------------------
+
 
 def translate_all(
     insights: list[dict[str, Any]],

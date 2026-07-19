@@ -17,10 +17,16 @@ dash.register_page(__name__, path="/predictions", name="Predictions")
 
 
 def layout() -> html.Div:
+    """Build the Predictions page.
+
+    Shows forecasts, anomaly alerts, and entity risk scores for a dataset.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("What happens next", className="page-title"),
         ui.lede(BY_HREF["/predictions"].subtitle),
-
         ui.field(
             "Dataset",
             dcc.Dropdown(
@@ -31,7 +37,6 @@ def layout() -> html.Div:
             ),
         ),
         dcc.Interval(id=ids.PRED_INIT, interval=300, max_intervals=1),
-
         html.Div(id=ids.PRED_KPIS),
         html.Div(id=ids.PRED_DOMAIN_CHARTS),
         html.Div(id=ids.PRED_TABLE),

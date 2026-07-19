@@ -36,10 +36,21 @@ _STATUS_TONE: dict[str, str] = {
 @callback(
     Output(ids.DOC_DATASET, "options"),
     Output(ids.DOC_DATASET, "value"),
-   Input(ids.DOC_INIT, "n_intervals"),
+    Input(ids.DOC_INIT, "n_intervals"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(
+    _init: int | None, token: str | None
+) -> tuple[list[dict[str, Any]], Any]:
+    """Fill the dataset selector and preselect the first entry.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        token: Caller's access token.
+
+    Returns:
+        The selector options and the initially selected dataset.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError:
@@ -56,7 +67,7 @@ def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[s
     Output(ids.DOC_LIST, "children", allow_duplicate=True),
     Output(ids.DOC_POLL, "disabled", allow_duplicate=True),
     Input(ids.DOC_UPLOAD, "contents"),
-   State(ids.DOC_UPLOAD, "filename"),
+    State(ids.DOC_UPLOAD, "filename"),
     State(ids.DOC_DATASET, "value"),
     State(ids.ACCESS_TOKEN, "data"),
     prevent_initial_call=True,
@@ -67,6 +78,20 @@ def handle_upload(
     dataset_id: int | None,
     token: str | None,
 ) -> tuple[Any, Any, Any]:
+    """Upload the chosen documents and start polling for indexing.
+
+    Files that cannot be read are skipped rather than failing the whole batch, so
+    one bad file does not block the rest.
+
+    Args:
+        contents: Base64 contents of the uploaded files.
+        filenames: Names of the uploaded files.
+        dataset_id: Dataset the documents belong to.
+        token: Caller's access token.
+
+    Returns:
+        The upload status, refreshed document list, and polling state.
+    """
     hold = (no_update, no_update, no_update)
 
     if not contents or dataset_id is None:
@@ -77,7 +102,7 @@ def handle_upload(
         filenames = [filenames]
 
     files: list[tuple[str, bytes]] = []
-    for content, name in zip(contents, filenames):
+    for content, name in zip(contents, filenames, strict=False):
         try:
             _header, _, payload = content.partition(",")
             files.append((name, base64.b64decode(payload)))
@@ -117,7 +142,19 @@ def handle_upload(
     Input(ids.DOC_POLL, "n_intervals"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def refresh_list(dataset_id: int | None, _tick: int | None, token: str | None) -> tuple[Any, bool]:
+def refresh_list(
+    dataset_id: int | None, _tick: int | None, token: str | None
+) -> tuple[Any, bool]:
+    """Refresh the document list, polling only while indexing is in progress.
+
+    Args:
+        dataset_id: Selected dataset.
+        _tick: Polling interval tick.
+        token: Caller's access token.
+
+    Returns:
+        The rendered document list and whether polling should continue.
+    """
     if dataset_id is None:
         return "", True
 
@@ -146,6 +183,18 @@ def ask(
     dataset_id: int | None,
     token: str | None,
 ) -> Any:
+    """Answer a question from the selected dataset's documents.
+
+    Args:
+        _clicks: Ask button clicks.
+        _submit: Enter presses in the question box.
+        question: The question to answer.
+        dataset_id: Dataset to query.
+        token: Caller's access token.
+
+    Returns:
+        The rendered answer, or a message when it could not be produced.
+    """
     if not question or not question.strip():
         return no_update
     if dataset_id is None:
@@ -163,6 +212,7 @@ def ask(
 # Data access
 # ============================================================
 
+
 def _fetch(dataset_id: int, token: str | None = None) -> list[dict[str, Any]] | str:
     """Fetch the document list once. Returns an error string, never empty-on-error."""
     try:
@@ -174,6 +224,7 @@ def _fetch(dataset_id: int, token: str | None = None) -> list[dict[str, Any]] | 
 # ============================================================
 # Render helpers
 # ============================================================
+
 
 def _render_list(docs: list[dict[str, Any]] | str) -> Any:
     if isinstance(docs, str):
@@ -189,17 +240,13 @@ def _render_list(docs: list[dict[str, Any]] | str) -> Any:
             [
                 d.get("filename", ""),
                 (d.get("file_type") or "").upper(),
-                html.Span(
-                    status, className=_STATUS_TONE.get(status, "trend-flat")
-                ),
+                html.Span(status, className=_STATUS_TONE.get(status, "trend-flat")),
                 f"{d.get('chunk_count', 0):,}",
                 d.get("error_detail") or "\u2014",
             ]
         )
 
-    return ui.card(
-        ui.table(["Document", "Type", "Status", "Chunks", "Detail"], rows)
-    )
+    return ui.card(ui.table(["Document", "Type", "Status", "Chunks", "Detail"], rows))
 
 
 def _render_answer(response: dict[str, Any]) -> html.Div:

@@ -1,6 +1,5 @@
 # services/agent/tools/base.py
-"""
-Common tool contract for every agent tool.
+"""Common tool contract for every agent tool.
 
 Two responsibilities:
   1. ToolResult — the single shape EVERY tool returns, so the agent graph can
@@ -18,8 +17,9 @@ tool: run it, feed summary back to the model, continue.
 from __future__ import annotations
 
 import inspect
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from ops_common.logging import get_logger
 
@@ -30,28 +30,66 @@ logger = get_logger(__name__)
 # The uniform tool result
 # ============================================================
 
+
 @dataclass
 class ToolResult:
+    """The single shape every tool returns.
+
+    Bundles a short natural-language summary for the model to reason over with the
+    structured detail the graph and debugger need, plus an explicit success flag --
+    so the loop handles every tool identically whether it succeeded or failed.
+    """
     ok: bool
-    summary: str                       # short, LLM-facing natural language
+    summary: str  # short, LLM-facing natural language
     data: dict[str, Any] = field(default_factory=dict)  # structured detail
 
     def to_model_text(self) -> str:
         # What gets fed back to the LLM as the tool's observation. Kept as the
         # summary only — the model reasons on plain language, not raw dicts.
+        """Render this result as the observation fed back to the model.
+
+        Only the summary is returned, since the model reasons over plain language
+        rather than raw structures.
+
+        Returns:
+            The summary, prefixed to mark an error.
+        """
         prefix = "" if self.ok else "ERROR: "
         return f"{prefix}{self.summary}"
 
     def to_dict(self) -> dict[str, Any]:
         # Full structured form for the API/debug layer (not shown to the model).
+        """Return the full structured result for the API and debug layers.
+
+        Returns:
+            The success flag, summary, and structured data.
+        """
         return {"ok": self.ok, "summary": self.summary, "data": self.data}
 
 
 def tool_ok(summary: str, data: dict[str, Any] | None = None) -> ToolResult:
+    """Build a successful tool result.
+
+    Args:
+        summary: Short natural-language summary for the model.
+        data: Optional structured detail.
+
+    Returns:
+        A successful result.
+    """
     return ToolResult(ok=True, summary=summary, data=data or {})
 
 
 def tool_error(summary: str, data: dict[str, Any] | None = None) -> ToolResult:
+    """Build a failed tool result.
+
+    Args:
+        summary: Short natural-language description of the failure.
+        data: Optional structured detail.
+
+    Returns:
+        A failed result.
+    """
     return ToolResult(ok=False, summary=summary, data=data or {})
 
 
@@ -72,13 +110,26 @@ def dispatch(
     # Turn an LLM's requested (name, arguments) into an actual call — defensively.
     # Every failure mode returns a ToolResult(ok=False) rather than raising, so
     # the agent can hand the error back to the model and let it recover.
+    """Run the tool the model asked for, defensively.
+
+    An unknown name, bad arguments, a crash inside the tool, or a tool that breaks
+    the result contract all come back as a failed result rather than an exception,
+    so a misbehaving small model can never take the whole loop down -- the error is
+    handed back to the model to recover from instead.
+
+    Args:
+        name: Tool name the model emitted.
+        arguments: Arguments the model produced.
+        registry: Mapping of tool name to implementation.
+
+    Returns:
+        The tool's result, or a failed result describing what went wrong.
+    """
     fn = registry.get(name)
     if fn is None:
         available = ", ".join(sorted(registry)) or "none"
         logger.warning("LLM requested unknown tool '%s'", name)
-        return tool_error(
-            f"Unknown tool '{name}'. Available tools: {available}."
-        )
+        return tool_error(f"Unknown tool '{name}'. Available tools: {available}.")
 
     cleaned = _coerce_arguments(fn, arguments)
     if isinstance(cleaned, ToolResult):
@@ -112,7 +163,9 @@ def _coerce_arguments(
     # and coerce simple types from their annotations. Anything unrecoverable
     # (a required arg missing) comes back as a ToolResult error.
     if not isinstance(arguments, dict):
-        return tool_error(f"Tool arguments must be an object, got {type(arguments).__name__}.")
+        return tool_error(
+            f"Tool arguments must be an object, got {type(arguments).__name__}."
+        )
 
     sig = inspect.signature(fn)
     params = sig.parameters
@@ -139,15 +192,15 @@ def _coerce_arguments(
         and pname not in cleaned
     ]
     if missing:
-        return tool_error(
-            f"Missing required argument(s): {', '.join(missing)}."
-        )
+        return tool_error(f"Missing required argument(s): {', '.join(missing)}.")
 
     return cleaned
+
 
 # Strings a small model sends when it means "no value". Left as-is they reach the
 # database as literal text and crash the query.
 _NULL_WORDS = {"null", "none", "nil", "nan", "undefined", "n/a", ""}
+
 
 def _coerce_one(value: Any, annotation: Any) -> Any:
     # Best-effort type coercion for the common scalar cases a small model garbles.
@@ -228,7 +281,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "vehicle": "assets",
     "vehicles": "assets",
     "plant": "assets",
-
     # --- operations: the core work / production ---
     "operation": "operations",
     "production": "operations",
@@ -244,7 +296,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "consumption": "operations",
     "efficiency": "operations",
     "productivity": "operations",
-
     # --- quality: what goes wrong with the product ---
     "defect": "quality",
     "defects": "quality",
@@ -257,7 +308,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "fault": "quality",
     "faults": "quality",
     "sla": "quality",
-
     # --- maintenance: repairs and downtime ---
     "downtime": "maintenance",
     "down": "maintenance",
@@ -272,7 +322,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "uptime": "maintenance",
     "reliability": "maintenance",
     "wear": "maintenance",
-
     # --- inventory: stock and materials ---
     "stock": "inventory",
     "material": "inventory",
@@ -283,7 +332,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "parts": "inventory",
     "spares": "inventory",
     "warehouse": "inventory",
-
     # --- workforce: the people ---
     "staff": "workforce",
     "employee": "workforce",
@@ -300,7 +348,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "shifts": "workforce",
     "hr": "workforce",
     "headcount": "workforce",
-
     # --- finance: money in and out ---
     "revenue": "finance",
     "sales": "finance",
@@ -316,7 +363,6 @@ _DOMAIN_SYNONYMS: dict[str, str] = {
     "budget": "finance",
     "money": "finance",
     "financial": "finance",
-
     # --- customers: who we serve ---
     "customer": "customers",
     "client": "customers",
@@ -341,6 +387,19 @@ def normalize_domain(value: str | None) -> str | None:
     # None  -> caller drops the domain filter and searches ALL domains.
     # This is the deliberate fail-open: an unknown word must widen the search,
     # never narrow it to nothing.
+    """Resolve whatever the model passed into a canonical domain name.
+
+    Tries the canonical names, then exact synonyms, then individual words of a
+    phrase. An unrecognised value returns None, which deliberately fails open: the
+    caller drops the domain filter and searches everything, because an unknown word
+    must widen the search rather than narrow it to nothing.
+
+    Args:
+        value: The domain word or phrase the model supplied.
+
+    Returns:
+        The canonical domain name, or None to search all domains.
+    """
     if value is None:
         return None
 
@@ -387,6 +446,14 @@ def domain_hint_for_schema() -> str:
     # A single line the tool SCHEMAS can embed so the model is nudged toward
     # canonical names up front. The normalizer is the real guarantee; this just
     # improves the odds the model gets it right the first time.
+    """Return the domain guidance line embedded in the tool schemas.
+
+    Nudges the model toward canonical names up front; the normalizer remains the
+    actual guarantee.
+
+    Returns:
+        The guidance line.
+    """
     return (
         "One of: assets, operations, quality, maintenance, inventory, "
         "workforce, finance, customers. Common mappings: downtime/repairs/"

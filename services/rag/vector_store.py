@@ -1,3 +1,11 @@
+"""Vector store -- persists documents, chunks, and embeddings in pgvector.
+
+Fourth stage of the RAG pipeline, and the read side of every query. Every
+operation is scoped by ``dataset_id``, so retrieval can never cross a company
+boundary and one tenant's documents can never surface in another's answer.
+Using pgvector rather than a separate vector database keeps the embeddings in
+the same Postgres instance as the rest of the platform.
+"""
 # Vector store — writes documents/chunks/embeddings to pgvector and reads back
 # via similarity search. Every operation is dataset_id-scoped so retrieval never
 # crosses company boundaries. Fourth stage of the RAG pipeline.
@@ -9,7 +17,6 @@ from dataclasses import dataclass
 
 import psycopg2
 import psycopg2.extras
-
 from ops_common.config import settings
 from ops_common.logging import get_logger
 
@@ -48,8 +55,10 @@ def _vector_literal(vec: list[float]) -> str:
 # Document lifecycle
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocumentRecord:
+    """A stored document's identity, type, and indexing state."""
     id: int
     dataset_id: int
     filename: str
@@ -119,10 +128,11 @@ def delete_document(dataset_id: int, document_id: int) -> bool:
 # Chunk + embedding writes
 # ---------------------------------------------------------------------------
 
+
 def store_chunks_with_embeddings(
     dataset_id: int,
     document_id: int,
-    chunks: list,          # list of chunker.Chunk
+    chunks: list,  # list of chunker.Chunk
     embeddings: list[list[float]],
     model_name: str,
 ) -> int:
@@ -136,11 +146,17 @@ def store_chunks_with_embeddings(
         with conn.cursor() as cur:
             # Insert chunks, capturing generated ids in order.
             chunk_rows = [
-                (dataset_id, document_id, c.chunk_index, c.content,
-                 c.page_number, c.token_estimate)
+                (
+                    dataset_id,
+                    document_id,
+                    c.chunk_index,
+                    c.content,
+                    c.page_number,
+                    c.token_estimate,
+                )
                 for c in chunks
             ]
-            chunk_ids: list[int] = []
+
             psycopg2.extras.execute_values(
                 cur,
                 """
@@ -154,7 +170,7 @@ def store_chunks_with_embeddings(
                 template="(%s,%s,%s,%s,%s,%s)",
                 page_size=200,
             )
-            chunk_ids = [r[0] for r in cur.fetchall()]
+
 
             # execute_values with RETURNING returns ids for the last page only in
             # some psycopg2 versions; re-fetch deterministically by chunk_index to
@@ -169,7 +185,7 @@ def store_chunks_with_embeddings(
             id_by_index = {ci: cid for cid, ci in cur.fetchall()}
 
             emb_rows = []
-            for c, vec in zip(chunks, embeddings):
+            for c, vec in zip(chunks, embeddings, strict=False):
                 cid = id_by_index.get(c.chunk_index)
                 if cid is None:
                     continue
@@ -196,7 +212,16 @@ def store_chunks_with_embeddings(
 # Reads
 # ---------------------------------------------------------------------------
 
+
 def list_documents(dataset_id: int) -> list[dict]:
+    """List every document belonging to a dataset, newest first.
+
+    Args:
+        dataset_id: Dataset whose documents to list.
+
+    Returns:
+        One dictionary per document.
+    """
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -209,11 +234,12 @@ def list_documents(dataset_id: int) -> list[dict]:
             (dataset_id,),
         )
         cols = [d[0] for d in cur.description]
-        return [dict(zip(cols, row)) for row in cur.fetchall()]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
 
 @dataclass
 class RetrievedChunk:
+    """One chunk returned by a similarity search, with its distance."""
     chunk_id: int
     document_id: int
     filename: str
@@ -259,6 +285,17 @@ def similarity_search(
 
 
 def dataset_has_documents(dataset_id: int) -> bool:
+    """Report whether a dataset has any indexed embeddings.
+
+    Lets the query path distinguish 'nothing uploaded yet' from 'nothing matched',
+    which are very different answers to give a user.
+
+    Args:
+        dataset_id: Dataset to check.
+
+    Returns:
+        True if at least one embedding exists for the dataset.
+    """
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT 1 FROM rag.embeddings WHERE dataset_id = %s LIMIT 1",

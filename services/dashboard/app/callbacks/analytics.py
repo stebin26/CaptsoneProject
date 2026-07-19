@@ -26,7 +26,18 @@ from app.utils import fmt, group_by_domain
     Input(ids.ANALYTICS_INIT, "n_intervals"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def populate_datasets(_init: int | None, token: str | None) -> tuple[list[dict[str, Any]], Any]:
+def populate_datasets(
+    _init: int | None, token: str | None
+) -> tuple[list[dict[str, Any]], Any]:
+    """Fill the dataset selector and preselect the first entry.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        token: Caller's access token.
+
+    Returns:
+        The selector options and the initially selected dataset.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError:
@@ -50,6 +61,15 @@ def load_metrics(
     dataset_id: int | None,
     token: str | None,
 ) -> tuple[Any, Any, list[dict[str, Any]], Any]:
+    """Load and render the selected dataset's domain metrics.
+
+    Args:
+        dataset_id: Selected dataset.
+        token: Caller's access token.
+
+    Returns:
+        The rendered metrics, or a message when unavailable.
+    """
     if dataset_id is None:
         return "", "", [], None
 
@@ -59,10 +79,15 @@ def load_metrics(
         return feedback.error(f"Could not load analytics: {exc}"), "", [], None
 
     if not metrics:
-        return feedback.empty(
-            "No analytics for this dataset yet. Confirm a mapping, or run the "
-            "analytics DAG in Airflow."
-        ), "", [], None
+        return (
+            feedback.empty(
+                "No analytics for this dataset yet. Confirm a mapping, or run the "
+                "analytics DAG in Airflow."
+            ),
+            "",
+            [],
+            None,
+        )
 
     options = [
         {
@@ -82,18 +107,32 @@ def load_metrics(
 
 @callback(
     Output(ids.ANALYTICS_TREND_CHART, "children"),
-   Input(ids.ANALYTICS_DATASET, "value"),
+    Input(ids.ANALYTICS_DATASET, "value"),
     Input(ids.ANALYTICS_METRIC, "value"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def load_trend(dataset_id: int | None, metric_key: str | None, token: str | None) -> Any:
+def load_trend(
+    dataset_id: int | None, metric_key: str | None, token: str | None
+) -> Any:
+    """Load and render the daily trend for the selected metric.
+
+    Args:
+        dataset_id: Selected dataset.
+        metric_key: Selected domain and metric.
+        token: Caller's access token.
+
+    Returns:
+        The rendered trend chart, or a message when unavailable.
+    """
     if dataset_id is None or not metric_key:
         return ""
 
     domain, _, metric_name = metric_key.partition("|")
 
     try:
-        points = analytics_trend(dataset_id, domain=domain, metric_name=metric_name, token=token)
+        points = analytics_trend(
+            dataset_id, domain=domain, metric_name=metric_name, token=token
+        )
     except APIError as exc:
         return feedback.error(f"Could not load the trend: {exc}")
 
@@ -112,6 +151,15 @@ def load_trend(dataset_id: int | None, metric_key: str | None, token: str | None
     State(ids.ACCESS_TOKEN, "data"),
 )
 def load_features(dataset_id: int | None, token: str | None) -> Any:
+    """Load and render the selected dataset's entity features.
+
+    Args:
+        dataset_id: Selected dataset.
+        token: Caller's access token.
+
+    Returns:
+        The rendered features, or a message when unavailable.
+    """
     if dataset_id is None:
         return ""
 
@@ -160,6 +208,15 @@ def load_features(dataset_id: int | None, token: str | None) -> Any:
     State(ids.ACCESS_TOKEN, "data"),
 )
 def load_domain_dashboard(dataset_id: int | None, token: str | None) -> tuple[Any, Any]:
+    """Load and render the per-domain chart panels for a dataset.
+
+    Args:
+        dataset_id: Selected dataset.
+        token: Caller's access token.
+
+    Returns:
+        The rendered domain panels, or a message when unavailable.
+    """
     if dataset_id is None:
         return "", ""
 
@@ -191,6 +248,7 @@ def load_domain_dashboard(dataset_id: int | None, token: str | None) -> tuple[An
 # Render helpers
 # ============================================================
 
+
 def _summary(metrics: list[dict[str, Any]]) -> Any:
     first = metrics[0]
     domains = sorted({m["domain"] for m in metrics})
@@ -220,7 +278,14 @@ def _domain_status(active: set[str]) -> html.Div:
                 f"{len(active)} of 8 domains carry data in this dataset.",
                 className="page-subtitle",
             ),
-            html.Div(chips, style={"display": "flex", "flexWrap": "wrap",
-                                   "gap": "0.5rem", "marginBottom": "1.5rem"}),
+            html.Div(
+                chips,
+                style={
+                    "display": "flex",
+                    "flexWrap": "wrap",
+                    "gap": "0.5rem",
+                    "marginBottom": "1.5rem",
+                },
+            ),
         ]
     )

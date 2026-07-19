@@ -1,10 +1,18 @@
+"""The ReAct reasoning loop, built as a LangGraph state machine.
+
+The model alternates between reasoning and acting: it either calls a tool or
+returns a final answer, and every tool result is fed back as an observation.
+Two guarded exits keep the loop honest and bounded -- a step limit that gives up
+cleanly rather than looping forever, and a nudge that fires once when the model
+tries to answer a causal question without having gathered any evidence. The
+nudge never fires twice, so a stubborn model cannot be trapped in a cycle.
+"""
 from __future__ import annotations
 
 import os
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
-
 from ops_common.logging import get_logger
 
 from .llm import LLMResponse, OllamaToolClient, ToolCall, get_llm
@@ -17,6 +25,7 @@ logger = get_logger(__name__)
 # Configuration
 # ============================================================
 
+
 def _max_steps() -> int:
     # Total agent turns (reason cycles) before we force a stop. A 3B model can
     # loop or re-call the same tool; this bounds the cost and latency hard.
@@ -28,13 +37,36 @@ def _max_steps() -> int:
 # Words that mark a question as causal — it asks WHY something happened, not
 # merely WHAT the value is. Causal questions are the one class where code can
 # prove an answer is impossible before the model even speaks.
-_CAUSAL_WORDS: frozenset[str] = frozenset({
-    "why", "cause", "causes", "causing", "reason", "reasons",
-    "root", "rootcause", "driver", "driving", "because", "explain",
-    "behind", "underlying", "blame", "responsible",
-    "drop", "drops", "dropping", "dropped",
-    "falling", "fell", "declining", "decline", "degrading", "worse",
-})
+_CAUSAL_WORDS: frozenset[str] = frozenset(
+    {
+        "why",
+        "cause",
+        "causes",
+        "causing",
+        "reason",
+        "reasons",
+        "root",
+        "rootcause",
+        "driver",
+        "driving",
+        "because",
+        "explain",
+        "behind",
+        "underlying",
+        "blame",
+        "responsible",
+        "drop",
+        "drops",
+        "dropping",
+        "dropped",
+        "falling",
+        "fell",
+        "declining",
+        "decline",
+        "degrading",
+        "worse",
+    }
+)
 
 
 def _is_causal(question: str) -> bool:
@@ -106,8 +138,6 @@ SYSTEM_PROMPT = (
     "association in the data rather than a proven cause. Do not list every "
     "metric back to the user, and do not ask the user to interpret the list "
     "themselves — that is YOUR job."
-
-
 )
 
 
@@ -123,7 +153,14 @@ SYSTEM_PROMPT = (
 # nudged       : the guard has fired once already; it never fires twice
 # tool_schemas / tool_registry : passed through so nodes can reach them
 
+
 class AgentState(TypedDict, total=False):
+    """The state carried through the reasoning loop.
+
+    Holds the conversation, the step count, the accumulated evidence, the tool
+    surface exposed for this question, and whether the question is causal (which
+    arms the evidence guard).
+    """
     messages: list[dict[str, Any]]
     steps: int
     evidence: Annotated[list[dict[str, Any]], _append]
@@ -143,6 +180,7 @@ def _append(existing: list[Any] | None, new: list[Any]) -> list[Any]:
 # Nodes
 # ============================================================
 
+
 def _agent_node(state: AgentState) -> dict[str, Any]:
     # REASON: ask the LLM for the next action given the full history + tools.
     client = _client_from_state(state)
@@ -155,7 +193,10 @@ def _agent_node(state: AgentState) -> dict[str, Any]:
     if response.is_final:
         # Model chose to answer. Record it and let routing decide whether that
         # answer is acceptable — it may still be sent back for more evidence.
-        answer = response.content or "I could not determine an answer from the available data."
+        answer = (
+            response.content
+            or "I could not determine an answer from the available data."
+        )
         assistant_msg = {"role": "assistant", "content": answer}
         return {
             "messages": messages + [assistant_msg],
@@ -183,7 +224,7 @@ def _tools_node(state: AgentState) -> dict[str, Any]:
     new_evidence: list[dict[str, Any]] = []
 
     for call in requested:
-        fn = (call.get("function") or {})
+        fn = call.get("function") or {}
         name = fn.get("name", "")
         args = fn.get("arguments", {}) or {}
 
@@ -251,7 +292,11 @@ def _nudge_node(state: AgentState) -> dict[str, Any]:
 
     # Drop the rejected answer so it is not mistaken for a real assistant turn.
     messages = list(state["messages"])
-    if messages and messages[-1].get("role") == "assistant" and not messages[-1].get("tool_calls"):
+    if (
+        messages
+        and messages[-1].get("role") == "assistant"
+        and not messages[-1].get("tool_calls")
+    ):
         messages.pop()
     messages.append({"role": "user", "content": instruction})
 
@@ -263,9 +308,10 @@ def _giveup_node(state: AgentState) -> dict[str, Any]:
     # We summarize what we DID gather so the user gets partial value, honestly.
     gathered = state.get("evidence", [])
     if gathered:
-        lines = "; ".join(
-            e["summary"] for e in gathered if e.get("ok")
-        ) or "no conclusive data"
+        lines = (
+            "; ".join(e["summary"] for e in gathered if e.get("ok"))
+            or "no conclusive data"
+        )
         answer = (
             "I reached my investigation limit before fully resolving this. "
             f"Here is what I found: {lines}."
@@ -284,6 +330,7 @@ def _giveup_node(state: AgentState) -> dict[str, Any]:
 # ============================================================
 # Routing
 # ============================================================
+
 
 def _route_after_agent(state: AgentState) -> str:
     # A produced answer is checked BEFORE the step cap. The cap exists to stop
@@ -308,6 +355,7 @@ def _route_after_agent(state: AgentState) -> str:
     if last.get("tool_calls"):
         return "tools"  # a tool was requested
     return "end"  # assistant spoke with no tool call and no recorded answer
+
 
 def _answer_is_impossible(state: AgentState) -> bool:
     # This is NOT a sufficiency check. Code cannot judge whether evidence is
@@ -335,7 +383,8 @@ def _answer_is_impossible(state: AgentState) -> bool:
     logger.warning(
         "Causal question with only %d metric(s) seen (%s) — a cause is "
         "impossible from this alone. Sending the agent back for evidence.",
-        len(seen), sorted(seen) or ["none"],
+        len(seen),
+        sorted(seen) or ["none"],
     )
     return True
 
@@ -344,7 +393,10 @@ def _answer_is_impossible(state: AgentState) -> bool:
 # Message helpers
 # ============================================================
 
-def _assistant_toolcall_message(response: LLMResponse, primary: ToolCall) -> dict[str, Any]:
+
+def _assistant_toolcall_message(
+    response: LLMResponse, primary: ToolCall
+) -> dict[str, Any]:
     # Rebuild an Ollama-format assistant message carrying the tool call, so the
     # subsequent 'tool' role message is a valid continuation of the history.
     return {
@@ -366,9 +418,15 @@ def _client_from_state(state: AgentState) -> OllamaToolClient:
 # Build
 # ============================================================
 
+
 def build_agent_graph():
     # The ReAct loop: agent <-> tools, plus two exits — give_up (out of steps)
     # and nudge (the answer was impossible; go get real evidence).
+    """Build the ReAct graph: reason, act, and the two guarded exits.
+
+    Returns:
+        The compiled LangGraph state machine.
+    """
     graph = StateGraph(AgentState)
 
     graph.add_node("agent", _agent_node)
@@ -382,8 +440,8 @@ def build_agent_graph():
         _route_after_agent,
         {"tools": "tools", "nudge": "nudge", "end": END, "give_up": "give_up"},
     )
-    graph.add_edge("tools", "agent")   # after acting, reason again
-    graph.add_edge("nudge", "agent")   # after being blocked, reason again
+    graph.add_edge("tools", "agent")  # after acting, reason again
+    graph.add_edge("nudge", "agent")  # after being blocked, reason again
     graph.add_edge("give_up", END)
 
     return graph.compile()
@@ -394,6 +452,11 @@ _compiled = None
 
 
 def get_agent_graph():
+    """Return the compiled graph, building it once per process.
+
+    Returns:
+        The shared compiled graph.
+    """
     global _compiled
     if _compiled is None:
         _compiled = build_agent_graph()
@@ -403,6 +466,7 @@ def get_agent_graph():
 # ============================================================
 # Entry point
 # ============================================================
+
 
 def run_once(
     question: str,
@@ -415,10 +479,28 @@ def run_once(
     # and returns the answer plus the evidence trail (what tools ran, results).
     # `history` is prior-turn context (from memory), inserted between the system
     # prompt and the current question so the model sees the conversation so far.
+    """Run one question through the reasoning loop to completion.
+
+    Seeds the conversation with the system prompt and any prior turns, invokes the
+    graph, and returns the answer with the record of which tools ran and what they
+    returned.
+
+    Args:
+        question: The question to answer.
+        tool_schemas: Tool schemas to expose to the model.
+        tool_registry: Callable implementations behind those schemas.
+        dataset_hint: Dataset to scope to, when the caller already knows it.
+        history: Prior conversation turns loaded from memory.
+
+    Returns:
+        The answer and the evidence trail.
+    """
     user_content = question
     if dataset_hint is not None:
         # Nudge the model toward the right dataset without hard-coding routing.
-        user_content = f"{question}\n\n(Use dataset_id {dataset_hint} unless told otherwise.)"
+        user_content = (
+            f"{question}\n\n(Use dataset_id {dataset_hint} unless told otherwise.)"
+        )
 
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     # Fold in prior conversation turns (already capped by the memory layer).

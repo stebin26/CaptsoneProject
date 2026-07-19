@@ -1,11 +1,14 @@
+"""Analytics tools -- the agent's view of what the numbers are doing.
+
+Each tool reuses the analytics router's own query functions, so there is exactly
+one source of truth for how analytics are read and the tools cannot drift from
+the API. Results are compressed into short natural-language summaries rather
+than raw rows: a 3B model reasons well over a few sentences and badly over a
+wall of numbers.
+"""
 from __future__ import annotations
 
 from typing import Any
-
-from ops_common.db import session_scope
-from ops_common.logging import get_logger
-
-from .base import ToolResult, domain_hint_for_schema, normalize_domain, tool_error, tool_ok
 
 # Reuse the router's own query functions so there is ONE source of truth for
 # analytics reads. If these signatures ever change, the tool changes with them.
@@ -13,6 +16,16 @@ from api_app.routers.v1.analytics import (
     dataset_features,
     dataset_metrics,
     dataset_trend,
+)
+from ops_common.db import session_scope
+from ops_common.logging import get_logger
+
+from .base import (
+    ToolResult,
+    domain_hint_for_schema,
+    normalize_domain,
+    tool_error,
+    tool_ok,
 )
 
 logger = get_logger(__name__)
@@ -22,9 +35,18 @@ logger = get_logger(__name__)
 # Tool 1 — analytics overview (the "current state" of a dataset)
 # ============================================================
 
+
 def analytics_overview(dataset_id: int) -> ToolResult:
     # Give the model a domain-by-domain snapshot: which domains exist and, per
     # metric, the headline aggregates. This is the agent's default first look.
+    """Summarize a dataset's domains and headline metrics.
+
+    Args:
+        dataset_id: Dataset to summarize.
+
+    Returns:
+        A short summary of the dataset's analytics coverage.
+    """
     try:
         with session_scope() as session:
             metrics = dataset_metrics(dataset_id, session)
@@ -77,6 +99,7 @@ def analytics_overview(dataset_id: int) -> ToolResult:
 # Tool 2 — domain trend (is a metric rising or falling over time)
 # ============================================================
 
+
 def analytics_trend(
     dataset_id: int,
     domain: str | None = None,
@@ -90,6 +113,21 @@ def analytics_trend(
     #   1. domain word unknown  -> drop the domain filter, search ALL domains
     #   2. metric word unknown  -> drop the METRIC filter, KEEP the domain
     # An unrecognized input must widen the search, never empty it.
+    """Describe how metrics moved over time for a dataset.
+
+    Reports each series' start, end, and direction rather than every daily point,
+    which is what a 'why is this changing' question actually needs. An unrecognised
+    domain word widens the search instead of emptying it.
+
+    Args:
+        dataset_id: Dataset to read.
+        domain: Optional domain to focus on.
+        metric_name: Optional metric to focus on.
+        include_context: Also describe movement elsewhere in the business.
+
+    Returns:
+        A summary of the movement in each series.
+    """
     resolved = normalize_domain(domain)
     widened = domain is not None and resolved is None
 
@@ -124,7 +162,9 @@ def analytics_trend(
                 metric_dropped = True
                 logger.info(
                     "Metric %r matched no rows; retrying without metric filter "
-                    "(domain=%s)", metric_name, resolved
+                    "(domain=%s)",
+                    metric_name,
+                    resolved,
                 )
                 points = dataset_trend(
                     dataset_id, domain=resolved, metric_name=None, session=session
@@ -154,7 +194,9 @@ def analytics_trend(
         except Exception as exc:  # noqa: BLE001
             # Best-effort. The primary answer already exists; losing the context
             # sweep must never lose the answer with it.
-            logger.warning("Context sweep failed for dataset_id=%s: %s", dataset_id, exc)
+            logger.warning(
+                "Context sweep failed for dataset_id=%s: %s", dataset_id, exc
+            )
             context_points = []
 
     # Group points into series and describe each series' movement compactly.
@@ -269,16 +311,22 @@ def analytics_trend(
         summary += "\n\nWHAT MOVED ELSEWHERE over the same period:"
 
         if opposite:
-            summary += "\n\nMOVED IN THE OPPOSITE DIRECTION (strongest first):\n" + "\n".join(
-                f"  - {c['domain']}/{c['metric']}: {c['direction']} "
-                f"({c['start_avg']} → {c['end_avg']})"
-                for c in opposite
+            summary += (
+                "\n\nMOVED IN THE OPPOSITE DIRECTION (strongest first):\n"
+                + "\n".join(
+                    f"  - {c['domain']}/{c['metric']}: {c['direction']} "
+                    f"({c['start_avg']} → {c['end_avg']})"
+                    for c in opposite
+                )
             )
         if together:
-            summary += "\n\nMOVED IN THE SAME DIRECTION (strongest first):\n" + "\n".join(
-                f"  - {c['domain']}/{c['metric']}: {c['direction']} "
-                f"({c['start_avg']} → {c['end_avg']})"
-                for c in together
+            summary += (
+                "\n\nMOVED IN THE SAME DIRECTION (strongest first):\n"
+                + "\n".join(
+                    f"  - {c['domain']}/{c['metric']}: {c['direction']} "
+                    f"({c['start_avg']} → {c['end_avg']})"
+                    for c in together
+                )
             )
 
         summary += (
@@ -313,6 +361,7 @@ def analytics_trend(
 # Tool 3 — entity features (which specific entities stand out)
 # ============================================================
 
+
 def analytics_features(
     dataset_id: int,
     domain: str | None = None,
@@ -321,6 +370,19 @@ def analytics_features(
     # Per-entity engineered features. For the agent we surface the notable ones:
     # strongest positive and negative trend slopes, which is what "which machine
     # is degrading" type questions need. Domain word normalized as above.
+    """Report the entities with the strongest upward and downward trends.
+
+    This is what 'which machine is degrading' questions need: the notable movers
+    rather than every entity.
+
+    Args:
+        dataset_id: Dataset to read.
+        domain: Optional domain to focus on.
+        limit: Maximum feature rows to consider.
+
+    Returns:
+        A summary of the most notable entity trends.
+    """
     resolved = normalize_domain(domain)
     widened = domain is not None and resolved is None
 
@@ -433,7 +495,8 @@ ANALYTICS_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dataset_id": {"type": "integer", "description": "The dataset id."},
                     "domain": {
                         "type": "string",
-                        "description": "Optional domain filter. " + domain_hint_for_schema(),
+                        "description": "Optional domain filter. "
+                        + domain_hint_for_schema(),
                     },
                     "metric_name": {
                         "type": "string",
@@ -477,7 +540,8 @@ ANALYTICS_TOOL_SCHEMAS: list[dict[str, Any]] = [
                     "dataset_id": {"type": "integer", "description": "The dataset id."},
                     "domain": {
                         "type": "string",
-                        "description": "Optional domain filter. " + domain_hint_for_schema(),
+                        "description": "Optional domain filter. "
+                        + domain_hint_for_schema(),
                     },
                     "limit": {
                         "type": "integer",
@@ -502,6 +566,7 @@ ANALYTICS_TOOL_FUNCTIONS = {
 # ============================================================
 # Small formatting helpers
 # ============================================================
+
 
 def _round(value: float | None, places: int = 2) -> float | None:
     if value is None:
@@ -536,6 +601,10 @@ def _slope_direction(slope: float | None) -> str:
 # the last run echoed all twelve metrics back at the user instead of picking one.
 # A short ranked list forces a choice; a long one invites a recital.
 _CONTEXT_CAP = 4
+
+# Cap on how many domain series a WIDENED search keeps. Eight domains can come
+# back; keep the strongest movers so the model gets signal, not flat lines.
+_WIDE_CAP = 6
 
 
 def _movement(start: float | None, end: float | None) -> float:

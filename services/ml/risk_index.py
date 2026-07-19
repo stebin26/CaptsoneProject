@@ -46,16 +46,29 @@ BAND_HIGH = 67
 
 @dataclass(frozen=True)
 class RiskIndex:
-    value: int              # 0-100, rounded
-    band: str               # "low" | "elevated" | "high"
-    label: str              # human label for the band
-    domain_count: int       # how many active domains fed the number
-    mean: float             # the components, exposed for the drill-through
+    """The computed risk index and the components behind it.
+
+    Carries the rounded value and band for display, plus the mean, peak, and peak
+    domain so a drill-through can show why the number is what it is.
+    """
+    value: int  # 0-100, rounded
+    band: str  # "low" | "elevated" | "high"
+    label: str  # human label for the band
+    domain_count: int  # how many active domains fed the number
+    mean: float  # the components, exposed for the drill-through
     peak: float
     peak_domain: str | None
 
 
 def band_for(value: float) -> tuple[str, str]:
+    """Map an index value to its band name and display label.
+
+    Args:
+        value: The index value on the 0-100 scale.
+
+    Returns:
+        A ``(band, label)`` pair.
+    """
     if value >= BAND_HIGH:
         return "high", "High"
     if value >= BAND_ELEVATED:
@@ -89,7 +102,7 @@ def compute(
         )
 
     total = mean_weight + max_weight
-    mw = mean_weight / total          # normalise, so any pair of weights works
+    mw = mean_weight / total  # normalise, so any pair of weights works
     xw = max_weight / total
 
     mean_score = sum(scores) / len(scores)

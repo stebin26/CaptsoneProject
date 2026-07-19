@@ -1,3 +1,9 @@
+"""Dataset onboarding API endpoints.
+
+Handles CSV upload and the two-stage onboarding flow: start (profile columns and
+suggest a mapping) and confirm (persist the confirmed mapping, load the hub, and
+trigger analytics).
+"""
 from __future__ import annotations
 
 import shutil
@@ -5,16 +11,16 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from app.pipeline import complete_onboarding, start_onboarding
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
 from ops_common.config import settings
 from ops_common.db import get_db
 from ops_common.logging import get_logger
-from app.pipeline import start_onboarding, complete_onboarding
-from api_app.spark_trigger import trigger_analytics_async
+from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
 from api_app.auth.dependencies import require_permission
+from api_app.spark_trigger import trigger_analytics_async
 
 logger = get_logger(__name__)
 
@@ -50,7 +56,9 @@ def _stored_path_for_dataset(dataset_id: int, session: Session) -> Path:
     if dataset is None:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
 
-    matches = sorted(settings.upload_dir.glob(f"*{Path(dataset.source_filename).suffix}"))
+    matches = sorted(
+        settings.upload_dir.glob(f"*{Path(dataset.source_filename).suffix}")
+    )
     if not matches:
         raise HTTPException(
             status_code=404,
@@ -63,7 +71,9 @@ def _stored_path_for_dataset(dataset_id: int, session: Session) -> Path:
 # Request / response models
 # ============================================================
 
+
 class ConfirmColumnIn(BaseModel):
+    """One column's confirmed mapping decision."""
     column_name: str
     domain: str | None = None
     metric_name: str | None = None
@@ -71,12 +81,14 @@ class ConfirmColumnIn(BaseModel):
 
 
 class ConfirmRequest(BaseModel):
+    """Request body confirming a dataset's column mapping."""
     dataset_id: int
     stored_path: str
     columns: list[ConfirmColumnIn]
 
 
 class StartResponse(BaseModel):
+    """Response from onboarding start: profile plus mapping suggestions."""
     dataset_id: int
     business_name: str
     industry: str | None
@@ -86,6 +98,7 @@ class StartResponse(BaseModel):
 
 
 class CompleteResponse(BaseModel):
+    """Response from onboarding confirm: load and feature counts."""
     dataset_id: int
     config_version: int
     hub_rows_written: int
@@ -98,14 +111,27 @@ class CompleteResponse(BaseModel):
 # Endpoints
 # ============================================================
 
+
 @router.post("/onboard/start", response_model=StartResponse)
 def onboard_start(
     business_name: str = Form(...),
     industry: str | None = Form(default=None),
     file: UploadFile = File(...),
     session: Session = Depends(get_db),
-    _user=Depends(require_permission("dataset:upload")),  
+    _user=Depends(require_permission("dataset:upload")),
 ) -> StartResponse:
+    """Start onboarding: save the upload, profile columns, suggest a mapping.
+
+    Args:
+        business_name: Name of the business the dataset belongs to.
+        industry: Optional industry label.
+        file: The uploaded CSV file.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``dataset:upload``.
+
+    Returns:
+        The new dataset's profile and suggested column mapping.
+    """
     stored = _save_upload(file)
 
     try:
@@ -137,6 +163,19 @@ def onboard_confirm(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("mapping:confirm")),
 ) -> CompleteResponse:
+    """Complete onboarding: persist the mapping, load the hub, trigger analytics.
+
+    Args:
+        payload: The dataset id, stored file path, and confirmed column decisions.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``mapping:confirm``.
+
+    Returns:
+        Hub-load and feature counts plus the validation report.
+
+    Raises:
+        HTTPException: 404 if the stored upload is no longer available.
+    """
     stored = Path(payload.stored_path)
     if not stored.exists():
         raise HTTPException(

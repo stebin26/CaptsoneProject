@@ -32,6 +32,19 @@ def build(
     domain: str,
     rows: list[dict[str, Any]],
 ) -> go.Figure | None:
+    """Choose and build the most suitable chart for a domain's rows.
+
+    The chart type follows the shape of the data rather than being fixed per
+    domain, so an industry the platform has never seen still renders sensibly.
+
+    Args:
+        dataset_id: Dataset being displayed.
+        domain: Domain the rows belong to.
+        rows: The rows to plot.
+
+    Returns:
+        The built figure, or nothing when there is nothing to plot.
+    """
     if not rows:
         return None
 
@@ -56,6 +69,15 @@ def build(
 
 
 def chart_column(rows: list[dict[str, Any]], color: str) -> go.Figure:
+    """Build a vertical bar chart of average value per entity.
+
+    Args:
+        rows: The rows to plot.
+        color: Series colour.
+
+    Returns:
+        The built figure.
+    """
     entities, averages = avg_by_entity(rows)
     fig = go.Figure()
     fig.add_bar(x=entities, y=averages, marker_color=color)
@@ -64,6 +86,17 @@ def chart_column(rows: list[dict[str, Any]], color: str) -> go.Figure:
 
 
 def chart_hbar(rows: list[dict[str, Any]], color: str) -> go.Figure:
+    """Build a horizontal bar chart of average value per entity.
+
+    Used when there are enough entities that vertical labels would collide.
+
+    Args:
+        rows: The rows to plot.
+        color: Series colour.
+
+    Returns:
+        The built figure.
+    """
     entities, averages = avg_by_entity(rows)
     fig = go.Figure()
     fig.add_bar(x=averages, y=entities, orientation="h", marker_color=color)
@@ -111,6 +144,14 @@ def chart_bar_trend(rows: list[dict[str, Any]]) -> go.Figure:
 
 
 def chart_treemap(rows: list[dict[str, Any]]) -> go.Figure:
+    """Build a treemap of relative contribution per entity.
+
+    Args:
+        rows: The rows to plot.
+
+    Returns:
+        The built figure.
+    """
     entities = [r["entity_ref"] for r in rows]
     magnitudes = [abs(float(r.get("avg_value") or 0)) for r in rows]
     return go.Figure(
@@ -124,6 +165,14 @@ def chart_treemap(rows: list[dict[str, Any]]) -> go.Figure:
 
 
 def chart_donut(rows: list[dict[str, Any]]) -> go.Figure:
+    """Build a donut chart of share per entity.
+
+    Args:
+        rows: The rows to plot.
+
+    Returns:
+        The built figure.
+    """
     entities = [r["entity_ref"] for r in rows]
     magnitudes = [abs(float(r.get("avg_value") or 0)) for r in rows]
     return go.Figure(go.Pie(labels=entities, values=magnitudes, hole=0.55))
@@ -135,6 +184,17 @@ def chart_line(
     rows: list[dict[str, Any]],
     color: str,
 ) -> go.Figure:
+    """Build a line chart of a metric over time.
+
+    Args:
+        dataset_id: Dataset being displayed.
+        domain: Domain the metric belongs to.
+        rows: The rows identifying the metric to trend.
+        color: Series colour.
+
+    Returns:
+        The built figure.
+    """
     points = _trend_points(dataset_id, domain, rows[0]["metric_name"])
     if not points:
         return chart_column(rows, color)
@@ -155,6 +215,17 @@ def chart_area(
     rows: list[dict[str, Any]],
     color: str,
 ) -> go.Figure:
+    """Build a filled area chart of a metric over time.
+
+    Args:
+        dataset_id: Dataset being displayed.
+        domain: Domain the metric belongs to.
+        rows: The rows identifying the metric to trend.
+        color: Series colour.
+
+    Returns:
+        The built figure.
+    """
     points = _trend_points(dataset_id, domain, rows[0]["metric_name"])
     if not points:
         return chart_column(rows, color)
@@ -192,6 +263,16 @@ def chart_daily_trend(
     domain: str,
     metric_name: str,
 ) -> go.Figure:
+    """Build the daily trend chart for one domain metric.
+
+    Args:
+        points: The daily trend points.
+        domain: Domain the metric belongs to.
+        metric_name: The metric being trended.
+
+    Returns:
+        The built figure.
+    """
     fig = go.Figure()
     fig.add_scatter(
         x=[p["day"] for p in points],
@@ -218,57 +299,7 @@ def _trend_points(
         return analytics_trend(dataset_id, domain=domain, metric_name=metric_name)
     except APIError:
         return []
-    
 
-def chart_sparkline(
-    history: list[float],
-    band_low: list[float],
-    band_high: list[float],
-    color: str | None = None,
-) -> go.Figure:
-    """A compact history line with a forecast confidence band tacked on the end.
-
-    History is solid (what happened); the band is the projected range (what is
-    expected next). The two share an x-axis so the projection reads as a
-    continuation, not a separate chart. No axes, no legend -- a sparkline is
-    a shape, not a plot.
-    """
-    ink = color or tokens.INK
-
-    hist_x = list(range(len(history)))
-    fig = go.Figure()
-
-    # Solid history.
-    fig.add_scatter(
-        x=hist_x,
-        y=history,
-        mode="lines",
-        line=dict(color=ink, width=2),
-        hoverinfo="y",
-        showlegend=False,
-    )
-
-    # Forecast band, starting where history ends.
-    if band_low and band_high:
-        start = len(history) - 1 if history else 0
-        band_x = list(range(start, start + len(band_high)))
-        fig.add_scatter(
-            x=band_x + band_x[::-1],
-            y=band_high + band_low[::-1],
-            fill="toself",
-            fillcolor=tokens.rgba(ink, 0.12),
-            line=dict(width=0),
-            hoverinfo="skip",
-            showlegend=False,
-        )
-
-    fig.update_layout(
-        height=90,
-        margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-    return fig
 
 
 def _band_fill(color: str, alpha: float = 0.12) -> str:
@@ -283,7 +314,7 @@ def _band_fill(color: str, alpha: float = 0.12) -> str:
         r, g, b = int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)
         return f"rgba({r},{g},{b},{alpha})"
     if c.startswith("rgb"):
-        nums = c[c.find("(") + 1:c.find(")")].split(",")[:3]
+        nums = c[c.find("(") + 1 : c.find(")")].split(",")[:3]
         r, g, b = (n.strip() for n in nums)
         return f"rgba({r},{g},{b},{alpha})"
     # Unknown format: fall back to a neutral tint rather than crash.

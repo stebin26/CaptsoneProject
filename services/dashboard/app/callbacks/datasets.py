@@ -23,6 +23,15 @@ from app.components import ui
     State(ids.ACCESS_TOKEN, "data"),
 )
 def load_datasets(_init: int | None, token: str | None) -> Any:
+    """Load and render the dataset browse list.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        token: Caller's access token.
+
+    Returns:
+        The rendered dataset list, or a message when unavailable.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError as exc:
@@ -52,6 +61,15 @@ def open_dataset(
     n_clicks_list: list[int],
     store: dict[str, Any] | None,
 ) -> tuple[Any, Any]:
+    """Open the clicked dataset's feature review.
+
+    Args:
+        n_clicks_list: Click counts for each dataset's open button.
+        store: The shared review store to update.
+
+    Returns:
+        The updated store and the redirect target.
+    """
     if not any(n_clicks_list):
         return dash.no_update, dash.no_update
 
@@ -67,6 +85,7 @@ def open_dataset(
 # ============================================================
 # Render helpers
 # ============================================================
+
 
 def _dataset_card(d: dict[str, Any]) -> html.Div:
     collected = d["features_collected"]
@@ -93,8 +112,10 @@ def _dataset_card(d: dict[str, Any]) -> html.Div:
                         html.Div(
                             [
                                 html.Span(str(collected), className="trend-down"),
-                                html.Span(f" of {total} columns collected",
-                                          className="kpi-note"),
+                                html.Span(
+                                    f" of {total} columns collected",
+                                    className="kpi-note",
+                                ),
                             ]
                         ),
                         html.Div(

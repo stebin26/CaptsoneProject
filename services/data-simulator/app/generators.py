@@ -1,13 +1,19 @@
+"""Synthetic data generators for the supported demo industries.
+
+Produces realistic, correlated operational data for manufacturing, telecom,
+aerospace, and education. Correlation matters: values carry seasonality and
+trend rather than being independent noise, so the downstream analytics, ML, and
+intelligence layers have real structure to find. Every generator is seeded, so
+the same configuration always produces the same data.
+"""
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 from ops_common.logging import get_logger
 
 logger = get_logger(__name__)
@@ -15,6 +21,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class IndustrySpec:
+    """Describes one supported industry and how to generate data for it."""
     key: str
     entity_prefix: str
     entity_count: int
@@ -24,16 +31,16 @@ class IndustrySpec:
 
 @dataclass
 class GeneratorConfig:
+    """Generation parameters: horizon, seed, and start date."""
     days: int = 90
     seed: int = 42
-    start_date: datetime = field(
-        default_factory=lambda: datetime(2025, 1, 1)
-    )
+    start_date: datetime = field(default_factory=lambda: datetime(2025, 1, 1))
 
 
 # ============================================================
 # Shared helpers
 # ============================================================
+
 
 def _rng(seed: int) -> np.random.Generator:
     return np.random.default_rng(seed)
@@ -64,7 +71,20 @@ def _clip_positive(value: float) -> float:
 # Manufacturing
 # ============================================================
 
-def build_manufacturing(config: GeneratorConfig, entity_count: int, prefix: str) -> pd.DataFrame:
+
+def build_manufacturing(
+    config: GeneratorConfig, entity_count: int, prefix: str
+) -> pd.DataFrame:
+    """Generate a manufacturing dataset (machines, output, defects, downtime).
+
+    Args:
+        config: Generation parameters.
+        entity_count: Number of distinct machines to simulate.
+        prefix: Identifier prefix for generated entities.
+
+    Returns:
+        One row per entity per day.
+    """
     rng = _rng(config.seed)
     dates = _date_range(config)
     rows = []
@@ -77,8 +97,12 @@ def build_manufacturing(config: GeneratorConfig, entity_count: int, prefix: str)
         for m in range(entity_count):
             machine_id = f"{prefix}-{m + 1:03d}"
             units = _clip_positive(base_output[m] * season * rng.normal(1.0, 0.08))
-            downtime = _clip_positive(rng.exponential(20) * (1.2 if season < 1 else 0.8))
-            defect_rate = min(0.25, _clip_positive(base_quality[m] + rng.normal(0, 0.01)))
+            downtime = _clip_positive(
+                rng.exponential(20) * (1.2 if season < 1 else 0.8)
+            )
+            defect_rate = min(
+                0.25, _clip_positive(base_quality[m] + rng.normal(0, 0.01))
+            )
             defects = _clip_positive(units * defect_rate)
             energy = _clip_positive(units * rng.uniform(0.8, 1.2))
             cost = _clip_positive(units * rng.uniform(4, 7) + downtime * 50)
@@ -103,7 +127,20 @@ def build_manufacturing(config: GeneratorConfig, entity_count: int, prefix: str)
 # Telecom
 # ============================================================
 
-def build_telecom(config: GeneratorConfig, entity_count: int, prefix: str) -> pd.DataFrame:
+
+def build_telecom(
+    config: GeneratorConfig, entity_count: int, prefix: str
+) -> pd.DataFrame:
+    """Generate a telecom dataset (towers, traffic, outages, subscribers).
+
+    Args:
+        config: Generation parameters.
+        entity_count: Number of distinct towers to simulate.
+        prefix: Identifier prefix for generated entities.
+
+    Returns:
+        One row per entity per day.
+    """
     rng = _rng(config.seed + 1)
     dates = _date_range(config)
     rows = []
@@ -141,12 +178,25 @@ def build_telecom(config: GeneratorConfig, entity_count: int, prefix: str) -> pd
 # Aerospace
 # ============================================================
 
-def build_aerospace(config: GeneratorConfig, entity_count: int, prefix: str) -> pd.DataFrame:
+
+def build_aerospace(
+    config: GeneratorConfig, entity_count: int, prefix: str
+) -> pd.DataFrame:
+    """Generate an aerospace dataset (aircraft, flight hours, maintenance).
+
+    Args:
+        config: Generation parameters.
+        entity_count: Number of distinct aircraft to simulate.
+        prefix: Identifier prefix for generated entities.
+
+    Returns:
+        One row per entity per day.
+    """
     rng = _rng(config.seed + 2)
     dates = _date_range(config)
     rows = []
 
-    for d_idx, date in enumerate(dates):
+    for _d_idx, date in enumerate(dates):
         for a in range(entity_count):
             aircraft_id = f"{prefix}-{a + 1:03d}"
             flight_hours = _clip_positive(rng.uniform(4, 14))
@@ -180,7 +230,23 @@ def build_aerospace(config: GeneratorConfig, entity_count: int, prefix: str) -> 
 # Education
 # ============================================================
 
-def build_education(config: GeneratorConfig, entity_count: int, prefix: str) -> pd.DataFrame:
+
+def build_education(
+    config: GeneratorConfig, entity_count: int, prefix: str
+) -> pd.DataFrame:
+    """Generate an education dataset (courses, enrolment, fees, outcomes).
+
+    Sampled at a coarser interval than the other industries, since academic data is
+    not naturally daily.
+
+    Args:
+        config: Generation parameters.
+        entity_count: Number of distinct courses to simulate.
+        prefix: Identifier prefix for generated entities.
+
+    Returns:
+        One row per entity per sampled period.
+    """
     rng = _rng(config.seed + 3)
     dates = _date_range(config)[:: max(1, config.days // 30)]
     rows = []
@@ -225,18 +291,50 @@ _BUILDERS = {
 }
 
 INDUSTRY_SPECS: dict[str, IndustrySpec] = {
-    "manufacturing": IndustrySpec("manufacturing", "MCH", 8, "build_manufacturing",
-                                  "Factory machines with output, downtime, defects."),
-    "telecom": IndustrySpec("telecom", "TWR", 10, "build_telecom",
-                            "Cell towers with subscribers, usage, SLA breaches."),
-    "aerospace": IndustrySpec("aerospace", "ACFT", 6, "build_aerospace",
-                              "Aircraft with flight hours, inspections, maintenance."),
-    "education": IndustrySpec("education", "CLS", 12, "build_education",
-                              "Classrooms with enrollment, attendance, grades, fees."),
+    "manufacturing": IndustrySpec(
+        "manufacturing",
+        "MCH",
+        8,
+        "build_manufacturing",
+        "Factory machines with output, downtime, defects.",
+    ),
+    "telecom": IndustrySpec(
+        "telecom",
+        "TWR",
+        10,
+        "build_telecom",
+        "Cell towers with subscribers, usage, SLA breaches.",
+    ),
+    "aerospace": IndustrySpec(
+        "aerospace",
+        "ACFT",
+        6,
+        "build_aerospace",
+        "Aircraft with flight hours, inspections, maintenance.",
+    ),
+    "education": IndustrySpec(
+        "education",
+        "CLS",
+        12,
+        "build_education",
+        "Classrooms with enrollment, attendance, grades, fees.",
+    ),
 }
 
 
 def generate(industry: str, config: GeneratorConfig | None = None) -> pd.DataFrame:
+    """Generate a dataset for one industry.
+
+    Args:
+        industry: Industry key to generate.
+        config: Generation parameters; defaults are used when omitted.
+
+    Returns:
+        The generated dataset.
+
+    Raises:
+        ValueError: If the industry is not one of the supported keys.
+    """
     industry = industry.lower()
     if industry not in _BUILDERS:
         raise ValueError(
@@ -258,6 +356,16 @@ def generate_to_csv(
     out_dir: str | Path,
     config: GeneratorConfig | None = None,
 ) -> Path:
+    """Generate an industry dataset and write it to a CSV file.
+
+    Args:
+        industry: Industry key to generate.
+        out_dir: Directory to write into; created if missing.
+        config: Generation parameters; defaults are used when omitted.
+
+    Returns:
+        Path to the written CSV.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     df = generate(industry, config)

@@ -1,3 +1,9 @@
+"""Document (RAG) API endpoints.
+
+Handles document upload and background indexing, document listing, grounded
+question answering, and document deletion. The RAG package itself lives in
+``services/rag``.
+"""
 from __future__ import annotations
 
 import os
@@ -15,12 +21,12 @@ from fastapi import (
     HTTPException,
     UploadFile,
 )
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
-
 from ops_common.config import settings
 from ops_common.db import get_db
 from ops_common.logging import get_logger
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -33,9 +39,8 @@ if _RAG_PATH not in sys.path:
     sys.path.insert(0, _RAG_PATH)
 
 from pipeline import index_document, register_document  # noqa: E402
-from qa_chain import answer_question                     # noqa: E402
+from qa_chain import answer_question  # noqa: E402
 from vector_store import delete_document, list_documents  # noqa: E402
-
 
 _ALLOWED_EXT = {"pdf", "docx", "txt", "md"}
 
@@ -44,19 +49,23 @@ _ALLOWED_EXT = {"pdf", "docx", "txt", "md"}
 # Response models
 # ============================================================
 
+
 class UploadedDocOut(BaseModel):
+    """One accepted document from an upload batch."""
     document_id: int
     filename: str
     status: str
 
 
 class UploadResponseOut(BaseModel):
+    """Result of a document upload batch: accepted and rejected."""
     dataset_id: int
     accepted: list[UploadedDocOut]
     rejected: list[dict[str, Any]]
 
 
 class DocumentOut(BaseModel):
+    """One indexed (or pending) document for a dataset."""
     id: int
     filename: str
     file_type: str | None
@@ -68,12 +77,14 @@ class DocumentOut(BaseModel):
 
 
 class SourceOut(BaseModel):
+    """One retrieved source chunk cited in an answer."""
     filename: str
     page_number: int | None
     distance: float
 
 
 class QueryResponseOut(BaseModel):
+    """Grounded answer to a document question with its sources."""
     dataset_id: int
     question: str
     answer: str
@@ -86,6 +97,7 @@ class QueryResponseOut(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def _ext(filename: str) -> str:
     return Path(filename).suffix.lower().lstrip(".")
@@ -111,12 +123,15 @@ def _index_task(dataset_id: int, document_id: int, path: str, filename: str) -> 
     try:
         index_document(dataset_id, document_id, path, filename)
     except Exception:  # noqa: BLE001
-        logger.exception("Background indexing crashed", extra={"document_id": document_id})
+        logger.exception(
+            "Background indexing crashed", extra={"document_id": document_id}
+        )
 
 
 # ============================================================
 # Endpoints
 # ============================================================
+
 
 @router.post("/rag/{dataset_id}/upload", response_model=UploadResponseOut)
 def upload_documents(
@@ -127,6 +142,22 @@ def upload_documents(
     _session: Session = Depends(get_db),
     _user=Depends(require_permission("documents:upload")),
 ) -> UploadResponseOut:
+    """Accept a batch of documents, store them, and index each in the background.
+
+    Args:
+        dataset_id: Id of the dataset the documents belong to.
+        background_tasks: FastAPI background-task queue for indexing.
+        files: The uploaded document files.
+        business_name: Optional business name recorded with the documents.
+        _session: Active database session.
+        _user: Authenticated caller, injected to enforce ``documents:upload``.
+
+    Returns:
+        The accepted and rejected documents for the batch.
+
+    Raises:
+        HTTPException: 400 if no files are provided.
+    """
     if not files:
         raise HTTPException(status_code=400, detail="No files provided.")
 
@@ -139,7 +170,9 @@ def upload_documents(
             rejected.append({"filename": upload.filename, "reason": "empty filename"})
             continue
         if _ext(fname) not in _ALLOWED_EXT:
-            rejected.append({"filename": fname, "reason": f"unsupported type .{_ext(fname)}"})
+            rejected.append(
+                {"filename": fname, "reason": f"unsupported type .{_ext(fname)}"}
+            )
             continue
 
         try:
@@ -160,10 +193,13 @@ def upload_documents(
         background_tasks.add_task(
             _index_task, dataset_id, document_id, str(stored_path), fname
         )
-        accepted.append(UploadedDocOut(document_id=document_id, filename=fname,
-                                       status="pending"))
+        accepted.append(
+            UploadedDocOut(document_id=document_id, filename=fname, status="pending")
+        )
 
-    return UploadResponseOut(dataset_id=dataset_id, accepted=accepted, rejected=rejected)
+    return UploadResponseOut(
+        dataset_id=dataset_id, accepted=accepted, rejected=rejected
+    )
 
 
 @router.get("/rag/{dataset_id}/documents", response_model=list[DocumentOut])
@@ -172,11 +208,24 @@ def get_documents(
     _session: Session = Depends(get_db),
     _user=Depends(require_permission("documents:read")),
 ) -> list[DocumentOut]:
+    """Return the documents (indexed or pending) for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        _session: Active database session.
+        _user: Authenticated caller, injected to enforce ``documents:read``.
+
+    Returns:
+        One entry per document for the dataset.
+
+    Raises:
+        HTTPException: 503 if the document store cannot be read.
+    """
     try:
         rows = list_documents(dataset_id)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to list RAG documents")
-        raise HTTPException(status_code=503, detail="Document store unavailable.")
+        raise HTTPException(status_code=503, detail="Document store unavailable.") from None
 
     return [
         DocumentOut(
@@ -194,6 +243,7 @@ def get_documents(
 
 
 class QueryIn(BaseModel):
+    """Request body for a document question."""
     question: str
     top_k: int | None = None
 
@@ -205,6 +255,20 @@ def query_documents(
     _session: Session = Depends(get_db),
     _user=Depends(require_permission("documents:read")),
 ) -> QueryResponseOut:
+    """Answer a question grounded in a dataset's documents.
+
+    Args:
+        dataset_id: Id of the dataset to query.
+        body: The question and optional top-k override.
+        _session: Active database session.
+        _user: Authenticated caller, injected to enforce ``documents:read``.
+
+    Returns:
+        The grounded answer and its cited sources.
+
+    Raises:
+        HTTPException: 400 if the question is empty, 503 if the query fails.
+    """
     question = (body.question or "").strip()
     if not question:
         raise HTTPException(status_code=400, detail="Question is required.")
@@ -213,7 +277,7 @@ def query_documents(
         result = answer_question(dataset_id, question, top_k=body.top_k)
     except Exception:  # noqa: BLE001
         logger.exception("RAG query failed")
-        raise HTTPException(status_code=503, detail="RAG query failed.")
+        raise HTTPException(status_code=503, detail="RAG query failed.") from None
 
     return QueryResponseOut(
         dataset_id=dataset_id,
@@ -233,11 +297,25 @@ def remove_document(
     _session: Session = Depends(get_db),
     _user=Depends(require_permission("documents:upload")),
 ) -> dict[str, Any]:
+    """Delete a document from a dataset.
+
+    Args:
+        dataset_id: Id of the dataset the document belongs to.
+        document_id: Id of the document to delete.
+        _session: Active database session.
+        _user: Authenticated caller, injected to enforce ``documents:upload``.
+
+    Returns:
+        A confirmation payload for the deleted document.
+
+    Raises:
+        HTTPException: 404 if the document is not found, 503 if deletion fails.
+    """
     try:
         deleted = delete_document(dataset_id, document_id)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to delete document")
-        raise HTTPException(status_code=503, detail="Delete failed.")
+        raise HTTPException(status_code=503, detail="Delete failed.") from None
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found.")
     return {"deleted": True, "document_id": document_id}

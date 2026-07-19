@@ -32,12 +32,12 @@ SHELL_ROOT = "shell-root"
 SHELL_SIDEBAR = "shell-sidebar"
 SHELL_NAV = "shell-nav"
 SHELL_SIDEBAR_TOGGLE = "shell-sidebar-toggle"
-SHELL_COLLAPSED = "shell-collapsed"          # dcc.Store, storage_type="local"
+SHELL_COLLAPSED = "shell-collapsed"  # dcc.Store, storage_type="local"
 SHELL_SCRIM = "shell-scrim"
 SHELL_MAIN = "shell-main"
 SHELL_INIT = "shell-init"
-SHELL_PAGE_WRAP = "shell-page-wrap"          # wraps page_container; hidden on 403
-SHELL_GUARD_403 = "shell-guard-403"          # permission-denied overlay
+SHELL_PAGE_WRAP = "shell-page-wrap"  # wraps page_container; hidden on 403
+SHELL_GUARD_403 = "shell-guard-403"  # permission-denied overlay
 
 TOPBAR_TITLE = "topbar-title"
 TOPBAR_SUBTITLE = "topbar-subtitle"
@@ -53,16 +53,16 @@ TOPBAR_LOGOUT = "topbar-logout"
 TOPBAR_USER_NAME = "topbar-user-name"
 
 # Global state, owned by the shell and read by every page.
-ACTIVE_DATASET = "active-dataset"            # dcc.Store, session
-ACTIVE_DATE_RANGE = "active-date-range"      # dcc.Store, session
-REFRESH_TOKEN = "refresh-token"              # dcc.Store, memory
+ACTIVE_DATASET = "active-dataset"  # dcc.Store, session
+ACTIVE_DATE_RANGE = "active-date-range"  # dcc.Store, session
+REFRESH_TOKEN = "refresh-token"  # dcc.Store, memory
 
 
 # Auth state (Item 6), owned by the shell, read by the auth guard + nav.
-ACCESS_TOKEN = "access-token"                # dcc.Store, session (JWT access)
-AUTH_REFRESH_TOKEN = "auth-refresh-token"    # dcc.Store, session (opaque refresh)
-AUTH_USER = "auth-user"                      # dcc.Store, session (id/email/roles/perms)
-AUTH_GUARD = "auth-guard"                    # dummy output for the redirect callback
+ACCESS_TOKEN = "access-token"  # dcc.Store, session (JWT access)
+AUTH_REFRESH_TOKEN = "auth-refresh-token"  # dcc.Store, session (opaque refresh)
+AUTH_USER = "auth-user"  # dcc.Store, session (id/email/roles/perms)
+AUTH_GUARD = "auth-guard"  # dummy output for the redirect callback
 
 # ============================================================
 # Executive  --  /
@@ -114,14 +114,38 @@ CONFIRM_STATUS = "confirm-status"
 
 
 def confirm_role(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a column's role selector.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "confirm-role", "column": column}
 
 
 def confirm_domain(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a column's domain selector.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "confirm-domain", "column": column}
 
 
 def confirm_metric(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a column's metric input.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "confirm-metric", "column": column}
 
 
@@ -139,14 +163,38 @@ REVIEW_ADD_STATUS = "review-add-status"
 
 
 def add_button(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a skipped column's add button.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "add-button", "column": column}
 
 
 def add_domain(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a skipped column's domain selector.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "add-domain", "column": column}
 
 
 def add_metric(column: str) -> dict[str, Any]:
+    """Build the pattern-matching id for a skipped column's metric input.
+
+    Args:
+        column: The source column name.
+
+    Returns:
+        The component id.
+    """
     return {"type": "add-metric", "column": column}
 
 
@@ -159,6 +207,14 @@ DATASETS_LIST = "datasets-list"
 
 
 def open_dataset(dataset_id: int) -> dict[str, Any]:
+    """Build the pattern-matching id for a dataset's open button.
+
+    Args:
+        dataset_id: The dataset the button opens.
+
+    Returns:
+        The component id.
+    """
     return {"type": "open-dataset", "id": dataset_id}
 
 
@@ -226,10 +282,18 @@ COPILOT_INPUT = "copilot-input"
 COPILOT_SEND = "copilot-send"
 COPILOT_PENDING = "copilot-pending"
 COPILOT_STATUS = "copilot-status"
-COPILOT_SUGGESTIONS = "copilot-suggestions"   # static container, no callback
+COPILOT_SUGGESTIONS = "copilot-suggestions"  # static container, no callback
 
 
 def copilot_suggestion(index: int) -> dict[str, Any]:
+    """Build the pattern-matching id for a copilot suggestion chip.
+
+    Args:
+        index: Position of the suggestion.
+
+    Returns:
+        The component id.
+    """
     return {"type": "copilot-suggestion", "index": index}
 
 
@@ -261,12 +325,12 @@ PATTERN_TYPES: frozenset[str] = frozenset(
 
 CALLBACK_FREE: frozenset[str] = frozenset(
     {
-        COPILOT_SUGGESTIONS,   # static container rendered inside the layout
-        SHELL_ROOT,            # collapse toggles a class on it clientside via
-                               # getElementById -- no Dash callback references it
-        SHELL_MAIN,            # layout anchor for page_container            # layout anchor for page_container
-        SHELL_SIDEBAR,         # the <aside> wrapper; collapse toggles a class
-                               # on SHELL_ROOT and the nav rebuilds via SHELL_NAV
-        TOPBAR_PROFILE,        # static until auth lands (Item 6)
+        COPILOT_SUGGESTIONS,  # static container rendered inside the layout
+        SHELL_ROOT,  # collapse toggles a class on it clientside via
+        # getElementById -- no Dash callback references it
+        SHELL_MAIN,  # layout anchor for page_container            # layout anchor for page_container
+        SHELL_SIDEBAR,  # the <aside> wrapper; collapse toggles a class
+        # on SHELL_ROOT and the nav rebuilds via SHELL_NAV
+        TOPBAR_PROFILE,  # static until auth lands (Item 6)
     }
 )

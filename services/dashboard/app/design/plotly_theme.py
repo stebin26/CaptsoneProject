@@ -41,11 +41,9 @@ pio.templates[TEMPLATE_NAME] = go.layout.Template(
         colorway=_COLORWAY,
         paper_bgcolor="rgba(0,0,0,0)",  # the card owns the background
         plot_bgcolor="rgba(0,0,0,0)",
-
         # Bottom margin leaves room for the legend, which sits below the plot
         # rather than above it -- above, it collides with the title.
         margin=dict(l=48, r=16, t=36, b=64),
-
         title=dict(
             font=dict(size=13, color=tokens.INK),
             x=0,

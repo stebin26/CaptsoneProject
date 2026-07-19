@@ -1,3 +1,9 @@
+"""Cross-domain intelligence API endpoint.
+
+Reads the Level 1 ML outputs (forecasts, anomalies, risk scores) for a dataset,
+runs the Level 2 inference engine over the active domain subgraph, and
+translates the result into business language.
+"""
 from __future__ import annotations
 
 import os
@@ -5,12 +11,12 @@ import sys
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from ops_common.db import get_db
+from ops_common.logging import get_logger
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db
-from ops_common.logging import get_logger
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -23,14 +29,15 @@ if _INTEL_PATH not in sys.path:
     sys.path.insert(0, _INTEL_PATH)
 
 from inference_engine import run_inference  # noqa: E402
-from translator import translate_all         # noqa: E402
-
+from translator import translate_all  # noqa: E402
 
 # ============================================================
 # Response models
 # ============================================================
 
+
 class ImpactedOut(BaseModel):
+    """One domain impacted by a root cause."""
     domain: str
     term: str
     strength: str
@@ -39,6 +46,7 @@ class ImpactedOut(BaseModel):
 
 
 class InsightOut(BaseModel):
+    """One translated cross-domain insight with its impacts."""
     root: str
     root_term: str
     direction: str
@@ -49,6 +57,7 @@ class InsightOut(BaseModel):
 
 
 class IntelligenceOut(BaseModel):
+    """Cross-domain intelligence payload for a dataset."""
     dataset_id: int
     business_name: str | None
     industry: str | None
@@ -60,6 +69,7 @@ class IntelligenceOut(BaseModel):
 # ============================================================
 # Helpers — pull Level 1 outputs + analytics terms from the DB
 # ============================================================
+
 
 def _fetch_forecasts(session: Session, dataset_id: int) -> list[dict[str, Any]]:
     rows = session.execute(
@@ -73,8 +83,12 @@ def _fetch_forecasts(session: Session, dataset_id: int) -> list[dict[str, Any]]:
         {"d": dataset_id},
     ).fetchall()
     return [
-        {"domain": r[0], "metric_name": r[1],
-         "forecast_date": str(r[2]), "forecast_value": r[3]}
+        {
+            "domain": r[0],
+            "metric_name": r[1],
+            "forecast_date": str(r[2]),
+            "forecast_value": r[3],
+        }
         for r in rows
     ]
 
@@ -120,8 +134,7 @@ def _fetch_metrics(session: Session, dataset_id: int) -> list[dict[str, Any]]:
         {"d": dataset_id},
     ).fetchall()
     return [
-        {"domain": r[0], "metric_name": r[1],
-         "business_name": r[2], "industry": r[3]}
+        {"domain": r[0], "metric_name": r[1], "business_name": r[2], "industry": r[3]}
         for r in rows
     ]
 
@@ -148,12 +161,29 @@ def _fetch_mapping(session: Session, dataset_id: int) -> dict[str, Any]:
 # Endpoint
 # ============================================================
 
+
 @router.get("/intelligence/{dataset_id}", response_model=IntelligenceOut)
 def cross_domain_intelligence(
     dataset_id: int,
     session: Session = Depends(get_db),
     _user=Depends(require_permission("intelligence:read")),
 ) -> IntelligenceOut:
+    """Return cross-domain insights for a dataset.
+
+    Reads Level 1 ML outputs, runs the Level 2 inference engine over the active
+    domains, and translates the result into business language.
+
+    Args:
+        dataset_id: Id of the dataset to analyze.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``intelligence:read``.
+
+    Returns:
+        The translated cross-domain insights for the dataset.
+
+    Raises:
+        HTTPException: 503 if the ML/analytics layer cannot be read.
+    """
     try:
         forecasts = _fetch_forecasts(session, dataset_id)
         anomalies = _fetch_anomalies(session, dataset_id)
@@ -162,7 +192,7 @@ def cross_domain_intelligence(
         mapping = _fetch_mapping(session, dataset_id)
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read Level 1 outputs for intelligence")
-        raise HTTPException(status_code=503, detail="ML/analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="ML/analytics layer unavailable.") from None
 
     business_name = metrics[0]["business_name"] if metrics else None
     industry = metrics[0]["industry"] if metrics else None
@@ -185,7 +215,9 @@ def cross_domain_intelligence(
         )
 
     # Level 2: traverse the active subgraph, then translate to business terms.
-    raw_insights = run_inference(forecasts, anomalies, risks, active_domains=set(active))
+    raw_insights = run_inference(
+        forecasts, anomalies, risks, active_domains=set(active)
+    )
     translated = translate_all(raw_insights, metrics=metrics, mapping=mapping)
 
     insights = [

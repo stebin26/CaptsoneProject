@@ -1,3 +1,15 @@
+"""Cross-domain inference engine (Level 2).
+
+Loads the master knowledge graph of domain relationships, restricts it to the
+domains that are actually active for a dataset, and lights an edge only when
+both endpoints carry a corroborating ML signal. Walking the lit subgraph yields
+ranked root-cause and impact paths, and mirror pairs (A drives B while B drives
+A) are merged into a single feedback-loop insight.
+
+The hop limit and signal threshold are deliberate: beyond two hops the business
+story stops being believable, and an edge without corroboration on both ends is
+speculation rather than evidence.
+"""
 # Cross-domain inference engine (Level 2). Loads the master knowledge graph,
 # restricts to the active-domain subgraph, lights edges only where both endpoints
 # carry a corroborating ML signal, and produces ranked root-cause + impact paths.
@@ -28,8 +40,10 @@ _GRAPH_PATH = os.getenv("OPS_RELATIONSHIPS_PATH", "/app/data-hub/relationships.j
 # Graph loading
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Edge:
+    """One directed relationship between two domains in the knowledge graph."""
     source: str
     target: str
     strength: str
@@ -38,12 +52,23 @@ class Edge:
 
     @property
     def weight(self) -> int:
+        """Return the numeric weight of this edge's named strength."""
         return _STRENGTH_VALUE.get(self.strength, 1)
 
 
 @lru_cache(maxsize=1)
 def load_graph(path: str = _GRAPH_PATH) -> tuple[Edge, ...]:
-    with open(path, "r", encoding="utf-8") as fh:
+    """Load and cache the domain relationship graph from disk.
+
+    Cached because the graph is static for the process lifetime.
+
+    Args:
+        path: Path to the relationships JSON file.
+
+    Returns:
+        Every edge in the graph, normalized to lowercase.
+    """
+    with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     edges = tuple(
         Edge(
@@ -69,6 +94,7 @@ def _adjacency(edges: tuple[Edge, ...]) -> dict[str, list[Edge]]:
 # ML signal model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DomainSignal:
     """Normalized 0–1 signal per domain, derived from Level 1 ML outputs.
@@ -79,6 +105,7 @@ class DomainSignal:
     anomalies  — flagged anomaly count
     top_metric — the metric most responsible, for phrasing
     """
+
     domain: str
     strength: float = 0.0
     direction: str = "flat"
@@ -89,6 +116,7 @@ class DomainSignal:
 
     @property
     def is_lit(self) -> bool:
+        """Return whether this domain's signal clears the corroboration threshold."""
         return self.strength >= SIGNAL_THRESHOLD
 
 
@@ -115,7 +143,11 @@ def build_signals(
     fc_move: dict[str, float] = {}
     for (domain, metric), series in fc_by_dm.items():
         series = sorted(series, key=lambda r: r["forecast_date"])
-        vals = [r.get("forecast_value") for r in series if r.get("forecast_value") is not None]
+        vals = [
+            r.get("forecast_value")
+            for r in series
+            if r.get("forecast_value") is not None
+        ]
         if len(vals) < 2:
             continue
         first, last = vals[0], vals[-1]
@@ -158,9 +190,11 @@ def build_signals(
 # Traversal + insight construction
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ImpactPath:
     """One lit edge from a root domain toward an impacted domain."""
+
     target: str
     strength: str
     effect: str
@@ -172,6 +206,14 @@ class ImpactPath:
 
 @dataclass
 class Insight:
+    """One root cause and everything it is shown to affect.
+
+    Carries the triggering domain and its signal, the ranked impact paths
+    walked out from it, and a score for ordering insights against each other.
+    When two domains reinforce each other the pair is collapsed into a single
+    feedback-loop insight and the loop fields describe both directions.
+    """
+
     root: str
     root_signal: float
     root_direction: str
@@ -263,6 +305,7 @@ def infer(
 # Feedback-loop merging
 # ---------------------------------------------------------------------------
 
+
 def _direct_impact_to(insight: Insight, target: str) -> ImpactPath | None:
     # A first-hop impact from this insight's root to the given target, if any.
     for p in insight.impacts:
@@ -299,7 +342,9 @@ def _merge_feedback_loops(insights: list[Insight]) -> list[Insight]:
             if reverse is None:
                 continue
             # Lead with the higher-scoring side for a natural root cause.
-            primary, secondary = (ins, partner) if ins.score >= partner.score else (partner, ins)
+            primary, secondary = (
+                (ins, partner) if ins.score >= partner.score else (partner, ins)
+            )
             fwd = _direct_impact_to(primary, secondary.root)
             rev = _direct_impact_to(secondary, primary.root)
 
@@ -328,7 +373,16 @@ def _merge_feedback_loops(insights: list[Insight]) -> list[Insight]:
 # Serialization (consumed by the API / translator)
 # ---------------------------------------------------------------------------
 
+
 def insight_to_dict(ins: Insight) -> dict[str, Any]:
+    """Serialize an insight for the API and translator.
+
+    Args:
+        ins: The insight to serialize.
+
+    Returns:
+        A plain dictionary of the insight and its impact paths.
+    """
     return {
         "root": ins.root,
         "root_signal": ins.root_signal,

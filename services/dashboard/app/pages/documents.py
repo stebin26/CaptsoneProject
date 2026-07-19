@@ -13,10 +13,17 @@ dash.register_page(__name__, path="/documents", name="Documents")
 
 
 def layout() -> html.Div:
+    """Build the Documents page.
+
+    Where documents are uploaded, indexed, and questioned. The numbers say what
+    changed; the documents say what it means.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("What the numbers cannot tell you", className="page-title"),
         ui.lede(BY_HREF["/documents"].subtitle),
-
         ui.field(
             "Dataset",
             dcc.Dropdown(
@@ -27,7 +34,6 @@ def layout() -> html.Div:
             ),
         ),
         dcc.Interval(id=ids.DOC_INIT, interval=300, max_intervals=1),
-
         dcc.Upload(
             id=ids.DOC_UPLOAD,
             multiple=True,
@@ -43,11 +49,9 @@ def layout() -> html.Div:
             ),
         ),
         html.Div(id=ids.DOC_UPLOAD_STATUS, style={"margin": "1rem 0"}),
-
         # Polls only while something is still being indexed.
         dcc.Interval(id=ids.DOC_POLL, interval=3000, disabled=True),
         html.Div(id=ids.DOC_LIST),
-
         ui.rule(),
         ui.section(
             "Ask your documents",

@@ -1,3 +1,10 @@
+"""Anomaly detection job -- the 'Alerts' column of the intelligence view.
+
+Flags unusual readings per entity and metric using an isolation forest, falling
+back to a z-score when a group has too few points for the forest to be
+meaningful, and writes the flagged readings to ``ml.anomalies`` with a severity
+band.
+"""
 # Anomaly detection job — the "Alerts" column. Flags unusual readings per
 # entity-metric using IsolationForest (with a z-score fallback) and writes to
 # ml.anomalies.
@@ -9,7 +16,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
 from ml_common import (
     announce_mode,
     bucket_level,
@@ -24,6 +30,7 @@ from ml_common import (
 
 try:
     from sklearn.ensemble import IsolationForest
+
     _HAS_SKLEARN = True
 except Exception:
     _HAS_SKLEARN = False
@@ -55,6 +62,7 @@ def _iforest_severity(score: float) -> str:
 # ---------------------------------------------------------------------------
 # Per-series detection over the daily_trend time series
 # ---------------------------------------------------------------------------
+
 
 # Builds an ordered daily avg_value series for one entity-metric group.
 def _prepare_series(group: pd.DataFrame) -> pd.Series:
@@ -92,7 +100,9 @@ def _detect_zscore(values: np.ndarray):
 
 
 # Runs the best available detector on one group and emits ml.anomalies row dicts.
-def _rows_from_group(meta: dict, series: pd.Series, entity_id, version: str) -> list[dict]:
+def _rows_from_group(
+    meta: dict, series: pd.Series, entity_id, version: str
+) -> list[dict]:
     values = series.values.astype(float)
     dates = series.index
     rows: list[dict] = []
@@ -147,13 +157,16 @@ def _rows_from_group(meta: dict, series: pd.Series, entity_id, version: str) -> 
 # Fallback detection over entity_features (when a group has no daily series)
 # ---------------------------------------------------------------------------
 
+
 # Flags entities whose last_value sits far from the metric's cross-entity mean.
-def _rows_from_features(features: pd.DataFrame, seen_keys: set, version: str) -> list[dict]:
+def _rows_from_features(
+    features: pd.DataFrame, seen_keys: set, version: str
+) -> list[dict]:
     rows: list[dict] = []
     group_cols = ["dataset_id", "business_name", "industry", "domain", "metric_name"]
 
     for keys, grp in features.groupby(group_cols, dropna=False):
-        meta = dict(zip(group_cols, keys))
+        meta = dict(zip(group_cols, keys, strict=False))
         vals = grp["last_value"].astype(float).values
         if len(vals) < MIN_POINTS_ZSCORE:
             continue
@@ -162,7 +175,12 @@ def _rows_from_features(features: pd.DataFrame, seen_keys: set, version: str) ->
         if std == 0:
             continue
         for _, row in grp.iterrows():
-            key = (meta["dataset_id"], meta["domain"], row["entity_id"], meta["metric_name"])
+            key = (
+                meta["dataset_id"],
+                meta["domain"],
+                row["entity_id"],
+                meta["metric_name"],
+            )
             if key in seen_keys:
                 continue
             z = (float(row["last_value"]) - mean) / std
@@ -190,6 +208,14 @@ def _rows_from_features(features: pd.DataFrame, seen_keys: set, version: str) ->
 
 # Orchestrates the job: time-series detection first, feature-level fallback second, then write.
 def run() -> int:
+    """Run the anomaly detection job over the selected scope.
+
+    Scores each entity-metric group, writes the flagged anomalies, and registers
+    the run.
+
+    Returns:
+        The number of anomaly rows written.
+    """
     dataset_id = target_dataset_id(sys.argv)
     scope = announce_mode(dataset_id)
     version = make_version("anomaly_detection")
@@ -210,9 +236,15 @@ def run() -> int:
                 if not features.empty
                 else {}
             )
-            group_cols = ["dataset_id", "business_name", "industry", "domain", "metric_name"]
+            group_cols = [
+                "dataset_id",
+                "business_name",
+                "industry",
+                "domain",
+                "metric_name",
+            ]
             for keys, group in trend.groupby(group_cols, dropna=False):
-                meta = dict(zip(group_cols, keys))
+                meta = dict(zip(group_cols, keys, strict=False))
                 series = _prepare_series(group)
                 if series.empty:
                     continue
@@ -234,7 +266,11 @@ def run() -> int:
 
         high = sum(1 for r in all_rows if r["severity"] == "high")
         register_model_version(
-            conn, "anomaly_detection", "unsupervised", version, scope,
+            conn,
+            "anomaly_detection",
+            "unsupervised",
+            version,
+            scope,
             params={
                 "sklearn": _HAS_SKLEARN,
                 "contamination": IFOREST_CONTAMINATION,

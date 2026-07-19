@@ -16,6 +16,13 @@ dash.register_page(__name__, path="/login", name="Login")
 
 
 def layout() -> html.Div:
+    """Build the sign-in page.
+
+    Rendered without the shell, since there is no session to frame yet.
+
+    Returns:
+        The page layout.
+    """
     return html.Div(
         html.Div(
             [

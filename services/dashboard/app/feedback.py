@@ -16,8 +16,27 @@ def error(message: str) -> html.Div:
 
 
 def success(message: str) -> html.Div:
+    """Render a success message.
+
+    Args:
+        message: The text to show.
+
+    Returns:
+        The rendered message.
+    """
     return html.Div(message, className="msg msg-success")
 
 
 def empty(message: str) -> html.Div:
+    """Render an empty-state message.
+
+    Used where there is nothing to show yet, which is a normal state rather than a
+    failure, so it is styled differently from an error.
+
+    Args:
+        message: The text to show.
+
+    Returns:
+        The rendered message.
+    """
     return html.Div(message, className="msg-empty")

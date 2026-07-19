@@ -33,6 +33,7 @@ packages = ["ops_common", "ops_common.domain"]
 ops_common = ["py.typed"]
 
 [tool.ruff]
+extend = "../../pyproject.toml"
 line-length = 100
 target-version = "py312"
 

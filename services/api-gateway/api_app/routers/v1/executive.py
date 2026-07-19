@@ -16,12 +16,12 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from ops_common.db import get_db
+from ops_common.logging import get_logger
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db
-from ops_common.logging import get_logger
 from api_app.auth.dependencies import require_permission
 
 # The risk-index formula lives in the ML layer as a pure function, so it is the
@@ -34,8 +34,14 @@ router = APIRouter()
 # The eight universal domains, canonical order. Duplicated deliberately: the
 # API must not import from the dashboard, and this list rarely changes.
 DOMAIN_ORDER = [
-    "assets", "operations", "quality", "maintenance",
-    "inventory", "workforce", "finance", "customers",
+    "assets",
+    "operations",
+    "quality",
+    "maintenance",
+    "inventory",
+    "workforce",
+    "finance",
+    "customers",
 ]
 
 # Same 70/30 blend at both levels: entity -> domain, and domain -> overall.
@@ -48,24 +54,28 @@ MAX_WEIGHT = 0.3
 # Response models
 # ============================================================
 
+
 class DomainHealth(BaseModel):
+    """Health status of one domain on the executive dashboard."""
     domain: str
     active: bool
-    score: float | None          # 0-100 relative risk, None when absent
-    band: str                    # low | elevated | high | absent
+    score: float | None  # 0-100 relative risk, None when absent
+    band: str  # low | elevated | high | absent
     open_alerts: int
 
 
 class RiskEntry(BaseModel):
+    """One entity in the executive top-risks list."""
     entity_ref: str | None
     domain: str
     metric_name: str | None
     score: float | None
     band: str | None
-    trend_slope: float | None    # direction of travel for this entity
+    trend_slope: float | None  # direction of travel for this entity
 
 
 class AlertEntry(BaseModel):
+    """One open alert (anomaly) on the executive dashboard."""
     domain: str
     entity_ref: str | None
     metric_name: str
@@ -76,17 +86,19 @@ class AlertEntry(BaseModel):
 
 
 class ForecastEntry(BaseModel):
+    """One headline forecast with a history tail and confidence band."""
     domain: str
     metric_name: str
     last_value: float | None
     next_value: float | None
     pct_change: float | None
-    history: list[float]         # daily_trend tail, for the sparkline
-    band_low: list[float]        # forecast lower bound, aligned to forecast pts
+    history: list[float]  # daily_trend tail, for the sparkline
+    band_low: list[float]  # forecast lower bound, aligned to forecast pts
     band_high: list[float]
 
 
 class InsightEntry(BaseModel):
+    """One cross-domain insight headline."""
     root: str
     root_term: str
     direction: str
@@ -95,6 +107,7 @@ class InsightEntry(BaseModel):
 
 
 class RiskIndexOut(BaseModel):
+    """The overall, operation-wide risk index."""
     value: int
     band: str
     label: str
@@ -105,6 +118,7 @@ class RiskIndexOut(BaseModel):
 
 
 class ExecutiveSummary(BaseModel):
+    """The full executive dashboard payload for a dataset."""
     dataset_id: int
     business_name: str | None
     industry: str | None
@@ -128,6 +142,7 @@ class ExecutiveSummary(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def _f(value: Any) -> float | None:
     if value is None:
@@ -157,9 +172,13 @@ def _band(value: float | None) -> str:
         return "elevated"
     return "low"
 
+
 def _compute_index(domain_score: dict[str, float], mean_w: float, max_w: float):
-    """Import the risk-index formula lazily, same sys.path trick the
-    intelligence engine uses -- keeps 'ml' out of the top-level import graph."""
+    """Import the risk-index formula lazily and apply it.
+
+    Uses the same sys.path trick the intelligence engine uses, keeping ``ml`` out
+    of the top-level import graph.
+    """
     import os
     import sys
 
@@ -169,9 +188,12 @@ def _compute_index(domain_score: dict[str, float], mean_w: float, max_w: float):
     from risk_index import compute  # noqa: E402
 
     return compute(domain_score, mean_w, max_w)
+
+
 # ============================================================
 # The endpoint
 # ============================================================
+
 
 @router.get("/executive/{dataset_id}/summary", response_model=ExecutiveSummary)
 def executive_summary(
@@ -179,6 +201,23 @@ def executive_summary(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("analytics:read")),
 ) -> ExecutiveSummary:
+    """Assemble the full executive dashboard payload in one round trip.
+
+    Reads risk, alert, feature, forecast, and insight data for the dataset, blends
+    per-domain and overall risk, and returns domain health, top risks, active
+    alerts, forecasts, and insights. No LLM is on this path.
+
+    Args:
+        dataset_id: Id of the dataset to summarize.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``analytics:read``.
+
+    Returns:
+        The assembled executive summary.
+
+    Raises:
+        HTTPException: 404 if the dataset is not found.
+    """
     meta = _meta(session, dataset_id)
     if meta is None:
         raise HTTPException(status_code=404, detail=f"Dataset {dataset_id} not found")
@@ -203,9 +242,9 @@ def executive_summary(
     for a in alerts:
         alert_by_domain[a["domain"]] = alert_by_domain.get(a["domain"], 0) + 1
 
-    active = set(by_domain) | {a["domain"] for a in alerts} | {
-        f["domain"] for f in features
-    }
+    active = (
+        set(by_domain) | {a["domain"] for a in alerts} | {f["domain"] for f in features}
+    )
 
     domain_health = [
         DomainHealth(
@@ -275,6 +314,7 @@ def executive_summary(
 # Data access -- one query each, all scoped by dataset_id
 # ============================================================
 
+
 def _meta(session: Session, dataset_id: int) -> dict[str, Any] | None:
     row = session.execute(
         text(
@@ -299,6 +339,7 @@ def _meta(session: Session, dataset_id: int) -> dict[str, Any] | None:
         "date_start": row[2],
         "date_end": row[3],
     }
+
 
 def _risk_rows(session: Session, dataset_id: int) -> list[dict[str, Any]]:
     rows = session.execute(
@@ -504,8 +545,12 @@ def _insight_entries(
     forecasts = _mini_forecasts(session, dataset_id)
     anomalies = _mini_anomalies(session, dataset_id)
     risks = [
-        {"domain": r["domain"], "entity_ref": r["entity_ref"],
-         "risk_score": r["risk_score"], "risk_level": r["risk_level"]}
+        {
+            "domain": r["domain"],
+            "entity_ref": r["entity_ref"],
+            "risk_score": r["risk_score"],
+            "risk_level": r["risk_level"],
+        }
         for r in _risk_rows(session, dataset_id)
     ]
 
@@ -542,8 +587,12 @@ def _mini_forecasts(session: Session, dataset_id: int) -> list[dict[str, Any]]:
         {"d": dataset_id},
     ).fetchall()
     return [
-        {"domain": r[0], "metric_name": r[1],
-         "forecast_date": str(r[2]), "forecast_value": r[3]}
+        {
+            "domain": r[0],
+            "metric_name": r[1],
+            "forecast_date": str(r[2]),
+            "forecast_value": r[3],
+        }
         for r in rows
     ]
 
@@ -558,7 +607,4 @@ def _mini_anomalies(session: Session, dataset_id: int) -> list[dict[str, Any]]:
         ),
         {"d": dataset_id},
     ).fetchall()
-    return [
-        {"domain": r[0], "metric_name": r[1], "severity": r[2]}
-        for r in rows
-    ]
+    return [{"domain": r[0], "metric_name": r[1], "severity": r[2]} for r in rows]

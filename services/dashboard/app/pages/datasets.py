@@ -13,6 +13,13 @@ dash.register_page(__name__, path="/datasets", name="Datasets")
 
 
 def layout() -> html.Div:
+    """Build the Datasets page.
+
+    Lists every onboarded dataset with its collected and skipped feature counts.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         dcc.Interval(id=ids.DATASETS_INIT, interval=300, max_intervals=1),
         ui.lede(BY_HREF["/datasets"].subtitle),

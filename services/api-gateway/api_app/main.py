@@ -1,3 +1,10 @@
+"""FastAPI application entrypoint for the API gateway.
+
+Wires the whole HTTP surface together: applies the Postgres schemas and DuckDB
+analytics views at startup, configures logging and CORS, installs handlers that
+translate common domain errors into clean HTTP responses, exposes liveness and
+database health probes, and mounts every versioned router under ``/api/v1``.
+"""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -5,9 +12,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.requests import Request
-
+from fastapi.responses import JSONResponse
 from ops_common.config import settings
 from ops_common.db import (
     apply_schema,
@@ -15,9 +21,19 @@ from ops_common.db import (
     wait_for_postgres,
 )
 from ops_common.logging import configure_logging, get_logger
-from api_app.routers.v1 import onboard, features, domains, analytics, ml, intelligence, rag, agent
-from api_app.routers.v1 import executive
+
 from api_app.auth import routes as auth_routes
+from api_app.routers.v1 import (
+    agent,
+    analytics,
+    domains,
+    executive,
+    features,
+    intelligence,
+    ml,
+    onboard,
+    rag,
+)
 
 logger = get_logger(__name__)
 
@@ -31,6 +47,19 @@ _AUTH_SCHEMA_PATH = Path("/app/data-hub/postgres/auth_schema.sql")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Prepare and tear down application-wide resources.
+
+    Runs once on startup: configures logging, waits for Postgres, applies the core,
+    ML, RAG, agent, and auth schemas, loads the DuckDB analytics views, and ensures
+    the configured working directories exist. Each optional schema is applied
+    defensively so one missing or failing file cannot stop the service from booting.
+
+    Args:
+        app: The FastAPI application being started.
+
+    Yields:
+        Control back to FastAPI for the lifetime of the application.
+    """
     configure_logging()
     logger.info("API gateway starting", extra={"env": settings.environment})
 
@@ -39,7 +68,9 @@ async def lifespan(app: FastAPI):
     if _SCHEMA_PATH.exists():
         apply_schema(_SCHEMA_PATH)
     else:
-        logger.warning("Schema file not found at startup", extra={"path": str(_SCHEMA_PATH)})
+        logger.warning(
+            "Schema file not found at startup", extra={"path": str(_SCHEMA_PATH)}
+        )
 
     if _ML_SCHEMA_PATH.exists():
         try:
@@ -47,7 +78,9 @@ async def lifespan(app: FastAPI):
         except Exception:  # noqa: BLE001
             logger.exception("Failed to apply ML schema")
     else:
-        logger.warning("ML schema file not found at startup", extra={"path": str(_ML_SCHEMA_PATH)})
+        logger.warning(
+            "ML schema file not found at startup", extra={"path": str(_ML_SCHEMA_PATH)}
+        )
 
     if _RAG_SCHEMA_PATH.exists():
         try:
@@ -55,7 +88,10 @@ async def lifespan(app: FastAPI):
         except Exception:  # noqa: BLE001
             logger.exception("Failed to apply RAG schema")
     else:
-        logger.warning("RAG schema file not found at startup", extra={"path": str(_RAG_SCHEMA_PATH)})
+        logger.warning(
+            "RAG schema file not found at startup",
+            extra={"path": str(_RAG_SCHEMA_PATH)},
+        )
 
     if _AGENT_SCHEMA_PATH.exists():
         try:
@@ -63,15 +99,21 @@ async def lifespan(app: FastAPI):
         except Exception:  # noqa: BLE001
             logger.exception("Failed to apply agent schema")
     else:
-        logger.warning("Agent schema file not found at startup", extra={"path": str(_AGENT_SCHEMA_PATH)})
-    
+        logger.warning(
+            "Agent schema file not found at startup",
+            extra={"path": str(_AGENT_SCHEMA_PATH)},
+        )
+
     if _AUTH_SCHEMA_PATH.exists():
         try:
             apply_schema(_AUTH_SCHEMA_PATH)
         except Exception:  # noqa: BLE001
             logger.exception("Failed to apply auth schema")
     else:
-        logger.warning("Auth schema file not found at startup", extra={"path": str(_AUTH_SCHEMA_PATH)})
+        logger.warning(
+            "Auth schema file not found at startup",
+            extra={"path": str(_AUTH_SCHEMA_PATH)},
+        )
 
     if _ANALYTICS_PATH.exists():
         try:
@@ -79,7 +121,9 @@ async def lifespan(app: FastAPI):
         except Exception:  # noqa: BLE001
             logger.exception("Failed to load DuckDB analytics views")
     else:
-        logger.warning("Analytics SQL not found at startup", extra={"path": str(_ANALYTICS_PATH)})
+        logger.warning(
+            "Analytics SQL not found at startup", extra={"path": str(_ANALYTICS_PATH)}
+        )
 
     settings.ensure_dirs()
     logger.info("API gateway ready")
@@ -107,25 +151,64 @@ app.add_middleware(
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
-    logger.warning("ValueError in request", extra={"path": request.url.path, "error": str(exc)})
+    """Translate an unhandled ValueError into a 400 response.
+
+    Args:
+        request: The request that raised the error.
+        exc: The raised ValueError.
+
+    Returns:
+        A 400 JSON response carrying the error detail.
+    """
+    logger.warning(
+        "ValueError in request", extra={"path": request.url.path, "error": str(exc)}
+    )
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @app.exception_handler(FileNotFoundError)
-async def file_not_found_handler(request: Request, exc: FileNotFoundError) -> JSONResponse:
-    logger.warning("FileNotFoundError in request", extra={"path": request.url.path, "error": str(exc)})
+async def file_not_found_handler(
+    request: Request, exc: FileNotFoundError
+) -> JSONResponse:
+    """Translate an unhandled FileNotFoundError into a 404 response.
+
+    Args:
+        request: The request that raised the error.
+        exc: The raised FileNotFoundError.
+
+    Returns:
+        A 404 JSON response carrying the error detail.
+    """
+    logger.warning(
+        "FileNotFoundError in request",
+        extra={"path": request.url.path, "error": str(exc)},
+    )
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @app.get("/health", tags=["health"])
 async def health() -> dict[str, str]:
+    """Report that the API gateway process is alive.
+
+    Returns:
+        The service name, version, and an ``ok`` status.
+    """
     return {"status": "ok", "service": "api-gateway", "version": "0.1.0"}
 
 
 @app.get("/health/db", tags=["health"])
 async def health_db() -> dict[str, str]:
-    from sqlalchemy import text
+    """Report whether the database is reachable.
+
+    Issues a trivial query so the probe fails fast when Postgres is down, and
+    returns the failure as a payload rather than an exception so orchestrators can
+    read the detail.
+
+    Returns:
+        A status payload describing database reachability.
+    """
     from ops_common.db import get_engine
+    from sqlalchemy import text
 
     try:
         with get_engine().connect() as conn:

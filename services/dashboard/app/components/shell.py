@@ -11,6 +11,14 @@ from app.components import sidebar, topbar
 
 
 def render(page_container: Any) -> html.Div:
+    """Render the application shell around the routed page.
+
+    Args:
+        page_container: The routed page content to wrap.
+
+    Returns:
+        The full shell layout.
+    """
     return html.Div(
         id=ids.SHELL_ROOT,
         className="shell",

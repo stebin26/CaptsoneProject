@@ -1,3 +1,11 @@
+"""QA chain -- turns retrieved chunks into a grounded answer.
+
+Final stage of the RAG query path. The system prompt confines the model to the
+supplied excerpts and requires it to say when an answer is not present rather
+than reaching for outside knowledge. When nothing relevant is retrieved the
+chain refuses outright instead of asking the model to improvise: a truthful
+'not found' is more useful than a fluent invention.
+"""
 # QA chain — turns retrieved chunks into a grounded answer via the LLM. Refuses
 # to answer when no relevant context is found (point 12: grounded only). Final
 # stage of the RAG query path.
@@ -8,7 +16,6 @@ from dataclasses import dataclass, field
 
 from ops_common.config import settings
 from ops_common.logging import get_logger
-
 from retriever import (
     RetrievalResult,
     format_context,
@@ -38,6 +45,12 @@ _SYSTEM_PROMPT = (
 
 @dataclass
 class Answer:
+    """A generated answer plus the evidence and honesty signals behind it.
+
+    ``grounded`` records whether the answer rests on retrieved chunks, and
+    ``llm_used`` whether the model was involved at all, so the interface can show
+    the user which kind of answer they are reading.
+    """
     answer: str
     grounded: bool
     sources: list[dict] = field(default_factory=list)
@@ -49,13 +62,14 @@ class Answer:
 # LLM call
 # ---------------------------------------------------------------------------
 
+
 def _build_user_prompt(question: str, context: str) -> str:
     return (
         "Answer the question using only the context below.\n\n"
         f"=== CONTEXT ===\n{context}\n=== END CONTEXT ===\n\n"
         f"Question: {question}\n\n"
         "If the context does not contain the answer, reply exactly: "
-        "\"I could not find that in the documents.\""
+        '"I could not find that in the documents."'
     )
 
 
@@ -110,7 +124,9 @@ def _call_anthropic(question: str, context: str) -> str | None:
             model=settings.llm_model,
             max_tokens=settings.rag_max_answer_tokens,
             system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": _build_user_prompt(question, context)}],
+            messages=[
+                {"role": "user", "content": _build_user_prompt(question, context)}
+            ],
         )
         parts = [b.text for b in resp.content if getattr(b, "type", None) == "text"]
         return "".join(parts).strip()
@@ -118,9 +134,11 @@ def _call_anthropic(question: str, context: str) -> str | None:
         logger.exception("RAG LLM call failed")
         return None
 
+
 # ---------------------------------------------------------------------------
 # Offline fallback — extractive answer (no LLM)
 # ---------------------------------------------------------------------------
+
 
 def _extractive_answer(result: RetrievalResult) -> str:
     # When no LLM is available, return the most relevant excerpts verbatim so the
@@ -139,6 +157,7 @@ def _extractive_answer(result: RetrievalResult) -> str:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def answer_question(
     dataset_id: int,

@@ -1,3 +1,11 @@
+"""Unsupervised risk scoring for the Assets and Maintenance domains.
+
+These two domains have no failure labels, so supervised prediction is not
+honest here. Instead a 0-100 relative degradation risk is derived per entity
+from three observable components -- adverse trend, volatility, and anomaly
+severity -- and written to ``ml.risk_scores`` with the contributing factors
+recorded alongside, so any score can be explained rather than merely asserted.
+"""
 # Unsupervised risk scoring — Assets + Maintenance "Future" without labels.
 # Derives a 0–100 degradation risk per entity from trend, variability, and
 # anomaly severity, then writes to ml.risk_scores.
@@ -9,7 +17,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
 from ml_common import (
     announce_mode,
     bucket_level,
@@ -83,7 +90,9 @@ def _load_anomaly_weights(conn, dataset_id: int | None) -> dict:
     out: dict = {}
     for _, r in df.iterrows():
         key = (r["dataset_id"], str(r["domain"]).lower(), r["entity_id"])
-        out[key] = out.get(key, 0.0) + weight_map.get(r["severity"], 1.0) * float(r["n"])
+        out[key] = out.get(key, 0.0) + weight_map.get(r["severity"], 1.0) * float(
+            r["n"]
+        )
     return out
 
 
@@ -106,7 +115,9 @@ def _score_domain(
     # Collapse to one row per entity by averaging its metrics, so an entity gets a
     # single composite risk rather than one per metric.
     agg = (
-        grp.groupby(["dataset_id", "business_name", "industry", "entity_id"], dropna=False)
+        grp.groupby(
+            ["dataset_id", "business_name", "industry", "entity_id"], dropna=False
+        )
         .agg(
             trend_slope=("trend_slope", "mean"),
             std_value=("std_value", "mean"),
@@ -127,7 +138,9 @@ def _score_domain(
 
     ds_id = agg["dataset_id"].iloc[0]
     weight_lookup = [anomaly_weights.get((ds_id, domain, e), 0.0) for e in entity_ids]
-    anomaly_c = _anomaly_component(entity_ids, {e: w for e, w in zip(entity_ids, weight_lookup)})
+    anomaly_c = _anomaly_component(
+        entity_ids, {e: w for e, w in zip(entity_ids, weight_lookup, strict=False)}
+    )
 
     score = (W_TREND * trend_c + W_VOLATILITY * vol_c + W_ANOMALY * anomaly_c) * 100.0
 
@@ -153,6 +166,13 @@ def _score_domain(
 
 # Orchestrates the job: read features, score target domains, write + register.
 def run() -> int:
+    """Run the risk scoring job over the selected scope.
+
+    Scores the target domains' entities, writes the results, and registers the run.
+
+    Returns:
+        The number of risk-score rows written.
+    """
     dataset_id = target_dataset_id(sys.argv)
     scope = announce_mode(dataset_id)
     version = make_version("risk_scoring")
@@ -163,8 +183,13 @@ def run() -> int:
         if features.empty:
             print("no entity_features for scope — nothing to score")
             register_model_version(
-                conn, "risk_scoring", "unsupervised", version, scope,
-                params={"target_domains": sorted(TARGET_DOMAINS)}, row_count=0,
+                conn,
+                "risk_scoring",
+                "unsupervised",
+                version,
+                scope,
+                params={"target_domains": sorted(TARGET_DOMAINS)},
+                row_count=0,
             )
             return 0
 
@@ -184,10 +209,18 @@ def run() -> int:
         high = sum(1 for r in all_rows if r["risk_level"] == "high")
 
         register_model_version(
-            conn, "risk_scoring", "unsupervised", version, scope,
+            conn,
+            "risk_scoring",
+            "unsupervised",
+            version,
+            scope,
             params={
                 "target_domains": sorted(TARGET_DOMAINS),
-                "weights": {"trend": W_TREND, "volatility": W_VOLATILITY, "anomaly": W_ANOMALY},
+                "weights": {
+                    "trend": W_TREND,
+                    "volatility": W_VOLATILITY,
+                    "anomaly": W_ANOMALY,
+                },
             },
             metrics={"domains_scored": domains_scored, "high_risk_entities": high},
             row_count=written,

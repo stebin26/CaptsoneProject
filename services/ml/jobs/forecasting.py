@@ -1,3 +1,10 @@
+"""Forecasting job -- the 'Future' column of the intelligence view.
+
+Reads the daily trend series, fits a time-series model per domain metric, and
+writes projected values with confidence bounds to ``ml.forecasts``. Series too
+short to model are skipped rather than extrapolated, since a forecast from two
+points would look authoritative while meaning nothing.
+"""
 # Forecasting job — the "Future" column. Reads analytics.daily_trend, fits a
 # per domain-metric time-series model, and writes future values to ml.forecasts.
 
@@ -9,7 +16,6 @@ import warnings
 
 import numpy as np
 import pandas as pd
-
 from ml_common import (
     announce_mode,
     db_conn,
@@ -22,6 +28,7 @@ from ml_common import (
 
 try:
     from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
     _HAS_SM = True
 except Exception:
     _HAS_SM = False
@@ -54,7 +61,9 @@ def _forecast_smoothing(series: pd.Series, horizon: int):
     resid_std = float(np.std(series.values - fitted.values))
     fc = model.forecast(horizon)
     margin = 1.96 * resid_std
-    dates = pd.date_range(series.index.max() + pd.Timedelta(days=1), periods=horizon, freq="D")
+    dates = pd.date_range(
+        series.index.max() + pd.Timedelta(days=1), periods=horizon, freq="D"
+    )
     return dates, fc.values, fc.values - margin, fc.values + margin, "holt_winters"
 
 
@@ -67,7 +76,9 @@ def _forecast_linear(series: pd.Series, horizon: int):
     fx = np.arange(len(y), len(y) + horizon)
     fy = slope * fx + intercept
     margin = 1.96 * resid_std
-    dates = pd.date_range(series.index.max() + pd.Timedelta(days=1), periods=horizon, freq="D")
+    dates = pd.date_range(
+        series.index.max() + pd.Timedelta(days=1), periods=horizon, freq="D"
+    )
     return dates, fy, fy - margin, fy + margin, "linear_trend"
 
 
@@ -84,9 +95,11 @@ def _forecast_series(series: pd.Series, horizon: int):
 
 
 # Turns one series' forecast arrays into ml.forecasts row dicts.
-def _rows_from_forecast(meta: dict, dates, values, lo, hi, model_name, version) -> list[dict]:
+def _rows_from_forecast(
+    meta: dict, dates, values, lo, hi, model_name, version
+) -> list[dict]:
     rows = []
-    for d, v, l, h in zip(dates, values, lo, hi):
+    for d, v, lo_val, hi_val in zip(dates, values, lo, hi, strict=False):
         rows.append(
             {
                 "dataset_id": meta["dataset_id"],
@@ -96,8 +109,8 @@ def _rows_from_forecast(meta: dict, dates, values, lo, hi, model_name, version) 
                 "metric_name": meta["metric_name"],
                 "forecast_date": pd.Timestamp(d).date(),
                 "forecast_value": float(v),
-                "lower_bound": float(l),
-                "upper_bound": float(h),
+                "lower_bound": float(lo_val),
+                "upper_bound": float(hi_val),
                 "model_name": model_name,
                 "model_version": version,
             }
@@ -107,6 +120,13 @@ def _rows_from_forecast(meta: dict, dates, values, lo, hi, model_name, version) 
 
 # Orchestrates the whole job: read features, forecast every series, write + register.
 def run() -> int:
+    """Run the forecasting job over the selected scope.
+
+    Fits a model per domain metric, writes the forecasts, and registers the run.
+
+    Returns:
+        The number of forecast rows written.
+    """
     dataset_id = target_dataset_id(sys.argv)
     scope = announce_mode(dataset_id)
     version = make_version("forecasting")
@@ -117,8 +137,13 @@ def run() -> int:
         if df.empty:
             print("no daily_trend rows for scope — nothing to forecast")
             register_model_version(
-                conn, "forecasting", "statistical", version, scope,
-                params={"horizon": HORIZON}, row_count=0,
+                conn,
+                "forecasting",
+                "statistical",
+                version,
+                scope,
+                params={"horizon": HORIZON},
+                row_count=0,
             )
             return 0
 
@@ -126,23 +151,38 @@ def run() -> int:
         series_done = 0
         series_skipped = 0
 
-        group_cols = ["dataset_id", "business_name", "industry", "domain", "metric_name"]
+        group_cols = [
+            "dataset_id",
+            "business_name",
+            "industry",
+            "domain",
+            "metric_name",
+        ]
         for keys, group in df.groupby(group_cols, dropna=False):
-            meta = dict(zip(group_cols, keys))
+            meta = dict(zip(group_cols, keys, strict=False))
             series = _prepare_series(group)
             result = _forecast_series(series, HORIZON)
             if result is None:
                 series_skipped += 1
                 continue
             dates, values, lo, hi, model_name = result
-            all_rows.extend(_rows_from_forecast(meta, dates, values, lo, hi, model_name, version))
+            all_rows.extend(
+                _rows_from_forecast(meta, dates, values, lo, hi, model_name, version)
+            )
             series_done += 1
 
         written = write_forecasts(conn, dataset_id, all_rows)
         register_model_version(
-            conn, "forecasting", "statistical", version, scope,
+            conn,
+            "forecasting",
+            "statistical",
+            version,
+            scope,
             params={"horizon": HORIZON, "statsmodels": _HAS_SM},
-            metrics={"series_forecasted": series_done, "series_skipped": series_skipped},
+            metrics={
+                "series_forecasted": series_done,
+                "series_skipped": series_skipped,
+            },
             row_count=written,
         )
 

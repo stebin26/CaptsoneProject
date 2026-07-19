@@ -1,3 +1,11 @@
+"""Retriever -- embeds a question and fetches the most relevant chunks.
+
+Fifth stage of the RAG pipeline, feeding the QA chain. Always scoped to one
+dataset. Chunks beyond a maximum cosine distance are dropped rather than passed
+along: keeping weak matches would let the model answer from loosely related
+text, whereas dropping them lets the QA chain honestly report that it found
+nothing.
+"""
 # Retriever — embeds a query and fetches the most relevant chunks for one dataset.
 # Fifth stage of the RAG pipeline; feeds the QA chain. Always dataset_id-scoped.
 
@@ -5,10 +13,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from embedder import embed_query
 from ops_common.config import settings
 from ops_common.logging import get_logger
-
-from embedder import embed_query
 from vector_store import (
     RetrievedChunk,
     dataset_has_documents,
@@ -20,12 +27,14 @@ logger = get_logger(__name__)
 
 @dataclass
 class RetrievalResult:
+    """The chunks retrieved for a query, plus whether any documents exist."""
     chunks: list[RetrievedChunk]
     has_documents: bool
     query: str
 
     @property
     def is_empty(self) -> bool:
+        """Return whether the retrieval found no usable chunks."""
         return not self.chunks
 
 

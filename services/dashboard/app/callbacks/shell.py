@@ -6,10 +6,19 @@ round-trip for it would be a visible stutter on every click.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from dash import Input, Output, State, callback, clientside_callback, dcc, html, no_update
+from dash import (
+    Input,
+    Output,
+    State,
+    callback,
+    clientside_callback,
+    dcc,
+    html,
+    no_update,
+)
 
 from app import ids
 from app.api_client import APIError, list_datasets, ml_anomalies
@@ -71,6 +80,7 @@ clientside_callback(
 
 # ---- Active nav item + page title ----
 
+
 @callback(
     Output(ids.SHELL_NAV, "children"),
     Output(ids.TOPBAR_TITLE, "children"),
@@ -79,6 +89,15 @@ clientside_callback(
     Input(ids.AUTH_USER, "data"),
 )
 def sync_route(pathname: str | None, user: Any) -> tuple[Any, str, str]:
+    """Keep the rail, page title, and sign-in state in step with the route.
+
+    Args:
+        pathname: The current route.
+        user: The stored user profile.
+
+    Returns:
+        The rendered rail and top bar for this route.
+    """
     path = pathname or "/"
     item = BY_HREF.get(path)
     title = item.label if item else "Not found"
@@ -86,7 +105,9 @@ def sync_route(pathname: str | None, user: Any) -> tuple[Any, str, str]:
     permissions = (user or {}).get("permissions", [])
     return sidebar.nav_children(path, permissions), title, kicker
 
+
 # ---- Dataset scope ----
+
 
 @callback(
     Output(ids.TOPBAR_DATASET, "options"),
@@ -100,6 +121,16 @@ def populate_datasets(
     active: int | None,
     token: str | None,
 ) -> tuple[list[dict[str, Any]], Any]:
+    """Fill the shell's dataset selector, preserving the active choice.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        active: The currently active dataset, kept selected when still present.
+        token: Caller's access token.
+
+    Returns:
+        The selector options and the dataset to select.
+    """
     try:
         datasets = list_datasets(token=token)
     except APIError:
@@ -122,6 +153,14 @@ def populate_datasets(
     prevent_initial_call=True,
 )
 def set_active_dataset(dataset_id: int | None) -> Any:
+    """Store the dataset chosen in the shell selector.
+
+    Args:
+        dataset_id: The chosen dataset.
+
+    Returns:
+        The dataset id to store.
+    """
     return dataset_id
 
 
@@ -131,10 +170,20 @@ def set_active_dataset(dataset_id: int | None) -> Any:
     Input(ids.TOPBAR_DATE_RANGE, "end_date"),
 )
 def set_date_range(start: str | None, end: str | None) -> dict[str, Any]:
+    """Store the date range chosen in the shell.
+
+    Args:
+        start: Start of the range.
+        end: End of the range.
+
+    Returns:
+        The range to store.
+    """
     return {"start": start, "end": end}
 
 
 # ---- Refresh ----
+
 
 @callback(
     Output(ids.REFRESH_TOKEN, "data"),
@@ -153,11 +202,12 @@ def refresh(
     The stamp says when this view was last computed. It is not 'real-time':
     the platform is a batch snapshot, and the label says so.
     """
-    stamp = datetime.now(timezone.utc).astimezone().strftime("%H:%M")
+    stamp = datetime.now(UTC).astimezone().strftime("%H:%M")
     return (token or 0) + 1, f"Updated {stamp}"
 
 
 # ---- Alerts ----
+
 
 @callback(
     Output(ids.TOPBAR_BELL_COUNT, "children"),
@@ -166,7 +216,9 @@ def refresh(
     Input(ids.REFRESH_TOKEN, "data"),
     State(ids.ACCESS_TOKEN, "data"),
 )
-def load_alerts(dataset_id: int | None, _token: int | None, access: str | None) -> tuple[Any, Any]:
+def load_alerts(
+    dataset_id: int | None, _token: int | None, access: str | None
+) -> tuple[Any, Any]:
     """Notifications are alerts. There is no second notification system.
 
     The count is the number of open anomalies for the active dataset -- the
@@ -198,6 +250,15 @@ def load_alerts(dataset_id: int | None, _token: int | None, access: str | None) 
     prevent_initial_call=True,
 )
 def toggle_alerts(_clicks: int, hidden: bool) -> bool:
+    """Toggle the alerts panel open or closed.
+
+    Args:
+        _clicks: Toggle button clicks.
+        hidden: Whether the panel is currently hidden.
+
+    Returns:
+        The new hidden state.
+    """
     return not hidden
 
 
@@ -243,6 +304,7 @@ def _panel(anomalies: list[dict[str, Any]], total: int = 0) -> Any:
 
     return [head, *items]
 
+
 # ---- Page-level permission guard (Item 6, Step 3) ----
 #
 # The sidebar hides menus a user cannot access, but typing a URL directly
@@ -250,6 +312,7 @@ def _panel(anomalies: list[dict[str, Any]], total: int = 0) -> Any:
 # permission against the user's grants, show a 403 instead of the page.
 # Real enforcement is the backend 401/403 -- this only stops unauthorized
 # page chrome from rendering.
+
 
 @callback(
     Output(ids.SHELL_PAGE_WRAP, "hidden"),
@@ -259,6 +322,19 @@ def _panel(anomalies: list[dict[str, Any]], total: int = 0) -> Any:
     Input(ids.AUTH_USER, "data"),
 )
 def guard_page(pathname: str | None, user: Any) -> tuple[bool, bool, Any]:
+    """Block a route the caller lacks permission for.
+
+    The rail already hides forbidden pages, but a user can still type the URL, so
+    the same permission is enforced here as well and a refusal is shown in place of
+    the page.
+
+    Args:
+        pathname: The requested route.
+        user: The stored user profile.
+
+    Returns:
+        Whether to show the page or the refusal notice.
+    """
     path = pathname or "/"
     item = BY_HREF.get(path)
 

@@ -1,3 +1,13 @@
+"""Tool pre-selection -- narrowing the tool surface before the model sees it.
+
+Exposing every tool on every question measurably degrades a 3B model's choice:
+the more options it sees, the more often it picks the wrong one. This module
+matches the question's vocabulary against per-group keyword sets and exposes
+only the relevant groups, with a hub and analytics baseline always present so
+the agent can never be left with nothing to call. Causal wording deliberately
+co-selects the ML and intelligence groups, since 'why' questions cannot be
+answered from current values alone.
+"""
 from __future__ import annotations
 
 import re
@@ -43,47 +53,174 @@ _ALWAYS: tuple[str, ...] = ("hub", "analytics")
 _INTENT_WORDS: dict[str, set[str]] = {
     # Looking FORWARD, or asking what is wrong / at risk right now.
     "ml": {
-        "forecast", "forecasts", "predict", "prediction", "predicted",
-        "future", "next", "upcoming", "projection", "project", "expect",
-        "will", "heading", "outlook", "tomorrow", "week", "month",
-        "risk", "risks", "risky", "at-risk", "anomaly", "anomalies",
-        "abnormal", "unusual", "outlier", "outliers", "alert", "alerts",
-        "warning", "warnings", "fail", "failure", "breakdown", "danger",
+        "forecast",
+        "forecasts",
+        "predict",
+        "prediction",
+        "predicted",
+        "future",
+        "next",
+        "upcoming",
+        "projection",
+        "project",
+        "expect",
+        "will",
+        "heading",
+        "outlook",
+        "tomorrow",
+        "week",
+        "month",
+        "risk",
+        "risks",
+        "risky",
+        "at-risk",
+        "anomaly",
+        "anomalies",
+        "abnormal",
+        "unusual",
+        "outlier",
+        "outliers",
+        "alert",
+        "alerts",
+        "warning",
+        "warnings",
+        "fail",
+        "failure",
+        "breakdown",
+        "danger",
     },
     # Asking WHY — causation, connection between areas.
     "intelligence": {
-        "why", "cause", "causes", "causing", "reason", "reasons",
-        "root", "root-cause", "rootcause", "driver", "driving", "drive",
-        "because", "impact", "impacts", "affect", "affects", "affecting",
-        "influence", "connection", "connected", "relationship", "related",
-        "cross-domain", "crossdomain", "across", "link", "linked",
-        "explain", "behind", "underlying", "loop", "knock-on",
+        "why",
+        "cause",
+        "causes",
+        "causing",
+        "reason",
+        "reasons",
+        "root",
+        "root-cause",
+        "rootcause",
+        "driver",
+        "driving",
+        "drive",
+        "because",
+        "impact",
+        "impacts",
+        "affect",
+        "affects",
+        "affecting",
+        "influence",
+        "connection",
+        "connected",
+        "relationship",
+        "related",
+        "cross-domain",
+        "crossdomain",
+        "across",
+        "link",
+        "linked",
+        "explain",
+        "behind",
+        "underlying",
+        "loop",
+        "knock-on",
     },
     # Asking what a DOCUMENT says — procedures, policy, definitions.
     "rag": {
-        "document", "documents", "manual", "manuals", "sop", "sops",
-        "procedure", "procedures", "policy", "policies", "guideline",
-        "guidelines", "standard", "standards", "spec", "specification",
-        "handbook", "instructions", "protocol", "rule", "rules",
-        "escalation", "escalate", "code", "codes", "error-code",
-        "says", "say", "state", "stated", "written", "documented",
-        "compliance", "requirement", "requirements", "threshold",
+        "document",
+        "documents",
+        "manual",
+        "manuals",
+        "sop",
+        "sops",
+        "procedure",
+        "procedures",
+        "policy",
+        "policies",
+        "guideline",
+        "guidelines",
+        "standard",
+        "standards",
+        "spec",
+        "specification",
+        "handbook",
+        "instructions",
+        "protocol",
+        "rule",
+        "rules",
+        "escalation",
+        "escalate",
+        "code",
+        "codes",
+        "error-code",
+        "says",
+        "say",
+        "state",
+        "stated",
+        "written",
+        "documented",
+        "compliance",
+        "requirement",
+        "requirements",
+        "threshold",
     },
     # Current state / history. (analytics is always on, but these words also
     # confirm the intent and are kept for clarity + future tuning.)
     "analytics": {
-        "trend", "trends", "trending", "history", "historical", "over",
-        "current", "status", "now", "today", "recent", "average",
-        "compare", "comparison", "performance", "degrading", "declining",
-        "rising", "falling", "increase", "decrease", "worst", "best",
-        "drop", "drops", "dropping", "dropped", "down", "up", "change",
-        "which", "rank", "ranking", "top",
+        "trend",
+        "trends",
+        "trending",
+        "history",
+        "historical",
+        "over",
+        "current",
+        "status",
+        "now",
+        "today",
+        "recent",
+        "average",
+        "compare",
+        "comparison",
+        "performance",
+        "degrading",
+        "declining",
+        "rising",
+        "falling",
+        "increase",
+        "decrease",
+        "worst",
+        "best",
+        "drop",
+        "drops",
+        "dropping",
+        "dropped",
+        "down",
+        "up",
+        "change",
+        "which",
+        "rank",
+        "ranking",
+        "top",
     },
     # Discovery / raw values. (also always on.)
     "hub": {
-        "dataset", "datasets", "data", "available", "list", "show",
-        "raw", "readings", "records", "entities", "machine", "machines",
-        "asset", "assets", "line", "lines", "what",
+        "dataset",
+        "datasets",
+        "data",
+        "available",
+        "list",
+        "show",
+        "raw",
+        "readings",
+        "records",
+        "entities",
+        "machine",
+        "machines",
+        "asset",
+        "assets",
+        "line",
+        "lines",
+        "what",
     },
 }
 
@@ -92,25 +229,57 @@ _INTENT_WORDS: dict[str, set[str]] = {
 # operations drop). So any causal word force-adds the evidence groups the agent
 # needs to actually find that cause, whether or not their own vocabulary hit.
 _CAUSAL_WORDS: set[str] = {
-    "why", "cause", "causes", "causing", "reason", "reasons",
-    "root", "rootcause", "driver", "driving", "because", "explain",
-    "behind", "underlying", "blame", "responsible",
-    "drop", "drops", "dropping", "dropped",
-    "falling", "fell", "declining", "decline", "degrading", "worse",
+    "why",
+    "cause",
+    "causes",
+    "causing",
+    "reason",
+    "reasons",
+    "root",
+    "rootcause",
+    "driver",
+    "driving",
+    "because",
+    "explain",
+    "behind",
+    "underlying",
+    "blame",
+    "responsible",
+    "drop",
+    "drops",
+    "dropping",
+    "dropped",
+    "falling",
+    "fell",
+    "declining",
+    "decline",
+    "degrading",
+    "worse",
 }
 
 # Groups a causal question always needs, on top of whatever else matched.
 _CAUSAL_COMPANIONS: tuple[str, ...] = ("ml", "intelligence")
 
 
-
 # ============================================================
 # Selection
 # ============================================================
 
-def select_tools(question: str) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
+
+def select_tools(
+    question: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
     # Returns (schemas, functions, group_names) — exactly what run_once needs.
     # group_names is returned so the caller can log/debug what was exposed.
+    """Choose which tool groups to expose for a question.
+
+    Args:
+        question: The user's question.
+
+    Returns:
+        The selected schemas, their implementations, and the group names chosen
+        (returned so the choice can be logged and debugged).
+    """
     tokens = _tokenize(question)
 
     matched: set[str] = set(_ALWAYS)
@@ -131,7 +300,9 @@ def select_tools(question: str) -> tuple[list[dict[str, Any]], dict[str, Any], l
     if tokens & _CAUSAL_WORDS:
         matched.update(_CAUSAL_COMPANIONS)
         any_intent = True
-        logger.info("Tool selector: causal question — adding %s", list(_CAUSAL_COMPANIONS))
+        logger.info(
+            "Tool selector: causal question — adding %s", list(_CAUSAL_COMPANIONS)
+        )
 
     # Fail-open: only widen to everything when the question showed NO recognizable
     # intent at all AND is substantive. A question that clearly wants the baseline
@@ -140,7 +311,7 @@ def select_tools(question: str) -> tuple[list[dict[str, Any]], dict[str, Any], l
     if not any_intent and _looks_substantive(tokens):
         matched = set(_GROUPS)
         logger.info("Tool selector: no recognizable intent; exposing all groups.")
-        
+
     schemas: list[dict[str, Any]] = []
     functions: dict[str, Any] = {}
     # Stable order: discovery, state, then the specialised groups.
@@ -154,7 +325,8 @@ def select_tools(question: str) -> tuple[list[dict[str, Any]], dict[str, Any], l
     group_names = sorted(matched)
     logger.info(
         "Tool selector: %d tools from groups %s",
-        len(functions), group_names,
+        len(functions),
+        group_names,
     )
     return schemas, functions, group_names
 
@@ -182,9 +354,18 @@ def _looks_substantive(tokens: set[str]) -> bool:
 # Escape hatch
 # ============================================================
 
+
 def all_tools() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     # Every tool, unfiltered. Used when selection is disabled via config, and by
     # tests that need the full surface.
+    """Return every tool, unfiltered.
+
+    Used when selection is disabled by configuration, and by tests that need the
+    full surface.
+
+    Returns:
+        Every schema and its implementation.
+    """
     schemas: list[dict[str, Any]] = []
     functions: dict[str, Any] = {}
     for group in ("hub", "analytics", "ml", "intelligence", "rag"):

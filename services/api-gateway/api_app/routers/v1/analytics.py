@@ -1,14 +1,19 @@
+"""Analytics API endpoints backed by the ``analytics.*`` tables.
+
+Serves per-domain metric summaries, daily trends, and entity-level features
+computed by the Spark analytics jobs.
+"""
 from __future__ import annotations
 
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from ops_common.db import get_db
+from ops_common.logging import get_logger
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ops_common.db import get_db
-from ops_common.logging import get_logger
 from api_app.auth.dependencies import require_permission
 
 logger = get_logger(__name__)
@@ -20,7 +25,9 @@ router = APIRouter()
 # Response models
 # ============================================================
 
+
 class DomainMetricOut(BaseModel):
+    """Aggregate metric summary for one domain metric."""
     dataset_id: int
     business_name: str | None
     industry: str | None
@@ -36,6 +43,7 @@ class DomainMetricOut(BaseModel):
 
 
 class TrendPointOut(BaseModel):
+    """One daily trend point for a domain metric."""
     domain: str
     metric_name: str
     day: str
@@ -45,6 +53,7 @@ class TrendPointOut(BaseModel):
 
 
 class FeatureOut(BaseModel):
+    """Entity-level feature row for a domain metric."""
     domain: str
     entity_ref: str
     metric_name: str
@@ -58,6 +67,7 @@ class FeatureOut(BaseModel):
 
 
 class AnalyticsOverviewOut(BaseModel):
+    """Analytics overview for a dataset across its domains."""
     dataset_id: int
     business_name: str | None
     industry: str | None
@@ -69,6 +79,7 @@ class AnalyticsOverviewOut(BaseModel):
 # ============================================================
 # Helpers
 # ============================================================
+
 
 def _as_float(value: Any) -> float | None:
     if value is None:
@@ -92,12 +103,26 @@ def _as_int(value: Any) -> int | None:
 # Endpoints
 # ============================================================
 
+
 @router.get("/analytics/{dataset_id}/metrics", response_model=list[DomainMetricOut])
 def dataset_metrics(
     dataset_id: int,
     session: Session = Depends(get_db),
     _user=Depends(require_permission("analytics:read")),
 ) -> list[DomainMetricOut]:
+    """Return aggregate domain-metric summaries for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to summarize.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``analytics:read``.
+
+    Returns:
+        One summary row per domain metric.
+
+    Raises:
+        HTTPException: 503 if the analytics store cannot be read.
+    """
     query = text(
         """
         SELECT dataset_id, business_name, industry, domain, metric_name,
@@ -112,7 +137,7 @@ def dataset_metrics(
         rows = session.execute(query, {"dataset_id": dataset_id}).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read analytics.domain_metrics")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     return [
         DomainMetricOut(
@@ -139,6 +164,16 @@ def dataset_overview(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("analytics:read")),
 ) -> AnalyticsOverviewOut:
+    """Return an analytics overview for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to summarize.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``analytics:read``.
+
+    Returns:
+        The dataset's domains and their metric summaries.
+    """
     metrics = dataset_metrics(dataset_id, session)
 
     business_name = metrics[0].business_name if metrics else None
@@ -163,6 +198,21 @@ def dataset_trend(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("analytics:read")),
 ) -> list[TrendPointOut]:
+    """Return daily trend points for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Optional domain filter.
+        metric_name: Optional metric filter.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``analytics:read``.
+
+    Returns:
+        Daily trend points, ordered by domain, metric, and day.
+
+    Raises:
+        HTTPException: 503 if the analytics store cannot be read.
+    """
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id}
     if domain:
@@ -185,7 +235,7 @@ def dataset_trend(
         rows = session.execute(query, params).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read analytics.daily_trend")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     return [
         TrendPointOut(
@@ -208,6 +258,21 @@ def dataset_features(
     session: Session = Depends(get_db),
     _user=Depends(require_permission("analytics:read")),
 ) -> list[FeatureOut]:
+    """Return entity-level features for a dataset.
+
+    Args:
+        dataset_id: Id of the dataset to read.
+        domain: Optional domain filter.
+        limit: Maximum number of feature rows to return.
+        session: Active database session.
+        _user: Authenticated caller, injected to enforce ``analytics:read``.
+
+    Returns:
+        Entity-level feature rows.
+
+    Raises:
+        HTTPException: 503 if the analytics store cannot be read.
+    """
     clauses = ["dataset_id = :dataset_id"]
     params: dict[str, Any] = {"dataset_id": dataset_id, "limit": limit}
     if domain:
@@ -230,7 +295,7 @@ def dataset_features(
         rows = session.execute(query, params).fetchall()
     except Exception:  # noqa: BLE001
         logger.exception("Failed to read analytics.entity_features")
-        raise HTTPException(status_code=503, detail="Analytics layer unavailable.")
+        raise HTTPException(status_code=503, detail="Analytics layer unavailable.") from None
 
     return [
         FeatureOut(

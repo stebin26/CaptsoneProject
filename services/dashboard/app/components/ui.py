@@ -26,6 +26,16 @@ def lede(text: str) -> html.P:
 
 
 def section(title: str, *children: Any, note: str | None = None) -> html.Div:
+    """Render a titled section with its content beneath it.
+
+    Args:
+        title: The section title.
+        *children: Content to render under the heading.
+        note: Optional subtitle shown below the title.
+
+    Returns:
+        The rendered section.
+    """
     head: list[Any] = [html.H2(title, className="section-title")]
     if note:
         head.append(html.P(note, className="page-subtitle"))
@@ -33,18 +43,34 @@ def section(title: str, *children: Any, note: str | None = None) -> html.Div:
 
 
 def card(*children: Any, className: str = "") -> html.Div:
+    """Wrap content in a card container.
+
+    Returns:
+        The rendered card.
+    """
     return html.Div(list(children), className=f"card {className}".strip())
 
 
 def grid(*children: Any, cols: int = 2) -> html.Div:
+    """Arrange content in a fixed-column grid.
+
+    Returns:
+        The rendered grid.
+    """
     return html.Div(list(children), className=f"grid grid-{cols}")
 
 
 def rule() -> html.Hr:
+    """Render a horizontal rule.
+
+    Returns:
+        The rendered rule.
+    """
     return html.Hr(className="rule")
 
 
 # ---------- KPI ----------
+
 
 def kpi(label: str, value: Any, note: str = "", tone: str = "") -> html.Div:
     """One number, one label, one line of context. Tone colours the number only."""
@@ -64,6 +90,7 @@ def kpi(label: str, value: Any, note: str = "", tone: str = "") -> html.Div:
 
 # ---------- Domain ----------
 
+
 def domain_chip(domain: str, present: bool = True, suffix: str = "") -> html.Span:
     """A domain chip. Absent domains are shown, not hidden.
 
@@ -82,6 +109,14 @@ def domain_chip(domain: str, present: bool = True, suffix: str = "") -> html.Spa
 
 
 def domain_tile(domain: str) -> html.Span:
+    """Render a labelled tile for one domain.
+
+    Args:
+        domain: The domain to render.
+
+    Returns:
+        The rendered tile.
+    """
     return html.Span(
         domain_label(domain)[0],
         className=f"domain-tile d-{domain.lower()}",
@@ -89,6 +124,7 @@ def domain_tile(domain: str) -> html.Span:
 
 
 # ---------- Badges ----------
+
 
 def badge(level: str | None) -> html.Span:
     """A severity or risk level. Unknown levels are neutral, never red."""
@@ -118,6 +154,7 @@ def trend(value: float | None, rising_is_bad: bool = False) -> html.Span:
 
 # ---------- Table ----------
 
+
 def table(headers: list[str], rows: list[list[Any]], note: str | None = None) -> Any:
     """A table that scrolls inside its card rather than widening the page."""
     element = html.Div(
@@ -134,9 +171,20 @@ def table(headers: list[str], rows: list[list[Any]], note: str | None = None) ->
         return element
     return html.Div([element, html.P(note, className="table-note")])
 
+
 # ---------- Form ----------
 
+
 def field(label: str, control: Any) -> html.Div:
+    """Render a labelled form field around a control.
+
+    Args:
+        label: The field label.
+        control: The input control to wrap.
+
+    Returns:
+        The rendered field.
+    """
     return html.Div(
         [html.Label(label, className="label"), control],
         style={"marginBottom": "1rem"},
@@ -144,6 +192,16 @@ def field(label: str, control: Any) -> html.Div:
 
 
 def text_input(component_id: str, placeholder: str = "", value: str = "") -> dcc.Input:
+    """Render a text input.
+
+    Args:
+        component_id: Id the callbacks will reference.
+        placeholder: Placeholder text.
+        value: Initial value.
+
+    Returns:
+        The rendered input.
+    """
     return dcc.Input(
         id=component_id,
         type="text",
@@ -159,6 +217,17 @@ def button(
     variant: str = "primary",
     small: bool = False,
 ) -> html.Button:
+    """Render a button.
+
+    Args:
+        label: The button text.
+        component_id: Id the callbacks will reference.
+        variant: Visual variant to apply.
+        small: Render at the smaller size.
+
+    Returns:
+        The rendered button.
+    """
     classes = f"btn btn-{variant}"
     if small:
         classes += " btn-sm"
@@ -166,6 +235,7 @@ def button(
 
 
 # ---------- Chart ----------
+
 
 def chart(figure: Any, title: str | None = None) -> html.Div:
     """A chart in a card. The card owns the chrome; the figure owns the data."""
@@ -186,7 +256,21 @@ _GRAPH_CONFIG = {
 
 # Re-exported so callbacks can format numbers without a second import.
 __all__ = [
-    "page", "lede", "section", "card", "grid", "rule",
-    "kpi", "domain_chip", "domain_tile", "badge", "trend",
-    "table", "field", "text_input", "button", "chart", "fmt",
+    "page",
+    "lede",
+    "section",
+    "card",
+    "grid",
+    "rule",
+    "kpi",
+    "domain_chip",
+    "domain_tile",
+    "badge",
+    "trend",
+    "table",
+    "field",
+    "text_input",
+    "button",
+    "chart",
+    "fmt",
 ]

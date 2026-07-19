@@ -32,6 +32,15 @@ ROLE_OPTIONS: list[dict[str, str]] = [
     State(ids.ACCESS_TOKEN, "data"),
 )
 def render_columns(store: dict[str, Any] | None, token: str | None) -> tuple[Any, Any]:
+    """Render one review row per column from the stored suggestions.
+
+    Args:
+        store: The onboarding store holding the suggestions.
+        token: Caller's access token.
+
+    Returns:
+        The rendered mapping review rows.
+    """
     if not store or "suggestions" not in store:
         return feedback.empty(
             "No dataset in progress. Upload a file to start, or open an "
@@ -48,9 +57,7 @@ def render_columns(store: dict[str, Any] | None, token: str | None) -> tuple[Any
     )
 
     options = _domain_options(token)
-    return header, html.Div(
-        [_column_row(s, options) for s in store["suggestions"]]
-    )
+    return header, html.Div([_column_row(s, options) for s in store["suggestions"]])
 
 
 @callback(
@@ -75,13 +82,27 @@ def handle_confirm(
     metrics: list[str | None],
     token: str | None,
 ) -> tuple[Any, Any, Any]:
+    """Submit the confirmed mapping and load the dataset into the hub.
+
+    Args:
+        n_clicks: Confirm button clicks.
+        store: The onboarding store holding the dataset and file path.
+        roles: Chosen role for each column.
+        role_ids: Component ids identifying those selectors.
+        domains: Chosen domain for each column.
+        metrics: Entered metric name for each column.
+        token: Caller's access token.
+
+    Returns:
+        The result message, updated store, and redirect target.
+    """
     hold = (dash.no_update, dash.no_update, dash.no_update)
 
     if not n_clicks or not store:
         return hold
 
     columns: list[dict[str, Any]] = []
-    for role, role_id, domain, metric in zip(roles, role_ids, domains, metrics):
+    for role, role_id, domain, metric in zip(roles, role_ids, domains, metrics, strict=False):
         entry: dict[str, Any] = {"column_name": role_id["column"], "role": role}
         if role != "skip":
             entry["domain"] = domain
@@ -125,16 +146,21 @@ def handle_confirm(
         ), *hold[1:]
 
     updated = {**store, "config_version": result.get("config_version")}
-    return feedback.success(
-        f"Loaded {result['hub_rows_written']:,} rows into the hub. "
-        f"{result['features_collected']} columns collected, "
-        f"{result['features_skipped']} skipped. Opening review\u2026"
-    ), updated, "/review"
+    return (
+        feedback.success(
+            f"Loaded {result['hub_rows_written']:,} rows into the hub. "
+            f"{result['features_collected']} columns collected, "
+            f"{result['features_skipped']} skipped. Opening review\u2026"
+        ),
+        updated,
+        "/review",
+    )
 
 
 # ============================================================
 # Render helpers
 # ============================================================
+
 
 def _domain_options(token: str | None = None) -> list[dict[str, str]]:
     """Domains come from the API, not a hardcoded list -- the hub is the truth."""

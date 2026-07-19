@@ -11,7 +11,6 @@ import os
 
 from dash import Dash, html, page_container
 
-from app import ids
 from app.components import shell
 
 # Registers the Plotly template and makes it the default, which restyles every

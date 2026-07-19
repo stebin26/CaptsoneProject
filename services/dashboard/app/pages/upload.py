@@ -15,7 +15,15 @@ from app.components.nav import BY_HREF
 
 dash.register_page(__name__, path="/upload", name="Upload")
 
+
 def layout() -> html.Div:
+    """Build the Upload page.
+
+    Where a business uploads a CSV and onboarding begins.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         ui.lede(BY_HREF["/upload"].subtitle),
         ui.card(

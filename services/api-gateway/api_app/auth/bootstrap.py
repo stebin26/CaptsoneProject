@@ -1,20 +1,40 @@
 # services/api-gateway/api_app/auth/bootstrap.py
-# One-off: create (or promote) an Admin user. Breaks the admin chicken-and-egg.
-#   docker compose exec api python -m api_app.auth.bootstrap \
-#       --email admin@ops.local --password "ChangeMe123" --name "Platform Admin"
+"""One-off CLI to create or promote an Admin user.
+
+Breaks the admin chicken-and-egg problem: the first Admin cannot be created
+through the permission-guarded register endpoint, so this script seeds one
+directly against the database.
+
+Example:
+    docker compose exec api python -m api_app.auth.bootstrap
+    --email admin@ops.local --password "ChangeMe123" --name "Platform Admin"
+"""
 
 from __future__ import annotations
 
 import argparse
 import sys
 
+from ops_common.db import session_scope
 from sqlalchemy import text
 
-from ops_common.db import session_scope
 from api_app.auth.passwords import hash_password
 
 
 def create_admin(email: str, password: str, full_name: str | None) -> None:
+    """Create a new Admin user, or promote an existing user to Admin.
+
+    If the email already exists, the account is reset to a known-good state
+    (password reset, marked active, provider set to local) and guaranteed the
+    Admin role. Otherwise a new local user is created and granted Admin. Exits
+    the process with a message if the password is rejected or the Admin role is
+    missing from the schema.
+
+    Args:
+        email: Email address of the admin user to create or promote.
+        password: Plaintext password to set (subject to the hashing policy).
+        full_name: Optional display name for a newly created user.
+    """
     try:
         pw_hash = hash_password(password)
     except ValueError as exc:
@@ -75,6 +95,7 @@ def create_admin(email: str, password: str, full_name: str | None) -> None:
 
 
 def main() -> None:
+    """Parse CLI arguments and run the admin create-or-promote flow."""
     parser = argparse.ArgumentParser(description="Create or promote an Admin user.")
     parser.add_argument("--email", required=True)
     parser.add_argument("--password", required=True)

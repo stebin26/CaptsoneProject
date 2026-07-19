@@ -36,10 +36,27 @@ def load_review(
     store: dict[str, Any] | None,
     token: str | None,
 ) -> tuple[Any, Any, Any, Any, Any]:
+    """Load and render the collected, skipped, and coverage breakdown.
+
+    Args:
+        _init: Interval tick that triggers the initial load.
+        _refresh: Refresh token bumped after a feature is added.
+        store: The shared review store holding the dataset id.
+        token: Caller's access token.
+
+    Returns:
+        The rendered review, or a message when unavailable.
+    """
     if not store or "dataset_id" not in store:
-        return feedback.empty(
-            "No dataset selected. Upload a file, or open one from Datasets."
-        ), "", "", "", ""
+        return (
+            feedback.empty(
+                "No dataset selected. Upload a file, or open one from Datasets."
+            ),
+            "",
+            "",
+            "",
+            "",
+        )
 
     dataset_id = store["dataset_id"]
 
@@ -80,6 +97,20 @@ def handle_add(
     refresh_token: int | None,
     token: str | None,
 ) -> tuple[Any, Any]:
+    """Add the chosen skipped column as a new feature.
+
+    Args:
+        n_clicks_list: Click counts for each add button.
+        domains: Selected domain for each skipped column.
+        domain_ids: Component ids identifying those selectors.
+        metrics: Entered metric name for each skipped column.
+        store: The shared review store holding the dataset id.
+        refresh_token: Refresh counter bumped to reload the review.
+        token: Caller's access token.
+
+    Returns:
+        The result message and the bumped refresh counter.
+    """
     hold = (dash.no_update, dash.no_update)
 
     if not store or not any(n_clicks_list):
@@ -90,9 +121,7 @@ def handle_add(
         return hold
 
     column = triggered["column"]
-    index = next(
-        (i for i, d in enumerate(domain_ids) if d["column"] == column), None
-    )
+    index = next((i for i, d in enumerate(domain_ids) if d["column"] == column), None)
     if index is None:
         return hold
 
@@ -130,6 +159,7 @@ def handle_add(
 # ============================================================
 # Render helpers
 # ============================================================
+
 
 def _header(review: dict[str, Any]) -> html.Div:
     return ui.card(
@@ -263,7 +293,9 @@ def _missed(missed: list[dict[str, Any]]) -> Any:
     return html.Div(cards)
 
 
-def _data_charts(dataset_id: int, coverage: list[dict[str, Any]], token: str | None = None) -> Any:
+def _data_charts(
+    dataset_id: int, coverage: list[dict[str, Any]], token: str | None = None
+) -> Any:
     if not any(c["features_collected"] > 0 for c in coverage):
         return feedback.empty("No hub data to chart yet.")
 

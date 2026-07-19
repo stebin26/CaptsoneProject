@@ -1,3 +1,10 @@
+"""Chunking -- splits extracted text into overlapping chunks for embedding.
+
+Second stage of the RAG ingest pipeline. Chunks overlap so a fact that straddles
+a boundary is still fully present in at least one chunk, and boundaries are
+placed at sentence and paragraph breaks so a chunk rarely ends mid-thought.
+Size and overlap come from configuration rather than being hardcoded here.
+"""
 # Chunking — splits extracted text into overlapping chunks for embedding.
 # Second stage of the RAG ingest pipeline; reads size/overlap from config.
 
@@ -5,12 +12,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ops_common.config import settings
 from extractor import ExtractedDocument  # noqa: F811
+from ops_common.config import settings
 
 
 @dataclass
 class Chunk:
+    """One embeddable slice of a document, with its position and page."""
     chunk_index: int
     content: str
     page_number: int | None

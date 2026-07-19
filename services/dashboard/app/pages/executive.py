@@ -17,7 +17,16 @@ from app.components import ui
 
 dash.register_page(__name__, path="/", name="Executive")
 
+
 def layout() -> html.Div:
+    """Build the Executive Dashboard page.
+
+    The operation at a glance: risk index, domain health, top risks, open alerts,
+    forecasts, and insights.
+
+    Returns:
+        The page layout.
+    """
     return ui.page(
         html.H1("How the operation is doing", className="page-title"),
         ui.lede(
@@ -25,7 +34,6 @@ def layout() -> html.Div:
             "coming next. Assembled from analytics and the ML layer in a single "
             "call, with no model in the path, so this screen is fast by design."
         ),
-
         ui.field(
             "Dataset",
             dcc.Dropdown(
@@ -36,9 +44,7 @@ def layout() -> html.Div:
             ),
         ),
         dcc.Interval(id=ids.EXEC_INIT, interval=300, max_intervals=1),
-
         html.Div(id=ids.EXEC_ERROR),
-
         # KPI row -- four headline numbers.
         ui.grid(
             html.Div(id=ids.EXEC_KPI_RISK),
@@ -47,17 +53,15 @@ def layout() -> html.Div:
             html.Div(id=ids.EXEC_KPI_FRESHNESS),
             cols=4,
         ),
-
         ui.section(
             "Domain health",
             html.Div(id=ids.EXEC_DOMAIN_HEALTH),
             note=(
                 "All eight domains, always. An absent one is shown, not hidden "
-                "\u2014 an empty slot is what makes a later \"no data for that\" "
+                '\u2014 an empty slot is what makes a later "no data for that" '
                 "explainable."
             ),
         ),
-
         ui.grid(
             ui.section(
                 "Top risks",
@@ -71,13 +75,11 @@ def layout() -> html.Div:
             ),
             cols=2,
         ),
-
         ui.section(
             "What is coming next",
             html.Div(id=ids.EXEC_FORECASTS),
             note="Recent history, then the projected next value inside its confidence band.",
         ),
-
         ui.section(
             "Cross-domain insights",
             html.Div(id=ids.EXEC_INSIGHTS),
