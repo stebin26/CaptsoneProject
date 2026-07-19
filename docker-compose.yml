@@ -78,6 +78,7 @@ services:
       # edited without an image rebuild. Final image bakes these in via COPY.
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
+      - ./tests:/app/tests
     networks:
       - ops_net
     healthcheck:
@@ -176,6 +177,7 @@ services:
       - ./services/analytics-spark/jobs:/opt/spark/jobs
       - ./services/orchestration/jars/postgresql-42.7.4.jar:/opt/spark/jars/postgresql-42.7.4.jar
       - ./services/ml/jobs:/opt/ml/jobs 
+      
     entrypoint: /bin/bash
     command:
       - -c
