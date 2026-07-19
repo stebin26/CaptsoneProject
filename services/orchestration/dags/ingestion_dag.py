@@ -6,11 +6,16 @@ unattended counterpart to the dashboard's interactive upload flow.
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timedelta
 
 import pendulum
 from airflow.sdk import dag, task
+
+# Airflow captures the standard logging module into each task's log, which is
+# the only place an unattended run can be inspected after the fact.
+logger = logging.getLogger(__name__)
 
 DEFAULT_ARGS = {
     "owner": "ops-platform",
@@ -39,15 +44,39 @@ def ingestion_pipeline():
     @task
     def discover_files() -> list[str]:
         if not os.path.isdir(UPLOAD_DIR):
+            logger.warning(
+                "Upload directory %s does not exist; nothing to ingest",
+                UPLOAD_DIR,
+                extra={"upload_dir": UPLOAD_DIR},
+            )
             return []
+
+        try:
+            names = sorted(os.listdir(UPLOAD_DIR))
+        except OSError:
+            # A permission or mount problem would otherwise look identical to an
+            # empty directory, and the DAG would quietly do nothing every run.
+            logger.exception(
+                "Could not list the upload directory %s",
+                UPLOAD_DIR,
+                extra={"upload_dir": UPLOAD_DIR},
+            )
+            raise
+
         found: list[str] = []
-        for name in sorted(os.listdir(UPLOAD_DIR)):
+        for name in names:
             path = os.path.join(UPLOAD_DIR, name)
             if not os.path.isfile(path):
                 continue
             if not name.lower().endswith(SUPPORTED_SUFFIXES):
                 continue
             found.append(path)
+
+        logger.info(
+            "Discovered %d CSV file(s) to ingest",
+            len(found),
+            extra={"upload_dir": UPLOAD_DIR, "file_count": len(found)},
+        )
         return found
 
     @task
@@ -56,22 +85,54 @@ def ingestion_pipeline():
         from ops_common.db import session_scope
 
         business_name = _derive_business_name(path)
+        logger.info(
+            "Onboarding %s as business %r",
+            os.path.basename(path),
+            business_name,
+            extra={"source_file": os.path.basename(path), "business": business_name},
+        )
 
-        with session_scope() as session:
-            start = start_onboarding(
-                session=session,
-                csv_path=path,
-                business_name=business_name,
+        try:
+            with session_scope() as session:
+                start = start_onboarding(
+                    session=session,
+                    csv_path=path,
+                    business_name=business_name,
+                )
+
+                confirmed = _auto_confirm(start.suggestions)
+
+                result = complete_onboarding(
+                    session=session,
+                    dataset_id=start.dataset_id,
+                    csv_path=path,
+                    confirmed=confirmed,
+                )
+        except Exception:
+            # This task is mapped over every discovered file, so one bad CSV
+            # fails only its own instance. Naming the file is what makes that
+            # failure actionable in the Airflow UI.
+            logger.exception(
+                "Onboarding failed for %s",
+                os.path.basename(path),
+                extra={
+                    "source_file": os.path.basename(path),
+                    "business": business_name,
+                },
             )
+            raise
 
-            confirmed = _auto_confirm(start.suggestions)
-
-            result = complete_onboarding(
-                session=session,
-                dataset_id=start.dataset_id,
-                csv_path=path,
-                confirmed=confirmed,
-            )
+        logger.info(
+            "Onboarded %s: %d hub rows, %d features collected",
+            os.path.basename(path),
+            result.hub_rows_written,
+            result.features_collected,
+            extra={
+                "source_file": os.path.basename(path),
+                "dataset_id": start.dataset_id,
+                "hub_rows_written": result.hub_rows_written,
+            },
+        )
 
         return {
             "file": os.path.basename(path),
@@ -100,21 +161,43 @@ def ingestion_pipeline():
             else:
                 report["archived_to"] = None
                 report["archive_note"] = "source not found"
-        except Exception as exc:
+        except OSError as exc:
+            # Archiving is housekeeping, so a failure must not fail the run --
+            # but an un-archived file is re-ingested on the next schedule, so
+            # this is recorded rather than swallowed.
+            logger.warning(
+                "Could not archive %s; it will be picked up again next run",
+                report.get("file"),
+                extra={"source_file": report.get("file")},
+                exc_info=True,
+            )
             report["archived_to"] = None
             report["archive_note"] = f"archive skipped: {exc}"
         return report
 
     @task
     def summarize(reports: list[dict]) -> dict:
-        total_rows = sum((r.get("hub_rows_written") or 0) for r in reports)
-        total_collected = sum((r.get("features_collected") or 0) for r in reports)
-        return {
-            "files_processed": len(reports),
+        # Upstream runs with trigger_rule="all_done", so a failed ingest can send
+        # a partial or empty report through. Reading defensively keeps the run
+        # summary available instead of failing on the last task.
+        usable = [r for r in reports if isinstance(r, dict)]
+        total_rows = sum((r.get("hub_rows_written") or 0) for r in usable)
+        total_collected = sum((r.get("features_collected") or 0) for r in usable)
+        businesses = sorted({r["business"] for r in usable if r.get("business")})
+
+        summary = {
+            "files_processed": len(usable),
             "total_hub_rows_written": total_rows,
             "total_features_collected": total_collected,
-            "businesses": sorted({r["business"] for r in reports}),
+            "businesses": businesses,
         }
+        logger.info(
+            "Ingestion run complete: %d file(s), %d hub rows",
+            len(usable),
+            total_rows,
+            extra=summary,
+        )
+        return summary
 
     files = discover_files()
     reports = ingest_file.expand(path=files)
@@ -130,8 +213,20 @@ def _derive_business_name(path: str) -> str:
 
 def _auto_confirm(suggestions: list[dict]) -> list[dict]:
     confirmed: list[dict] = []
-    for s in suggestions:
-        column = s["column_name"]
+    for index, s in enumerate(suggestions):
+        try:
+            column = s["column_name"]
+        except (KeyError, TypeError):
+            # A suggestion without a column name cannot be mapped to anything;
+            # it is dropped so one malformed entry does not fail the whole file.
+            logger.warning(
+                "Skipping suggestion %d with no column_name: %r",
+                index,
+                s,
+                extra={"suggestion_index": index},
+            )
+            continue
+
         domain = s.get("suggested_domain")
         role = s.get("role", "skip")
 

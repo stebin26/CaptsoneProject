@@ -8,6 +8,9 @@ from dash import Input, Output, State, callback, clientside_callback, html
 from app import feedback, ids
 from app.api_client import APIError, auth_me
 from app.api_client import login as api_login
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 _PUBLIC_PATHS = frozenset({"/login"})
 
@@ -44,6 +47,7 @@ def handle_login(n_clicks, n_submit, email, password):
     try:
         tokens = api_login(email, password)
     except APIError as exc:
+        logger.warning("Callback auth.handle_login failed", exc_info=True)
         return no, no, no, feedback.error(str(exc))
 
     access = tokens["access_token"]
@@ -52,6 +56,7 @@ def handle_login(n_clicks, n_submit, email, password):
     try:
         user = auth_me(access)
     except APIError as exc:
+        logger.warning("Callback auth.handle_login failed", exc_info=True)
         return no, no, no, feedback.error(f"Loaded tokens, profile failed: {exc}")
 
     return access, refresh, user, ""

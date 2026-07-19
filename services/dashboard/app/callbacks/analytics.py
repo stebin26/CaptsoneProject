@@ -17,7 +17,10 @@ from app.api_client import (
 from app.charts import domain_charts
 from app.components import ui
 from app.constants import DOMAIN_ORDER
+from app.logging_setup import get_logger
 from app.utils import fmt, group_by_domain
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -41,6 +44,7 @@ def populate_datasets(
     try:
         datasets = list_datasets(token=token)
     except APIError:
+        logger.warning("Callback analytics.populate_datasets failed", exc_info=True)
         return [], None
 
     options = [
@@ -76,6 +80,7 @@ def load_metrics(
     try:
         metrics = analytics_metrics(dataset_id, token=token)
     except APIError as exc:
+        logger.warning("Callback analytics.load_metrics failed", exc_info=True)
         return feedback.error(f"Could not load analytics: {exc}"), "", [], None
 
     if not metrics:
@@ -134,6 +139,7 @@ def load_trend(
             dataset_id, domain=domain, metric_name=metric_name, token=token
         )
     except APIError as exc:
+        logger.warning("Callback analytics.load_trend failed", exc_info=True)
         return feedback.error(f"Could not load the trend: {exc}")
 
     if not points:
@@ -166,6 +172,7 @@ def load_features(dataset_id: int | None, token: str | None) -> Any:
     try:
         features = analytics_features(dataset_id, limit=50, token=token)
     except APIError as exc:
+        logger.warning("Callback analytics.load_features failed", exc_info=True)
         return feedback.error(f"Could not load features: {exc}")
 
     if not features:
@@ -223,6 +230,7 @@ def load_domain_dashboard(dataset_id: int | None, token: str | None) -> tuple[An
     try:
         features = analytics_features(dataset_id, limit=500, token=token)
     except APIError as exc:
+        logger.warning("Callback analytics.load_domain_dashboard failed", exc_info=True)
         return feedback.error(f"Could not load domain data: {exc}"), ""
 
     if not features:

@@ -22,6 +22,9 @@ from app.api_client import (
     rag_upload,
 )
 from app.components import ui
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 _ACTIVE_STATUSES = ("pending", "processing")
 
@@ -54,6 +57,7 @@ def populate_datasets(
     try:
         datasets = list_datasets(token=token)
     except APIError:
+        logger.warning("Callback documents.populate_datasets failed", exc_info=True)
         return [], None
 
     options = [
@@ -107,6 +111,7 @@ def handle_upload(
             _header, _, payload = content.partition(",")
             files.append((name, base64.b64decode(payload)))
         except Exception:  # noqa: BLE001
+            logger.warning("Callback documents.handle_upload failed", exc_info=True)
             continue
 
     if not files:
@@ -115,6 +120,7 @@ def handle_upload(
     try:
         response = rag_upload(dataset_id, files, token=token)
     except APIError as exc:
+        logger.warning("Callback documents.handle_upload failed", exc_info=True)
         return feedback.error(f"Upload failed: {exc}"), *hold[1:]
 
     accepted = response.get("accepted", [])
@@ -203,6 +209,7 @@ def ask(
     try:
         response = rag_query(dataset_id, question.strip(), token=token)
     except APIError as exc:
+        logger.warning("Callback documents.ask failed", exc_info=True)
         return feedback.error(f"Could not answer that: {exc}")
 
     return _render_answer(response)
@@ -218,6 +225,7 @@ def _fetch(dataset_id: int, token: str | None = None) -> list[dict[str, Any]] | 
     try:
         return rag_documents(dataset_id, token=token)
     except APIError as exc:
+        logger.warning("Callback documents._fetch failed", exc_info=True)
         return f"Could not load documents: {exc}"
 
 

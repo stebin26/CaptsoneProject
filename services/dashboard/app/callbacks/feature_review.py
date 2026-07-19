@@ -17,6 +17,9 @@ from app.api_client import APIError, add_feature, dataset_summary, feature_revie
 from app.charts import review_charts
 from app.components import ui
 from app.constants import DOMAIN_ORDER, domain_label
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -63,6 +66,7 @@ def load_review(
     try:
         review = feature_review(dataset_id, token=token)
     except APIError as exc:
+        logger.warning("Callback feature_review.load_review failed", exc_info=True)
         return feedback.error(f"Could not load review: {exc}"), "", "", "", ""
 
     coverage = review.get("coverage", [])
@@ -146,6 +150,7 @@ def handle_add(
             token=token,
         )
     except APIError as exc:
+        logger.warning("Callback feature_review.handle_add failed", exc_info=True)
         return feedback.error(f"Could not add '{column}': {exc}"), dash.no_update
 
     # Bumping the token re-fires load_review, so the column moves from skipped
@@ -302,6 +307,7 @@ def _data_charts(
     try:
         summary = dataset_summary(dataset_id, token=token)
     except APIError:
+        logger.warning("Callback feature_review._data_charts failed", exc_info=True)
         return feedback.empty(
             "Hub charts unavailable \u2014 the analytics layer has not run for "
             "this dataset yet."

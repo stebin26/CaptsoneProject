@@ -10,6 +10,9 @@ from dash import Input, Output, State, callback, html
 
 from app import feedback, ids
 from app.api_client import APIError, start_onboarding
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -76,6 +79,7 @@ def handle_upload(
     try:
         file_bytes = _decode_upload(contents)
     except Exception:  # noqa: BLE001
+        logger.warning("Callback upload.handle_upload failed", exc_info=True)
         return feedback.error("Could not read the uploaded file."), *hold[1:]
 
     try:
@@ -87,6 +91,7 @@ def handle_upload(
             token=token,
         )
     except APIError as exc:
+        logger.warning("Callback upload.handle_upload failed", exc_info=True)
         return feedback.error(f"Onboarding failed: {exc}"), *hold[1:]
 
     store_data = {

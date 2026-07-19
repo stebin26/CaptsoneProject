@@ -15,6 +15,9 @@ from dash import Input, Output, State, callback, ctx, html
 from app import feedback, ids
 from app.api_client import APIError, list_datasets
 from app.components import ui
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -35,6 +38,7 @@ def load_datasets(_init: int | None, token: str | None) -> Any:
     try:
         datasets = list_datasets(token=token)
     except APIError as exc:
+        logger.warning("Callback datasets.load_datasets failed", exc_info=True)
         return feedback.error(f"Could not load datasets: {exc}")
 
     if not datasets:

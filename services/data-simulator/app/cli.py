@@ -86,7 +86,13 @@ def _cmd_generate_all(args: argparse.Namespace) -> int:
 def _cmd_seed(args: argparse.Namespace) -> int:
     config = GeneratorConfig(days=args.days, seed=args.seed)
     out_dir = settings.upload_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.exception(
+            "Could not create the upload directory", extra={"out_dir": str(out_dir)}
+        )
+        raise OSError(f"Upload directory could not be created: {out_dir}") from exc
 
     written: list[Path] = []
     for industry in sorted(INDUSTRY_SPECS.keys()):

@@ -24,7 +24,10 @@ from app.api_client import (
 from app.charts import prediction_charts as pc
 from app.components import ui
 from app.constants import DOMAIN_ORDER
+from app.logging_setup import get_logger
 from app.utils import fmt, group
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -48,6 +51,7 @@ def populate_datasets(
     try:
         datasets = list_datasets(token=token)
     except APIError:
+        logger.warning("Callback predictions.populate_datasets failed", exc_info=True)
         return [], None
 
     options = [
@@ -82,6 +86,7 @@ def load_predictions(dataset_id: int | None, token: str | None) -> tuple[Any, An
         anomalies = ml_anomalies(dataset_id, limit=2000, token=token)
         risks = ml_risk_scores(dataset_id, token=token)
     except APIError as exc:
+        logger.warning("Callback predictions.load_predictions failed", exc_info=True)
         return feedback.error(f"Could not load ML results: {exc}"), "", ""
 
     # Analytics metrics are supporting context, not the point of this page.
@@ -89,6 +94,7 @@ def load_predictions(dataset_id: int | None, token: str | None) -> tuple[Any, An
     try:
         metrics = analytics_metrics(dataset_id, token=token)
     except APIError:
+        logger.warning("Callback predictions.load_predictions failed", exc_info=True)
         metrics = []
 
     if not forecasts and not anomalies and not risks:

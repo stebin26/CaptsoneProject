@@ -13,6 +13,7 @@ full batch is recomputed.
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from datetime import datetime, timedelta
@@ -25,6 +26,10 @@ from airflow.operators.python import PythonOperator
 ML_JOBS_PATH = os.getenv("OPS_ML_JOBS_PATH", "/opt/ml/jobs")
 if ML_JOBS_PATH not in sys.path:
     sys.path.insert(0, ML_JOBS_PATH)
+
+# Airflow captures the standard logging module into each task's log; the jobs
+# themselves log through the same mechanism, so both appear together.
+logger = logging.getLogger(__name__)
 
 
 # Resolves the dataset_id from the trigger conf; empty/absent means full batch.
@@ -45,9 +50,44 @@ def _run_job(module_name: str, **context) -> int:
     # Imported inside the task so a syntax error in one job can't break DAG parsing.
     import importlib
 
-    module = importlib.import_module(module_name)
-    importlib.reload(module)
-    return module.run()
+    logger.info(
+        "Running ML job %s (scope=%s)",
+        module_name,
+        dataset_id or "all datasets",
+        extra={"job": module_name, "dataset_id": dataset_id or None},
+    )
+
+    try:
+        module = importlib.import_module(module_name)
+        importlib.reload(module)
+    except Exception:
+        # The jobs are mounted from the host, so an import failure normally
+        # means the volume is missing rather than the code being wrong.
+        logger.exception(
+            "Could not import ML job %s from %s",
+            module_name,
+            ML_JOBS_PATH,
+            extra={"job": module_name, "jobs_path": ML_JOBS_PATH},
+        )
+        raise
+
+    try:
+        written = module.run()
+    except Exception:
+        logger.exception(
+            "ML job %s failed",
+            module_name,
+            extra={"job": module_name, "dataset_id": dataset_id or None},
+        )
+        raise
+
+    logger.info(
+        "ML job %s wrote %s row(s)",
+        module_name,
+        written,
+        extra={"job": module_name, "rows_written": written},
+    )
+    return written
 
 
 default_args = {

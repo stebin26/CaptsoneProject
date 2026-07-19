@@ -17,6 +17,9 @@ from dash import Input, Output, State, callback, dcc, html, no_update
 from app import feedback, ids
 from app.api_client import APIError, agent_ask, agent_health, list_datasets
 from app.constants import SUGGESTED_PROMPTS
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 @callback(
@@ -35,6 +38,7 @@ def init_page(_init: int | None, token: str | None) -> tuple[Any, list[dict[str,
             for d in list_datasets(token=token)
         ]
     except APIError:
+        logger.warning("Callback copilot.init_page failed", exc_info=True)
         options = []
 
     return status, options
@@ -143,6 +147,7 @@ def run_agent_call(
     except APIError as exc:
         # A failed agent call is shown as a turn, not swallowed. The user must
         # see that the question was received and that it failed.
+        logger.warning("Callback copilot.run_agent_call failed", exc_info=True)
         turn = {
             "role": "assistant",
             "content": (
@@ -169,6 +174,7 @@ def _render_status(token: str | None = None) -> Any:
     try:
         health = agent_health(token=token)
     except APIError as exc:
+        logger.warning("Callback copilot._render_status failed", exc_info=True)
         return feedback.error(f"The copilot is unavailable: {exc}")
 
     if not health.get("llm_reachable"):

@@ -365,11 +365,33 @@ def generate_to_csv(
 
     Returns:
         Path to the written CSV.
+
+    Raises:
+        ValueError: If the industry is not one of the supported keys.
+        OSError: If the output directory or file cannot be written.
     """
     out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        # The output directory is usually a mounted volume, so this is a
+        # permission or mount problem rather than a bug in the generator.
+        logger.exception(
+            "Could not create the output directory", extra={"out_dir": str(out_dir)}
+        )
+        raise OSError(f"Output directory could not be created: {out_dir}") from exc
+
     df = generate(industry, config)
     out_path = out_dir / f"{industry}_sample.csv"
-    df.to_csv(out_path, index=False)
+
+    try:
+        df.to_csv(out_path, index=False)
+    except OSError as exc:
+        logger.exception(
+            "Could not write the sample CSV",
+            extra={"industry": industry, "out_path": str(out_path)},
+        )
+        raise OSError(f"Sample CSV could not be written: {out_path}") from exc
+
     logger.info("Wrote sample CSV", extra={"industry": industry, "path": str(out_path)})
     return out_path

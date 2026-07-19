@@ -16,6 +16,13 @@ from app.components import shell
 # Registers the Plotly template and makes it the default, which restyles every
 # chart in the app without touching a single figure builder.
 from app.design import plotly_theme  # noqa: F401
+from app.logging_setup import configure_logging, get_logger
+
+# Configured before anything else so every module-level logger in the app,
+# including the ones inside the callback package imported at the bottom of this
+# file, writes through the same handler.
+configure_logging()
+logger = get_logger(__name__)
 
 app = Dash(
     __name__,
@@ -46,8 +53,21 @@ app.layout = html.Div(
 
 if __name__ == "__main__":
     host = os.environ.get("OPS_DASH_HOST", "0.0.0.0")
-    port = int(os.environ.get("OPS_DASH_PORT", "8050"))
+    raw_port = os.environ.get("OPS_DASH_PORT", "8050")
+    try:
+        port = int(raw_port)
+    except ValueError:
+        # A typo in one variable should not stop the dashboard from serving on
+        # the documented default port.
+        logger.warning(
+            "Invalid OPS_DASH_PORT %r — falling back to 8050",
+            raw_port,
+            extra={"env_value": raw_port},
+        )
+        port = 8050
+
     debug = os.environ.get("OPS_ENVIRONMENT", "development") == "development"
+    logger.info("Starting dashboard on %s:%d", host, port)
     app.run(host=host, port=port, debug=debug)
 
 

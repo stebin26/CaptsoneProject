@@ -13,6 +13,10 @@ from typing import Any
 
 import requests
 
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
+
 API_BASE_URL = os.environ.get("OPS_API_BASE_URL", "http://api:8000/api/v1")
 _TIMEOUT = (5, 60)  # (connect, read) seconds
 
@@ -44,12 +48,34 @@ def _handle(response: requests.Response) -> Any:
     try:
         payload = response.json()
     except ValueError:
+        # A non-JSON body from a proxy or an error page is not fatal on its own;
+        # the status code below still decides whether this is a failure.
         payload = None
+        if response.ok:
+            logger.warning(
+                "Backend returned a non-JSON body for %s",
+                response.url,
+                extra={"endpoint": response.url, "status_code": response.status_code},
+            )
 
     if not response.ok:
         detail = None
         if isinstance(payload, dict):
             detail = payload.get("detail")
+        # Logged here, in the one place every response passes through, so a
+        # failing endpoint is visible even when the callback shows only a
+        # friendly message to the user.
+        logger.warning(
+            "Backend call failed: %s %s -- %s",
+            response.status_code,
+            response.url,
+            detail or "no detail returned",
+            extra={
+                "endpoint": response.url,
+                "status_code": response.status_code,
+                "detail": detail,
+            },
+        )
         raise APIError(
             message=detail or f"Request failed ({response.status_code})",
             status_code=response.status_code,
@@ -80,6 +106,12 @@ def health() -> dict[str, Any]:
         resp = requests.get(_url("/../../health"), timeout=(3, 5))
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"API unreachable: {exc}") from exc
 
 
@@ -124,6 +156,12 @@ def start_onboarding(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to start onboarding: {exc}") from exc
 
 
@@ -154,6 +192,12 @@ def confirm_onboarding(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to confirm onboarding: {exc}") from exc
 
 
@@ -183,6 +227,12 @@ def feature_review(dataset_id: int, token: str | None = None) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load feature review: {exc}") from exc
 
 
@@ -220,6 +270,12 @@ def add_feature(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to add feature: {exc}") from exc
 
 
@@ -244,6 +300,12 @@ def list_domains(token: str | None = None) -> list[dict[str, Any]]:
         resp = requests.get(_url("/domains"), headers=_auth(token), timeout=_TIMEOUT)
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to list domains: {exc}") from exc
 
 
@@ -268,6 +330,12 @@ def dataset_summary(dataset_id: int, token: str | None = None) -> dict[str, Any]
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load dataset summary: {exc}") from exc
 
 
@@ -297,6 +365,12 @@ def domain_data(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load domain data: {exc}") from exc
 
 
@@ -316,6 +390,12 @@ def list_datasets(token: str | None = None) -> list[dict[str, Any]]:
         resp = requests.get(_url("/datasets"), headers=_auth(token), timeout=_TIMEOUT)
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to list datasets: {exc}") from exc
 
 
@@ -345,6 +425,12 @@ def analytics_overview(dataset_id: int, token: str | None = None) -> dict[str, A
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load analytics overview: {exc}") from exc
 
 
@@ -371,6 +457,12 @@ def analytics_metrics(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load analytics metrics: {exc}") from exc
 
 
@@ -408,6 +500,12 @@ def analytics_trend(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load analytics trend: {exc}") from exc
 
 
@@ -443,6 +541,12 @@ def analytics_features(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load analytics features: {exc}") from exc
 
 
@@ -470,6 +574,12 @@ def ml_overview(dataset_id: int, token: str | None = None) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load ML overview: {exc}") from exc
 
 
@@ -507,6 +617,12 @@ def ml_forecasts(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load forecasts: {exc}") from exc
 
 
@@ -546,6 +662,12 @@ def ml_anomalies(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load anomalies: {exc}") from exc
 
 
@@ -583,6 +705,12 @@ def ml_risk_scores(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load risk scores: {exc}") from exc
 
 
@@ -610,6 +738,12 @@ def ml_domain_intelligence(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load domain intelligence: {exc}") from exc
 
 
@@ -637,6 +771,12 @@ def intelligence(dataset_id: int, token: str | None = None) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load intelligence: {exc}") from exc
 
 
@@ -681,6 +821,12 @@ def rag_upload(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to upload documents: {exc}") from exc
 
 
@@ -703,6 +849,12 @@ def rag_documents(dataset_id: int, token: str | None = None) -> list[dict[str, A
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load documents: {exc}") from exc
 
 
@@ -735,6 +887,12 @@ def rag_query(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to query documents: {exc}") from exc
 
 
@@ -762,6 +920,12 @@ def rag_delete_document(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to delete document: {exc}") from exc
 
 
@@ -801,6 +965,12 @@ def agent_ask(
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Agent request failed: {exc}") from exc
 
 
@@ -822,6 +992,12 @@ def agent_health(token: str | None = None) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Agent health check failed: {exc}") from exc
 
 
@@ -851,6 +1027,12 @@ def executive_summary(dataset_id: int, token: str | None = None) -> dict[str, An
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load executive summary: {exc}") from exc
 
 
@@ -880,6 +1062,12 @@ def login(email: str, password: str) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Login failed: {exc}") from exc
 
 
@@ -903,6 +1091,12 @@ def auth_me(access_token: str) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Failed to load identity: {exc}") from exc
 
 
@@ -926,6 +1120,12 @@ def refresh_access(refresh_token: str) -> dict[str, Any]:
         )
         return _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Token refresh failed: {exc}") from exc
 
 
@@ -951,4 +1151,10 @@ def logout(access_token: str, refresh_token: str) -> None:
         )
         _handle(resp)
     except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
         raise APIError(f"Logout failed: {exc}") from exc

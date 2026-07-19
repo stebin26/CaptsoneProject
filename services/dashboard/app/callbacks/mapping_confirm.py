@@ -17,6 +17,9 @@ from app import feedback, ids
 from app.api_client import APIError, confirm_onboarding, list_domains
 from app.components import ui
 from app.constants import domain_label
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 ROLE_OPTIONS: list[dict[str, str]] = [
     {"label": "Metric \u2014 a measurable value", "value": "metric"},
@@ -130,6 +133,7 @@ def handle_confirm(
             token=token,
         )
     except APIError as exc:
+        logger.warning("Callback mapping_confirm.handle_confirm failed", exc_info=True)
         return feedback.error(f"Could not load into the hub: {exc}"), *hold[1:]
 
     # Zero rows written after a failed validation is a real failure, not a
@@ -170,6 +174,7 @@ def _domain_options(token: str | None = None) -> list[dict[str, str]]:
             for d in list_domains(token=token)
         ]
     except APIError:
+        logger.warning("Callback mapping_confirm._domain_options failed", exc_info=True)
         return []
 
 

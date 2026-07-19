@@ -17,7 +17,10 @@ from app.charts import domain_charts
 from app.components import ui
 from app.constants import DOMAIN_ORDER
 from app.design import tokens
+from app.logging_setup import get_logger
 from app.utils import fmt
+
+logger = get_logger(__name__)
 
 # Risk band -> the CSS tone variable the KPI number is coloured with.
 _BAND_TONE = {"high": "danger", "elevated": "warn", "low": "ok"}
@@ -44,6 +47,7 @@ def populate_datasets(
     try:
         datasets = list_datasets(token=token)
     except APIError:
+        logger.warning("Callback executive.populate_datasets failed", exc_info=True)
         return [], None
 
     options = [
@@ -86,6 +90,7 @@ def load_summary(dataset_id: int | None, token: str | None):
     try:
         s = executive_summary(dataset_id, token=token)
     except APIError as exc:
+        logger.warning("Callback executive.load_summary failed", exc_info=True)
         return (feedback.error(f"Could not load the executive summary: {exc}"), *blank)
 
     return (

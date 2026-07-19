@@ -24,6 +24,9 @@ from app import ids
 from app.api_client import APIError, list_datasets, ml_anomalies
 from app.components import sidebar
 from app.components.nav import BY_HREF
+from app.logging_setup import get_logger
+
+logger = get_logger(__name__)
 
 # ---- Collapse / mobile drawer. Clientside: no server round-trip. ----
 
@@ -134,6 +137,7 @@ def populate_datasets(
     try:
         datasets = list_datasets(token=token)
     except APIError:
+        logger.warning("Callback shell.populate_datasets failed", exc_info=True)
         return [], None
 
     options = [
@@ -231,6 +235,7 @@ def load_alerts(
     try:
         anomalies = ml_anomalies(dataset_id, limit=200, token=access)
     except APIError:
+        logger.warning("Callback shell.load_alerts failed", exc_info=True)
         return "", _panel([])
 
     if not anomalies:
