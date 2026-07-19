@@ -60,6 +60,35 @@ def test_non_numeric_dataset_id_falls_back_to_full_batch(clean_env, caplog):
     assert "not-a-number" in caplog.text
 
 
+def test_an_orchestrator_command_line_is_not_read_as_a_dataset_id(
+    clean_env, monkeypatch
+):
+    """A job imported by a worker ignores that worker's arguments.
+
+    Under Airflow the jobs are imported and run in-process, so sys.argv is the
+    Celery worker's command line. A numeric value anywhere on it -- a
+    concurrency flag, for example -- would otherwise scope the run to a dataset
+    nobody asked for.
+    """
+    monkeypatch.setattr(
+        ml_common.sys, "argv", ["airflow", "celery", "worker", "--concurrency", "16"]
+    )
+
+    assert ml_common.target_dataset_id() is None
+
+
+def test_an_orchestrator_command_line_does_not_hide_the_environment(
+    clean_env, monkeypatch
+):
+    """Ignoring the worker's arguments still leaves the configured scope intact."""
+    monkeypatch.setattr(
+        ml_common.sys, "argv", ["airflow", "celery", "worker", "--concurrency", "16"]
+    )
+    clean_env.setenv("OPS_TARGET_DATASET_ID", "7")
+
+    assert ml_common.target_dataset_id() == 7
+
+
 def test_invalid_database_port_is_rejected_by_name(clean_env):
     """A bad port names the variable to fix, not just the failed conversion."""
     clean_env.setenv("OPS_POSTGRES_PORT", "abcd")

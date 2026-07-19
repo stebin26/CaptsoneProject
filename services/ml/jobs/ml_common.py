@@ -14,8 +14,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -131,22 +133,59 @@ def db_conn():
 
 
 # Resolves which dataset to process: CLI arg > env var > None (None = full batch).
+def _own_argv() -> list[str] | None:
+    """Return the process arguments only when a job script is the entry point.
+
+    Under Airflow the jobs are imported and run in-process by the Celery worker,
+    so ``sys.argv`` belongs to the worker command line -- ``["airflow", "celery",
+    "worker"]`` -- and has nothing to do with this job. Reading it there is not
+    merely noisy: a numeric argument anywhere on the worker's command line would
+    silently scope the run to the wrong dataset.
+
+    Returns:
+        The process arguments when this was launched as ``python <job>.py``, and
+        None when the job was imported by something else.
+    """
+    main_file = getattr(sys.modules.get("__main__"), "__file__", None)
+    if not main_file:
+        # No entry-point file at all: an interactive session, ``python -c``, or
+        # an embedded interpreter. None of those pass a dataset id on argv.
+        return None
+    try:
+        entry_point = Path(main_file).resolve()
+        # is_file() matters: a placeholder such as "<stdin>" resolves against the
+        # working directory and would otherwise look like a job script.
+        launched_as_job = (
+            entry_point.is_file()
+            and entry_point.parent == Path(__file__).resolve().parent
+        )
+    except OSError:
+        return None
+    return sys.argv if launched_as_job else None
+
+
 def target_dataset_id(argv: list[str] | None = None) -> int | None:
     """Resolve which dataset to process.
 
     A command-line argument wins over the environment variable; if neither is set
-    the job runs the full batch.
+    the job runs the full batch. Command-line arguments are only consulted when
+    this process was started as a job script -- see ``_own_argv`` -- so an
+    orchestrator's own arguments can never be mistaken for a dataset id.
 
     A value that is not an integer is ignored rather than failing the job, but
     it is logged, because silently running the full batch when an incremental
     run was intended is the kind of thing that goes unnoticed for weeks.
 
     Args:
-        argv: Argument list to read; defaults to the process arguments.
+        argv: Argument list to read. Defaults to the process arguments when the
+            caller is a job script, and to nothing otherwise.
 
     Returns:
         The dataset id to scope to, or None for a full batch run.
     """
+    if argv is None:
+        argv = _own_argv()
+
     if argv:
         for a in argv[1:]:
             a = a.strip()

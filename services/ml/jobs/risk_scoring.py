@@ -13,11 +13,11 @@ recorded alongside, so any score can be explained rather than merely asserted.
 from __future__ import annotations
 
 import logging
-import sys
 import warnings
 
 import numpy as np
 import pandas as pd
+
 from ml_common import (
     announce_mode,
     bucket_level,
@@ -187,7 +187,7 @@ def run() -> int:
     Returns:
         The number of risk-score rows written.
     """
-    dataset_id = target_dataset_id(sys.argv)
+    dataset_id = target_dataset_id()
     scope = announce_mode(dataset_id)
     version = make_version("risk_scoring")
 

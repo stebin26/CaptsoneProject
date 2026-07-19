@@ -82,9 +82,9 @@ services:
     networks:
       - ops_net
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=10)\""]
+      interval: 30s
+      timeout: 20s
       retries: 5
       start_period: 150s
     restart: unless-stopped
