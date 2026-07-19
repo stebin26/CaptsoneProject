@@ -7,9 +7,33 @@ a single environment change.
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from pyspark.sql import DataFrame, SparkSession
+
+logger = logging.getLogger(__name__)
+
+# Spark submits these jobs as plain scripts, so nothing configures the Python
+# logging root for us the way an application server would.
+_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s | %(message)s"
+
+
+def configure_job_logging(level: int = logging.INFO) -> None:
+    """Configure Python logging for a Spark job entry point.
+
+    Spark controls its own JVM log4j output; this only sets up the Python-side
+    logger so job progress messages reach the driver console with a level and a
+    timestamp. Existing handlers are left untouched so an outer runner can own
+    the configuration instead.
+
+    Args:
+        level: Minimum level emitted by the handler.
+    """
+    if logging.getLogger().handlers:
+        return
+    logging.basicConfig(level=level, format=_LOG_FORMAT)
+
 
 PG_JDBC_VERSION = os.environ.get("PG_JDBC_VERSION", "42.7.4")
 
@@ -112,6 +136,12 @@ def table_exists(spark: SparkSession, table: str) -> bool:
         read_query(spark, f"SELECT 1 FROM {table} LIMIT 1")
         return True
     except Exception:
+        logger.debug(
+            "Table %s is not readable and will be treated as absent",
+            table,
+            extra={"table": table},
+            exc_info=True,
+        )
         return False
 
 

@@ -13,6 +13,7 @@ Example:
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 
 from ops_common.db import session_scope
@@ -20,6 +21,7 @@ from sqlalchemy import text
 
 from api_app.auth.passwords import hash_password
 
+logger = logging.getLogger(__name__)
 
 def create_admin(email: str, password: str, full_name: str | None) -> None:
     """Create a new Admin user, or promote an existing user to Admin.
@@ -91,7 +93,18 @@ def create_admin(email: str, password: str, full_name: str | None) -> None:
             {"uid": user_id, "rid": admin_role_id},
         )
 
-    print(f"Admin {action}: {email} (id={user_id})")
+    # Creating or promoting an Admin is a security-relevant event, so it is
+    # recorded in the application log as well as echoed to the operator who
+    # ran the command (this CLI runs as its own process, where the application
+    # log handlers may not be attached).
+    logger.info(
+        "Admin account %s: %s (id=%s)",
+        action,
+        email,
+        user_id,
+        extra={"email": email, "user_id": user_id, "action": action},
+    )
+    print(f"Admin {action}: {email} (id={user_id})")  # noqa: T201
 
 
 def main() -> None:

@@ -8,6 +8,7 @@ dataset.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 
@@ -16,9 +17,12 @@ from pyspark.sql import functions as F
 from spark_session import (
     DOMAIN_TABLES,
     build_spark,
+    configure_job_logging,
     read_table,
     replace_dataset_rows,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _target_dataset_id() -> int | None:
@@ -162,9 +166,13 @@ def run() -> None:
     spark.sparkContext.setLogLevel("WARN")
 
     if target_id is not None:
-        print(f"[MODE] incremental — processing dataset_id={target_id} only")
+        logger.info(
+            "Run mode: incremental — processing dataset_id=%s only",
+            target_id,
+            extra={"dataset_id": target_id, "mode": "incremental"},
+        )
     else:
-        print("[MODE] full — processing all datasets")
+        logger.info("Run mode: full — processing all datasets", extra={"mode": "full"})
 
     processed = 0
     skipped: list[str] = []
@@ -176,7 +184,14 @@ def run() -> None:
         try:
             df = read_table(spark, table)
         except Exception as exc:  # noqa: BLE001
-            print(f"[SKIP] {domain}: could not read table ({exc})")
+            logger.warning(
+                "Skipping domain %s: table %s could not be read (%s)",
+                domain,
+                table,
+                exc,
+                extra={"domain": domain, "table": table},
+                exc_info=True,
+            )
             skipped.append(domain)
             continue
 
@@ -184,7 +199,11 @@ def run() -> None:
             df = df.filter(F.col("dataset_id") == target_id)
 
         if _is_empty(df):
-            print(f"[SKIP] {domain}: no rows for this run")
+            logger.info(
+                "Skipping domain %s: no rows in scope for this run",
+                domain,
+                extra={"domain": domain},
+            )
             skipped.append(domain)
             continue
 
@@ -208,25 +227,43 @@ def run() -> None:
         total_trend_rows += trend_count
         processed += 1
 
-        print(
-            f"[OK] {domain}: wrote {agg_count} metric rows, "
-            f"{trend_count} trend rows (datasets={ds_ids})"
+        logger.info(
+            "Domain %s: wrote %d metric rows and %d trend rows",
+            domain,
+            agg_count,
+            trend_count,
+            extra={
+                "domain": domain,
+                "metric_rows": agg_count,
+                "trend_rows": trend_count,
+                "dataset_ids": ds_ids,
+            },
         )
 
         df.unpersist()
 
-    print("\n========== SUMMARY ==========")
-    print(f"domains processed:    {processed}")
-    print(f"domains skipped:      {len(skipped)} {skipped if skipped else ''}")
-    print(f"metric rows written:  {total_metric_rows}")
-    print(f"trend rows written:   {total_trend_rows}")
+    logger.info(
+        "Domain analytics complete: %d domain(s) processed, %d skipped, "
+        "%d metric rows and %d trend rows written",
+        processed,
+        len(skipped),
+        total_metric_rows,
+        total_trend_rows,
+        extra={
+            "domains_processed": processed,
+            "domains_skipped": skipped,
+            "metric_rows_written": total_metric_rows,
+            "trend_rows_written": total_trend_rows,
+        },
+    )
 
     spark.stop()
 
 
 if __name__ == "__main__":
+    configure_job_logging()
     try:
         run()
-    except Exception as exc:  # noqa: BLE001
-        print(f"[FATAL] analytics job failed: {exc}", file=sys.stderr)
+    except Exception:  # noqa: BLE001
+        logger.exception("Domain analytics job failed")
         raise

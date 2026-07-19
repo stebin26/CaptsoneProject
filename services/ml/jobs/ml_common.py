@@ -12,6 +12,7 @@ the code and parameters that produced it.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -20,6 +21,27 @@ import numpy as np
 import pandas as pd
 import psycopg2
 import psycopg2.extras
+
+logger = logging.getLogger(__name__)
+
+# Format used when a job runs standalone; under Airflow the task handler wins.
+_STANDALONE_LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s | %(message)s"
+
+
+def configure_job_logging(level: int = logging.INFO) -> None:
+    """Configure logging for a job executed outside Airflow.
+
+    Airflow attaches its own handler to the root logger when a task runs, so
+    this is a no-op in that case and only takes effect for a direct
+    ``python <job>.py`` invocation, where otherwise nothing below WARNING would
+    reach the console.
+
+    Args:
+        level: Minimum level emitted by the standalone handler.
+    """
+    if logging.getLogger().handlers:
+        return
+    logging.basicConfig(level=level, format=_STANDALONE_LOG_FORMAT)
 
 
 # Connection settings pulled from env, with the same defaults as the rest of the stack.
@@ -91,7 +113,7 @@ def target_dataset_id(argv: list[str] | None = None) -> int | None:
     return None
 
 
-# Prints and returns the run mode so job logs clearly show incremental vs full.
+# Logs and returns the run mode so job logs clearly show incremental vs full.
 def announce_mode(dataset_id: int | None) -> str:
     """Log and return the run mode so job output states its scope.
 
@@ -102,9 +124,13 @@ def announce_mode(dataset_id: int | None) -> str:
         A human-readable description of the scope.
     """
     if dataset_id is None:
-        print("[MODE] full — processing all datasets")
+        logger.info("Run mode: full — processing all datasets")
         return "all"
-    print(f"[MODE] incremental — processing dataset_id={dataset_id} only")
+    logger.info(
+        "Run mode: incremental — processing dataset_id=%s only",
+        dataset_id,
+        extra={"dataset_id": dataset_id},
+    )
     return str(dataset_id)
 
 

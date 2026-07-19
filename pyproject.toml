@@ -10,16 +10,19 @@ extend-exclude = ["alembic/versions", "**/__pycache__", "**/*.pyc"]
 [tool.ruff.lint]
 # E,W = PEP8 · F = pyflakes · I = import sort · UP = modern syntax
 # B = bug-prone patterns · D = docstring presence (the reviewer's ask)
-select = ["E", "W", "F", "I", "UP", "B", "D"]
+# T20 = no print() in service code — logging is the contract
+select = ["E", "W", "F", "I", "UP", "B", "D", "T20"]
 ignore = [
     "D203",   # one-blank-line-before-class — conflicts with D211
     "D213",   # multi-line-summary-second-line — conflicts with D212
     "E501",   # line length is handled by the formatter, not the linter
     "B008",   # Depends()/Query() in defaults is the correct FastAPI idiom
     "UP042",  # str+Enum mixin kept deliberately; StrEnum changes str() output
-
 ]
 
+# Google style is the project's docstring convention. Setting it here also
+# switches off the pydocstyle rules that contradict it (D203/D204/D213/D401/
+# D406/D407/D413), so the codebase is checked against one convention only.
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -27,3 +30,12 @@ convention = "google"
 "tests/*" = ["D"]              # tests explain themselves by name
 "**/__init__.py" = ["D104"]    # package __init__ files need no docstring
 "alembic/env.py" = ["D"]       # generated scaffold
+
+# print() is the correct output channel for operator-run command line tools:
+# a human is watching the terminal, and no log handler is attached. Service
+# code that runs unattended is held to logging and is not exempt.
+"demo.py" = ["T20"]
+"scripts/*" = ["T20"]
+"**/cli.py" = ["T20"]
+"**/checks.py" = ["T20"]
+"**/spike_test.py" = ["T20"]

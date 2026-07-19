@@ -10,6 +10,7 @@ points would look authoritative while meaning nothing.
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import warnings
@@ -18,6 +19,7 @@ import numpy as np
 import pandas as pd
 from ml_common import (
     announce_mode,
+    configure_job_logging,
     db_conn,
     make_version,
     read_daily_trend,
@@ -34,6 +36,8 @@ except Exception:
     _HAS_SM = False
 
 warnings.filterwarnings("ignore")
+
+logger = logging.getLogger(__name__)
 
 # How many days ahead to forecast, and the minimum history each method needs.
 HORIZON = int(os.getenv("OPS_FORECAST_HORIZON", "7"))
@@ -135,7 +139,10 @@ def run() -> int:
         df = read_daily_trend(conn, dataset_id)
 
         if df.empty:
-            print("no daily_trend rows for scope — nothing to forecast")
+            logger.warning(
+                "No daily_trend rows for scope — nothing to forecast",
+                extra={"scope": scope, "version": version},
+            )
             register_model_version(
                 conn,
                 "forecasting",
@@ -186,14 +193,23 @@ def run() -> int:
             row_count=written,
         )
 
-    print("=" * 40)
-    print(f"[forecasting] version:          {version}")
-    print(f"[forecasting] series forecast:  {series_done}")
-    print(f"[forecasting] series skipped:   {series_skipped}")
-    print(f"[forecasting] rows written:     {written}")
-    print("=" * 40)
+    logger.info(
+        "Forecasting complete: %d rows written from %d series (%d skipped), "
+        "version=%s",
+        written,
+        series_done,
+        series_skipped,
+        version,
+        extra={
+            "version": version,
+            "series_forecasted": series_done,
+            "series_skipped": series_skipped,
+            "rows_written": written,
+        },
+    )
     return written
 
 
 if __name__ == "__main__":
+    configure_job_logging()
     run()

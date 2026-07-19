@@ -12,6 +12,7 @@ recorded alongside, so any score can be explained rather than merely asserted.
 
 from __future__ import annotations
 
+import logging
 import sys
 import warnings
 
@@ -20,6 +21,7 @@ import pandas as pd
 from ml_common import (
     announce_mode,
     bucket_level,
+    configure_job_logging,
     db_conn,
     make_version,
     read_entity_features,
@@ -29,6 +31,8 @@ from ml_common import (
 )
 
 warnings.filterwarnings("ignore")
+
+logger = logging.getLogger(__name__)
 
 # Domains this job scores (the two blocked on labeling, now handled unsupervised).
 TARGET_DOMAINS = {"assets", "maintenance"}
@@ -181,7 +185,10 @@ def run() -> int:
         features = read_entity_features(conn, dataset_id)
 
         if features.empty:
-            print("no entity_features for scope — nothing to score")
+            logger.warning(
+                "No entity_features rows for scope — nothing to score",
+                extra={"scope": scope, "version": version},
+            )
             register_model_version(
                 conn,
                 "risk_scoring",
@@ -226,14 +233,23 @@ def run() -> int:
             row_count=written,
         )
 
-    print("=" * 40)
-    print(f"[risk] version:          {version}")
-    print(f"[risk] domains scored:   {domains_scored}")
-    print(f"[risk] entities scored:  {written}")
-    print(f"[risk] high risk:        {high}")
-    print("=" * 40)
+    logger.info(
+        "Risk scoring complete: %d entities scored across %d domain(s), "
+        "%d high risk, version=%s",
+        written,
+        domains_scored,
+        high,
+        version,
+        extra={
+            "version": version,
+            "domains_scored": domains_scored,
+            "entities_scored": written,
+            "high_risk": high,
+        },
+    )
     return written
 
 
 if __name__ == "__main__":
+    configure_job_logging()
     run()

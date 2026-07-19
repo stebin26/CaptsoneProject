@@ -11,6 +11,7 @@ band.
 
 from __future__ import annotations
 
+import logging
 import sys
 import warnings
 
@@ -19,6 +20,7 @@ import pandas as pd
 from ml_common import (
     announce_mode,
     bucket_level,
+    configure_job_logging,
     db_conn,
     make_version,
     read_daily_trend,
@@ -36,6 +38,8 @@ except Exception:
     _HAS_SKLEARN = False
 
 warnings.filterwarnings("ignore")
+
+logger = logging.getLogger(__name__)
 
 # Minimum points needed per method, and z-score cutoff for the fallback path.
 MIN_POINTS_IFOREST = 8
@@ -280,14 +284,23 @@ def run() -> int:
             row_count=written,
         )
 
-    print("=" * 40)
-    print(f"[anomaly] version:         {version}")
-    print(f"[anomaly] series scanned:  {series_scanned}")
-    print(f"[anomaly] anomalies found: {written}")
-    print(f"[anomaly] high severity:   {high}")
-    print("=" * 40)
+    logger.info(
+        "Anomaly detection complete: %d anomalies written (%d high severity) "
+        "from %d series scanned, version=%s",
+        written,
+        high,
+        series_scanned,
+        version,
+        extra={
+            "version": version,
+            "series_scanned": series_scanned,
+            "anomalies_written": written,
+            "high_severity": high,
+        },
+    )
     return written
 
 
 if __name__ == "__main__":
+    configure_job_logging()
     run()
