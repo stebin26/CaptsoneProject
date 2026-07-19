@@ -210,14 +210,33 @@ def _parse_llm_response(raw: str, profile: DatasetProfile) -> SuggestionResult |
         logger.warning("Could not parse LLM JSON response")
         return None
 
+    # The model is instructed to return an object, but a list or a scalar is a
+    # realistic malformed reply. Anything unexpected falls back to keywords
+    # rather than raising, because a suggestion is advisory either way.
+    if not isinstance(data, dict):
+        logger.warning(
+            "LLM returned %s instead of an object, using keyword fallback",
+            type(data).__name__,
+            extra={"response_type": type(data).__name__},
+        )
+        return None
+
     items = data.get("suggestions")
     if not isinstance(items, list):
+        logger.warning("LLM response had no suggestions list, using keyword fallback")
         return None
 
     by_name = {c.column_name: c for c in profile.columns}
     suggestions: list[ColumnSuggestion] = []
 
     for item in items:
+        if not isinstance(item, dict):
+            logger.warning(
+                "Ignoring malformed suggestion entry of type %s",
+                type(item).__name__,
+                extra={"entry_type": type(item).__name__},
+            )
+            continue
         name = item.get("column_name")
         if name not in by_name:
             continue

@@ -24,6 +24,7 @@ from ops_common.domain.models import (
 )
 from ops_common.logging import get_logger
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
@@ -48,9 +49,25 @@ class ConfirmedColumn:
 
         Returns:
             The parsed decision.
+
+        Raises:
+            ValueError: If the payload is not a mapping or omits ``column_name``.
         """
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Confirmed column must be an object, got {type(data).__name__}"
+            )
+        try:
+            column_name = data["column_name"]
+        except KeyError as exc:
+            # A bare KeyError tells the caller nothing about what was wrong with
+            # their payload, so it becomes the documented ValueError instead.
+            raise ValueError(
+                f"Confirmed column is missing 'column_name': {data!r}"
+            ) from exc
+
         return cls(
-            column_name=data["column_name"],
+            column_name=column_name,
             domain=data.get("domain"),
             metric_name=data.get("metric_name"),
             role=data.get("role", "skip"),
@@ -188,7 +205,20 @@ def confirm_mappings(
         version=version,
     )
     session.add(config_row)
-    session.flush()
+    try:
+        session.flush()
+    except SQLAlchemyError:
+        logger.exception(
+            "Could not save mapping config version %s for %s",
+            version,
+            dataset.business_name,
+            extra={
+                "dataset_id": dataset_id,
+                "business": dataset.business_name,
+                "config_version": version,
+            },
+        )
+        raise
 
     logger.info(
         "Confirmed mappings",

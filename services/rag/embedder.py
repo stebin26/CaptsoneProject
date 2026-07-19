@@ -43,7 +43,18 @@ def _local_model():
 
     model_name = settings.embedding_model
     logger.info("Loading local embedding model", extra={"model": model_name})
-    return SentenceTransformer(model_name)
+    try:
+        return SentenceTransformer(model_name)
+    except Exception as exc:
+        # The model is baked into the image, so a failure here means the image
+        # is wrong or the cache is corrupt — not a transient network problem.
+        logger.exception(
+            "Could not load the local embedding model",
+            extra={"model": model_name},
+        )
+        raise EmbeddingError(
+            f"Embedding model {model_name!r} could not be loaded: {exc}"
+        ) from exc
 
 
 def _embed_local(texts: list[str]) -> list[list[float]]:

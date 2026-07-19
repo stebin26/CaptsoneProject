@@ -72,6 +72,10 @@ def build_spark(app_name: str = "ops-analytics") -> SparkSession:
 
     Returns:
         The active Spark session.
+
+    Raises:
+        Exception: If the session cannot be created, for example when the
+            configured master is unreachable.
     """
     builder = (
         SparkSession.builder.appName(app_name)
@@ -81,7 +85,16 @@ def build_spark(app_name: str = "ops-analytics") -> SparkSession:
     master = os.environ.get("SPARK_MASTER_URL")
     if master:
         builder = builder.master(master)
-    return builder.getOrCreate()
+    try:
+        return builder.getOrCreate()
+    except Exception:
+        logger.exception(
+            "Could not create Spark session %r (master=%s)",
+            app_name,
+            master or "local default",
+            extra={"app_name": app_name, "spark_master": master},
+        )
+        raise
 
 
 def read_table(spark: SparkSession, table: str) -> DataFrame:
@@ -93,12 +106,24 @@ def read_table(spark: SparkSession, table: str) -> DataFrame:
 
     Returns:
         The table as a DataFrame.
+
+    Raises:
+        Exception: If the table cannot be reached over JDBC.
     """
-    return spark.read.jdbc(
-        url=_jdbc_url(),
-        table=table,
-        properties=_jdbc_properties(),
-    )
+    try:
+        return spark.read.jdbc(
+            url=_jdbc_url(),
+            table=table,
+            properties=_jdbc_properties(),
+        )
+    except Exception:
+        logger.exception(
+            "JDBC read failed for table %s at %s",
+            table,
+            _jdbc_url(),
+            extra={"table": table, "jdbc_url": _jdbc_url()},
+        )
+        raise
 
 
 def read_query(spark: SparkSession, query: str, alias: str = "subq") -> DataFrame:
@@ -111,13 +136,26 @@ def read_query(spark: SparkSession, query: str, alias: str = "subq") -> DataFram
 
     Returns:
         The query result as a DataFrame.
+
+    Raises:
+        Exception: If the query cannot be executed over JDBC.
     """
     subquery = f"({query}) AS {alias}"
-    return spark.read.jdbc(
-        url=_jdbc_url(),
-        table=subquery,
-        properties=_jdbc_properties(),
-    )
+    try:
+        return spark.read.jdbc(
+            url=_jdbc_url(),
+            table=subquery,
+            properties=_jdbc_properties(),
+        )
+    except Exception:
+        # Logged at debug because table_exists() calls this expecting failures.
+        logger.debug(
+            "JDBC query failed: %s",
+            query,
+            extra={"query": query, "jdbc_url": _jdbc_url()},
+            exc_info=True,
+        )
+        raise
 
 
 def table_exists(spark: SparkSession, table: str) -> bool:
@@ -152,13 +190,25 @@ def write_table(df: DataFrame, table: str, mode: str = "append") -> None:
         df: The rows to write.
         table: Fully qualified target table.
         mode: Spark save mode.
+
+    Raises:
+        Exception: If the write cannot be completed over JDBC.
     """
-    df.write.jdbc(
-        url=_jdbc_url(),
-        table=table,
-        mode=mode,
-        properties=_jdbc_properties(),
-    )
+    try:
+        df.write.jdbc(
+            url=_jdbc_url(),
+            table=table,
+            mode=mode,
+            properties=_jdbc_properties(),
+        )
+    except Exception:
+        logger.exception(
+            "JDBC write failed for table %s (mode=%s)",
+            table,
+            mode,
+            extra={"table": table, "mode": mode, "jdbc_url": _jdbc_url()},
+        )
+        raise
 
 
 def replace_dataset_rows(
@@ -177,10 +227,32 @@ def replace_dataset_rows(
         table: Fully qualified target table.
         dataset_ids: Datasets whose existing rows should be cleared.
         domain: Optional domain to narrow the delete to.
+
+    Raises:
+        Exception: If the delete or the write fails. A write that fails after a
+            successful delete is logged at critical level, because the table is
+            then missing rows until the job is re-run.
     """
-    if dataset_ids:
+    cleared = bool(dataset_ids)
+    if cleared:
         _delete_existing(table, dataset_ids, domain)
-    write_table(df, table, mode="append")
+    try:
+        write_table(df, table, mode="append")
+    except Exception:
+        if cleared:
+            logger.critical(
+                "Cleared %d dataset(s) from %s but the replacement write "
+                "failed — those rows are missing until this job is re-run",
+                len(dataset_ids),
+                table,
+                extra={
+                    "table": table,
+                    "dataset_ids": dataset_ids,
+                    "domain": domain,
+                },
+                exc_info=True,
+            )
+        raise
 
 
 def _delete_existing(
@@ -196,19 +268,61 @@ def _delete_existing(
     user = os.environ.get("OPS_POSTGRES_USER", "ops")
     password = os.environ.get("OPS_POSTGRES_PASSWORD", "ops")
 
-    ids = ",".join(str(int(i)) for i in dataset_ids)
+    try:
+        # Cast every id so a non-numeric value cannot reach the SQL string.
+        ids = ",".join(str(int(i)) for i in dataset_ids)
+    except (TypeError, ValueError) as exc:
+        logger.error(
+            "Refusing to delete from %s: dataset ids are not all integers (%r)",
+            table,
+            dataset_ids,
+            extra={"table": table, "dataset_ids": dataset_ids},
+        )
+        raise ValueError(
+            f"dataset_ids must all be integers, got {dataset_ids!r}"
+        ) from exc
+
     where = f"dataset_id IN ({ids})"
     params: list[str] = []
     if domain is not None:
         where += " AND domain = %s"
         params.append(domain)
 
-    conn = psycopg2.connect(
-        host=host, port=port, dbname=db, user=user, password=password
-    )
+    try:
+        conn = psycopg2.connect(
+            host=host, port=port, dbname=db, user=user, password=password
+        )
+    except psycopg2.Error:
+        logger.exception(
+            "Could not connect to Postgres at %s:%s/%s to clear %s",
+            host,
+            port,
+            db,
+            table,
+            extra={"db_host": host, "db_port": port, "db_name": db, "table": table},
+        )
+        raise
+
     try:
         with conn.cursor() as cur:
             cur.execute(f"DELETE FROM {table} WHERE {where}", params)
         conn.commit()
+    except psycopg2.Error:
+        logger.exception(
+            "Failed to clear previous rows from %s for dataset(s) %s",
+            table,
+            dataset_ids,
+            extra={"table": table, "dataset_ids": dataset_ids, "domain": domain},
+        )
+        try:
+            conn.rollback()
+        except psycopg2.Error:
+            logger.exception("Rollback failed after a failed delete on %s", table)
+        raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except psycopg2.Error:
+            logger.warning(
+                "Failed to close the delete connection cleanly", exc_info=True
+            )

@@ -30,16 +30,23 @@ from ml_common import (
     write_anomalies,
 )
 
+logger = logging.getLogger(__name__)
+
+# scikit-learn is optional: without it the job still runs, using the z-score
+# fallback for every group. The reason it is unavailable is logged once at
+# import so a silently degraded run is never a mystery later.
 try:
     from sklearn.ensemble import IsolationForest
 
     _HAS_SKLEARN = True
-except Exception:
+except ImportError:
+    logger.warning(
+        "scikit-learn is not installed — falling back to z-score detection",
+        exc_info=True,
+    )
     _HAS_SKLEARN = False
 
 warnings.filterwarnings("ignore")
-
-logger = logging.getLogger(__name__)
 
 # Minimum points needed per method, and z-score cutoff for the fallback path.
 MIN_POINTS_IFOREST = 8
@@ -112,27 +119,45 @@ def _rows_from_group(
     rows: list[dict] = []
 
     if _HAS_SKLEARN and len(values) >= MIN_POINTS_IFOREST:
-        flagged, raw = _detect_iforest(values)
-        expected = float(np.median(values))
-        for i in flagged:
-            rows.append(
-                {
-                    "dataset_id": meta["dataset_id"],
-                    "business_name": meta["business_name"],
-                    "industry": meta["industry"],
-                    "domain": meta["domain"],
-                    "entity_id": entity_id,
-                    "metric_name": meta["metric_name"],
-                    "anomaly_date": pd.Timestamp(dates[i]).date(),
-                    "observed_value": float(values[i]),
-                    "expected_value": expected,
-                    "deviation": float(raw[i]),
-                    "severity": _iforest_severity(float(raw[i])),
-                    "method": "isolation_forest",
-                    "model_version": version,
-                }
+        try:
+            flagged, raw = _detect_iforest(values)
+        except Exception:
+            # The forest can fail on degenerate input (constant or non-finite
+            # values). Falling through to the z-score path below keeps the group
+            # scored instead of failing the whole job for one bad series.
+            logger.warning(
+                "Isolation forest failed on a %d-point series for metric %s — "
+                "falling back to z-score detection",
+                len(values),
+                meta.get("metric_name"),
+                extra={
+                    "series_length": len(values),
+                    "metric_name": meta.get("metric_name"),
+                    "domain": meta.get("domain"),
+                },
+                exc_info=True,
             )
-        return rows
+        else:
+            expected = float(np.median(values))
+            for i in flagged:
+                rows.append(
+                    {
+                        "dataset_id": meta["dataset_id"],
+                        "business_name": meta["business_name"],
+                        "industry": meta["industry"],
+                        "domain": meta["domain"],
+                        "entity_id": entity_id,
+                        "metric_name": meta["metric_name"],
+                        "anomaly_date": pd.Timestamp(dates[i]).date(),
+                        "observed_value": float(values[i]),
+                        "expected_value": expected,
+                        "deviation": float(raw[i]),
+                        "severity": _iforest_severity(float(raw[i])),
+                        "method": "isolation_forest",
+                        "model_version": version,
+                    }
+                )
+            return rows
 
     if len(values) >= MIN_POINTS_ZSCORE:
         flagged, z, mean, _std = _detect_zscore(values)

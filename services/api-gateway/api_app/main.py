@@ -8,6 +8,7 @@ database health probes, and mounts every versioned router under ``/api/v1``.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from importlib import import_module
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -63,10 +64,29 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("API gateway starting", extra={"env": settings.environment})
 
-    wait_for_postgres()
+    try:
+        wait_for_postgres()
+    except Exception:
+        # Nothing below can work without the database, so this is fatal — but it
+        # is logged plainly, because a container that exits silently at boot is
+        # the hardest kind of failure to diagnose.
+        logger.exception(
+            "Postgres did not become available; the API cannot start",
+            extra={"db_host": settings.postgres_host, "db_name": settings.postgres_db},
+        )
+        raise
 
     if _SCHEMA_PATH.exists():
-        apply_schema(_SCHEMA_PATH)
+        try:
+            apply_schema(_SCHEMA_PATH)
+        except Exception:
+            # Unlike the optional schemas below, the core schema is required:
+            # every endpoint reads tables it defines.
+            logger.exception(
+                "Failed to apply the core schema; the API cannot start",
+                extra={"path": str(_SCHEMA_PATH)},
+            )
+            raise
     else:
         logger.warning(
             "Schema file not found at startup", extra={"path": str(_SCHEMA_PATH)}
@@ -125,7 +145,17 @@ async def lifespan(app: FastAPI):
             "Analytics SQL not found at startup", extra={"path": str(_ANALYTICS_PATH)}
         )
 
-    settings.ensure_dirs()
+    try:
+        settings.ensure_dirs()
+    except OSError:
+        # Uploads land in these directories; starting without them would turn
+        # every upload into a confusing runtime error instead.
+        logger.exception(
+            "Could not create the configured working directories",
+            extra={"upload_dir": str(settings.upload_dir)},
+        )
+        raise
+
     logger.info("API gateway ready")
 
     yield
@@ -147,6 +177,112 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ============================================================
+# Domain errors -> HTTP status codes
+#
+# Translating these once, here, keeps every router free of the same repeated
+# try/except and guarantees one consistent response shape. The packages are
+# mounted into the image at fixed paths by the routers imported above, so the
+# imports are defensive: a missing optional package must degrade the mapping,
+# not stop the API from booting.
+# ============================================================
+
+
+def _domain_error_handlers() -> list[tuple[type[Exception], int, str]]:
+    """Collect the domain exception classes that have an HTTP meaning.
+
+    Returns:
+        Tuples of exception class, HTTP status code, and a short label used in
+        the log line. Classes that cannot be imported are skipped.
+    """
+    wanted = [
+        # A malformed or unreadable upload is the client's problem, not a bug.
+        ("app.connectors.base", "SourceValidationError", 400, "invalid upload"),
+        ("extractor", "ExtractionError", 400, "unreadable document"),
+        # A missing embedding model or unreachable local LLM is a dependency
+        # being down, which is a 503 the caller can sensibly retry.
+        ("embedder", "EmbeddingError", 503, "embedding unavailable"),
+        ("agent.llm", "LLMTransportError", 503, "model unavailable"),
+    ]
+
+    resolved: list[tuple[type[Exception], int, str]] = []
+    for module_name, class_name, status_code, label in wanted:
+        try:
+            module = import_module(module_name)
+            error_class = getattr(module, class_name)
+        except (ImportError, AttributeError):
+            logger.warning(
+                "Domain error %s.%s is unavailable; responses will fall back "
+                "to the generic handler",
+                module_name,
+                class_name,
+                extra={"error_module": module_name, "error_class": class_name},
+            )
+            continue
+        resolved.append((error_class, status_code, label))
+    return resolved
+
+
+def _make_domain_handler(status_code: int, label: str):
+    async def handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.warning(
+            "%s on %s %s: %s",
+            label,
+            request.method,
+            request.url.path,
+            exc,
+            extra={
+                "path": request.url.path,
+                "method": request.method,
+                "status_code": status_code,
+                "error_class": type(exc).__name__,
+            },
+        )
+        return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+
+    return handler
+
+
+for _error_class, _status_code, _label in _domain_error_handlers():
+    app.add_exception_handler(
+        _error_class, _make_domain_handler(_status_code, _label)
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Log any unhandled error with its request context and return a clean 500.
+
+    Without this, an unexpected failure is logged by the server with no record of
+    which route or method produced it, and the caller receives an empty response
+    body. The message returned is deliberately generic: internal details belong in
+    the log, not in an HTTP response.
+
+    Args:
+        request: The request that raised the error.
+        exc: The unhandled exception.
+
+    Returns:
+        A 500 JSON response with a generic message.
+    """
+    logger.exception(
+        "Unhandled error on %s %s",
+        request.method,
+        request.url.path,
+        extra={
+            "path": request.url.path,
+            "method": request.method,
+            "error_class": type(exc).__name__,
+        },
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal error occurred. Please try again."},
+    )
 
 
 @app.exception_handler(ValueError)

@@ -46,9 +46,24 @@ def configure_job_logging(level: int = logging.INFO) -> None:
 
 # Connection settings pulled from env, with the same defaults as the rest of the stack.
 def _db_config() -> dict:
+    raw_port = os.getenv("OPS_POSTGRES_PORT", os.getenv("POSTGRES_PORT", "5432"))
+    try:
+        port = int(raw_port)
+    except (TypeError, ValueError) as exc:
+        # A misconfigured port would otherwise surface as a bare int() failure
+        # with no hint about which variable is wrong.
+        logger.error(
+            "Invalid database port %r — set OPS_POSTGRES_PORT to an integer",
+            raw_port,
+            extra={"raw_port": raw_port},
+        )
+        raise ValueError(
+            f"OPS_POSTGRES_PORT must be an integer, got {raw_port!r}"
+        ) from exc
+
     return {
         "host": os.getenv("OPS_POSTGRES_HOST", os.getenv("POSTGRES_HOST", "postgres")),
-        "port": int(os.getenv("OPS_POSTGRES_PORT", os.getenv("POSTGRES_PORT", "5432"))),
+        "port": port,
         "dbname": os.getenv("OPS_POSTGRES_DB", os.getenv("POSTGRES_DB", "ops")),
         "user": os.getenv("OPS_POSTGRES_USER", os.getenv("POSTGRES_USER", "ops")),
         "password": os.getenv(
@@ -62,20 +77,52 @@ def _db_config() -> dict:
 def db_conn():
     """Provide a transactional Postgres connection.
 
-    Commits on success, rolls back on error, and always closes.
+    Commits on success, rolls back on error, and always closes. A failure to
+    roll back or to close is logged but never allowed to mask the error that
+    caused it.
 
     Yields:
         An open psycopg2 connection.
+
+    Raises:
+        psycopg2.Error: If the connection cannot be established.
     """
-    conn = psycopg2.connect(**_db_config())
+    config = _db_config()
+    try:
+        conn = psycopg2.connect(**config)
+    except psycopg2.Error:
+        logger.exception(
+            "Could not connect to Postgres at %s:%s/%s as user %s",
+            config["host"],
+            config["port"],
+            config["dbname"],
+            config["user"],
+            extra={
+                "db_host": config["host"],
+                "db_port": config["port"],
+                "db_name": config["dbname"],
+            },
+        )
+        raise
+
     try:
         yield conn
         conn.commit()
     except Exception:
-        conn.rollback()
+        logger.exception("Database transaction failed — rolling back")
+        try:
+            conn.rollback()
+        except psycopg2.Error:
+            # Logged, not raised: the original failure is the useful one.
+            logger.exception("Rollback failed after a transaction error")
         raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except psycopg2.Error:
+            logger.warning(
+                "Failed to close the database connection cleanly", exc_info=True
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +137,10 @@ def target_dataset_id(argv: list[str] | None = None) -> int | None:
     A command-line argument wins over the environment variable; if neither is set
     the job runs the full batch.
 
+    A value that is not an integer is ignored rather than failing the job, but
+    it is logged, because silently running the full batch when an incremental
+    run was intended is the kind of thing that goes unnoticed for weeks.
+
     Args:
         argv: Argument list to read; defaults to the process arguments.
 
@@ -103,12 +154,21 @@ def target_dataset_id(argv: list[str] | None = None) -> int | None:
                 try:
                     return int(a)
                 except ValueError:
-                    pass
+                    logger.warning(
+                        "Ignoring non-integer dataset id argument %r",
+                        a,
+                        extra={"argument": a},
+                    )
     env = os.getenv("OPS_TARGET_DATASET_ID", "").strip()
     if env:
         try:
             return int(env)
         except ValueError:
+            logger.warning(
+                "Ignoring non-integer OPS_TARGET_DATASET_ID %r — running full batch",
+                env,
+                extra={"env_value": env},
+            )
             return None
     return None
 
@@ -153,6 +213,10 @@ def read_entity_features(conn, dataset_id: int | None = None) -> pd.DataFrame:
 
     Returns:
         The feature rows.
+
+    Raises:
+        Exception: If the query fails, for example when the Phase 2 analytics
+            tables have not been built yet.
     """
     sql = """
         SELECT dataset_id, business_name, industry, domain,
@@ -165,7 +229,16 @@ def read_entity_features(conn, dataset_id: int | None = None) -> pd.DataFrame:
     if dataset_id is not None:
         sql += " WHERE dataset_id = %s"
         params = (dataset_id,)
-    return pd.read_sql(sql, conn, params=params)
+    try:
+        return pd.read_sql(sql, conn, params=params)
+    except Exception:
+        logger.exception(
+            "Could not read analytics.entity_features (dataset_id=%s) — has the "
+            "feature engineering job run?",
+            dataset_id,
+            extra={"table": "analytics.entity_features", "dataset_id": dataset_id},
+        )
+        raise
 
 
 # Reads analytics.daily_trend (the time series behind forecasts), optionally filtered.
@@ -181,6 +254,9 @@ def read_daily_trend(conn, dataset_id: int | None = None) -> pd.DataFrame:
 
     Returns:
         The daily trend rows.
+
+    Raises:
+        Exception: If the query fails or the date column cannot be parsed.
     """
     sql = """
         SELECT dataset_id, business_name, industry, domain, metric_name,
@@ -191,9 +267,27 @@ def read_daily_trend(conn, dataset_id: int | None = None) -> pd.DataFrame:
     if dataset_id is not None:
         sql += " WHERE dataset_id = %s"
         params = (dataset_id,)
-    df = pd.read_sql(sql, conn, params=params)
+    try:
+        df = pd.read_sql(sql, conn, params=params)
+    except Exception:
+        logger.exception(
+            "Could not read analytics.daily_trend (dataset_id=%s) — has the "
+            "domain analytics job run?",
+            dataset_id,
+            extra={"table": "analytics.daily_trend", "dataset_id": dataset_id},
+        )
+        raise
+
     if not df.empty:
-        df["trend_date"] = pd.to_datetime(df["trend_date"])
+        try:
+            df["trend_date"] = pd.to_datetime(df["trend_date"])
+        except (ValueError, TypeError):
+            logger.exception(
+                "Could not parse trend_date as a datetime for %d row(s)",
+                len(df),
+                extra={"row_count": len(df)},
+            )
+            raise
     return df
 
 
@@ -204,11 +298,21 @@ def read_daily_trend(conn, dataset_id: int | None = None) -> pd.DataFrame:
 
 # Deletes prior rows for the given dataset scope so a re-run replaces, never duplicates.
 def _clear_scope(conn, table: str, dataset_id: int | None) -> None:
-    with conn.cursor() as cur:
-        if dataset_id is None:
-            cur.execute(f"TRUNCATE {table}")
-        else:
-            cur.execute(f"DELETE FROM {table} WHERE dataset_id = %s", (dataset_id,))
+    try:
+        with conn.cursor() as cur:
+            if dataset_id is None:
+                cur.execute(f"TRUNCATE {table}")
+            else:
+                cur.execute(f"DELETE FROM {table} WHERE dataset_id = %s", (dataset_id,))
+    except psycopg2.Error:
+        logger.exception(
+            "Could not clear previous rows from %s (dataset_id=%s) — the write "
+            "is abandoned so the table is not left half replaced",
+            table,
+            dataset_id,
+            extra={"table": table, "dataset_id": dataset_id},
+        )
+        raise
 
 
 # Generic batch insert from a list of dicts; skips silently when there is nothing to write.
@@ -218,13 +322,22 @@ def _insert_rows(conn, table: str, columns: list[str], rows: list[dict]) -> int:
     cols = ", ".join(columns)
     template = "(" + ", ".join(["%s"] * len(columns)) + ")"
     values = [tuple(_adapt(r.get(c)) for c in columns) for r in rows]
-    with conn.cursor() as cur:
-        psycopg2.extras.execute_values(
-            cur,
-            f"INSERT INTO {table} ({cols}) VALUES %s",
-            values,
-            template=template,
+    try:
+        with conn.cursor() as cur:
+            psycopg2.extras.execute_values(
+                cur,
+                f"INSERT INTO {table} ({cols}) VALUES %s",
+                values,
+                template=template,
+            )
+    except psycopg2.Error:
+        logger.exception(
+            "Failed to insert %d row(s) into %s",
+            len(rows),
+            table,
+            extra={"table": table, "row_count": len(rows), "columns": columns},
         )
+        raise
     return len(rows)
 
 
@@ -368,26 +481,39 @@ def register_model_version(
         metrics: Summary metrics the run produced.
         row_count: Number of result rows written.
         status: Lifecycle status recorded for this version.
+
+    Raises:
+        psycopg2.Error: If the registry row cannot be written.
     """
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO ml.model_registry
-                (model_name, model_type, version, dataset_scope,
-                 params, metrics, row_count, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                model_name,
-                model_type,
-                version,
-                dataset_scope,
-                _adapt(params or {}),
-                _adapt(metrics or {}),
-                row_count,
-                status,
-            ),
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO ml.model_registry
+                    (model_name, model_type, version, dataset_scope,
+                     params, metrics, row_count, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    model_name,
+                    model_type,
+                    version,
+                    dataset_scope,
+                    _adapt(params or {}),
+                    _adapt(metrics or {}),
+                    row_count,
+                    status,
+                ),
+            )
+    except psycopg2.Error:
+        logger.exception(
+            "Could not register model version %s for %s — results would be "
+            "untraceable, so the run is failed rather than left unrecorded",
+            version,
+            model_name,
+            extra={"model_name": model_name, "version": version},
         )
+        raise
 
 
 # Helper for risk/severity bucketing reused across jobs, kept here so thresholds stay consistent.

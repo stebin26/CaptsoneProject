@@ -46,6 +46,57 @@ def _env(key: str, default: str) -> str:
     return os.getenv(f"OPS_{key}", default)
 
 
+def _env_int(key: str, default: str) -> int:
+    """Read an integer setting, falling back to the default if it is malformed.
+
+    A typo in one environment variable should not stop the copilot from starting;
+    the bad value is logged and the documented default is used instead.
+
+    Args:
+        key: Setting name without the ``OPS_`` prefix.
+        default: Default value, as the string form used in the environment.
+
+    Returns:
+        The parsed value, or the default when the environment value is invalid.
+    """
+    raw = _env(key, default)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid OPS_%s value %r — using the default %s instead",
+            key,
+            raw,
+            default,
+            extra={"setting": key, "env_value": raw},
+        )
+        return int(default)
+
+
+def _env_float(key: str, default: str) -> float:
+    """Read a float setting, falling back to the default if it is malformed.
+
+    Args:
+        key: Setting name without the ``OPS_`` prefix.
+        default: Default value, as the string form used in the environment.
+
+    Returns:
+        The parsed value, or the default when the environment value is invalid.
+    """
+    raw = _env(key, default)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid OPS_%s value %r — using the default %s instead",
+            key,
+            raw,
+            default,
+            extra={"setting": key, "env_value": raw},
+        )
+        return float(default)
+
+
 @dataclass
 class LLMConfig:
     """Connection and generation settings for the local model.
@@ -58,18 +109,16 @@ class LLMConfig:
     )
     model: str = field(default_factory=lambda: _env("AGENT_MODEL", "llama3.2:3b"))
     temperature: float = field(
-        default_factory=lambda: float(_env("AGENT_TEMPERATURE", "0.1"))
+        default_factory=lambda: _env_float("AGENT_TEMPERATURE", "0.1")
     )
     request_timeout: int = field(
-        default_factory=lambda: int(_env("AGENT_LLM_TIMEOUT", "120"))
+        default_factory=lambda: _env_int("AGENT_LLM_TIMEOUT", "120")
     )
-    max_retries: int = field(
-        default_factory=lambda: int(_env("AGENT_LLM_RETRIES", "3"))
-    )
+    max_retries: int = field(default_factory=lambda: _env_int("AGENT_LLM_RETRIES", "3"))
     backoff_seconds: float = field(
-        default_factory=lambda: float(_env("AGENT_LLM_BACKOFF", "1.5"))
+        default_factory=lambda: _env_float("AGENT_LLM_BACKOFF", "1.5")
     )
-    num_ctx: int = field(default_factory=lambda: int(_env("AGENT_NUM_CTX", "4096")))
+    num_ctx: int = field(default_factory=lambda: _env_int("AGENT_NUM_CTX", "4096"))
 
 
 # --- Normalized response types -----------------------------------------------
@@ -169,8 +218,23 @@ class OllamaToolClient:
         try:
             resp = requests.get(self._tags_url, timeout=10)
             resp.raise_for_status()
-            models = [m.get("name", "") for m in resp.json().get("models", [])]
-        except requests.RequestException as exc:
+            payload = resp.json()
+            if not isinstance(payload, dict):
+                raise ValueError(f"expected an object, got {type(payload).__name__}")
+            models = [
+                m.get("name", "")
+                for m in payload.get("models", [])
+                if isinstance(m, dict)
+            ]
+        except (requests.RequestException, ValueError) as exc:
+            # Reported rather than raised: this is the readiness probe, and the
+            # caller needs a usable answer even when the server is unhealthy.
+            logger.warning(
+                "Model server health check failed at %s",
+                self._tags_url,
+                extra={"tags_url": self._tags_url},
+                exc_info=True,
+            )
             return {
                 "reachable": False,
                 "model_present": False,
@@ -213,7 +277,19 @@ class OllamaToolClient:
                     self._chat_url, json=payload, timeout=self.config.request_timeout
                 )
                 resp.raise_for_status()
-                return resp.json()
+                try:
+                    return resp.json()
+                except ValueError as exc:
+                    # A proxy or a wedged server can answer 200 with HTML. That
+                    # is not retryable, so fail with the body for diagnosis.
+                    logger.error(
+                        "Ollama returned a non-JSON body (%d bytes)",
+                        len(resp.content or b""),
+                        extra={"body_preview": resp.text[:200]},
+                    )
+                    raise LLMTransportError(
+                        "Ollama returned a response that was not JSON"
+                    ) from exc
             except (requests.ConnectionError, requests.Timeout) as exc:
                 # Transient transport issue — retry with growing backoff.
                 last_err = exc

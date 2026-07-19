@@ -98,7 +98,20 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
 
-    user_id = int(payload["sub"])
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        # The token verified but its subject claim is unusable, so it cannot
+        # identify anyone — treated as an invalid token, not a server error.
+        logger.warning(
+            "Access token carried an unusable subject claim",
+            extra={"subject": payload.get("sub")},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
 
     # Re-check the account is still active (token can't outlive a disable).
     try:

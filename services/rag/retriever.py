@@ -58,11 +58,31 @@ def retrieve(
     if not query:
         return RetrievalResult(chunks=[], has_documents=False, query=query)
 
-    has_docs = dataset_has_documents(dataset_id)
+    try:
+        has_docs = dataset_has_documents(dataset_id)
+    except Exception:
+        # Reporting "no documents" when the database is unreachable would be a
+        # lie the user cannot detect, so the failure is surfaced instead.
+        logger.exception(
+            "Could not check whether dataset %s has documents",
+            dataset_id,
+            extra={"dataset_id": dataset_id},
+        )
+        raise
+
     if not has_docs:
         return RetrievalResult(chunks=[], has_documents=False, query=query)
 
-    query_vec = embed_query(query)
+    try:
+        query_vec = embed_query(query)
+    except Exception:
+        logger.exception(
+            "Could not embed the query for dataset %s",
+            dataset_id,
+            extra={"dataset_id": dataset_id, "query_length": len(query)},
+        )
+        raise
+
     if not query_vec:
         return RetrievalResult(chunks=[], has_documents=True, query=query)
 

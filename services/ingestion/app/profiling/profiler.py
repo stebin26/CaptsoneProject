@@ -97,16 +97,37 @@ def _infer_logical_type(series: pd.Series, column_name: str) -> tuple[str, bool,
     # This catches dates stored as text.
     name_lower = column_name.lower()
     if any(tok in name_lower for tok in _DATETIME_HINT_TOKENS):
-        parsed = pd.to_datetime(non_null, errors="coerce", utc=False)
-        if parsed.notna().mean() >= 0.8:
-            return "datetime", False, True
+        # Even with errors="coerce", exotic dtypes can still raise. Treating the
+        # column as text is the correct fallback: type inference is a hint for
+        # the mapping suggester, not something worth failing an upload over.
+        try:
+            parsed = pd.to_datetime(non_null, errors="coerce", utc=False)
+        except Exception:
+            logger.warning(
+                "Datetime inference failed for column %s, treating as text",
+                column_name,
+                extra={"column": column_name},
+                exc_info=True,
+            )
+        else:
+            if parsed.notna().mean() >= 0.8:
+                return "datetime", False, True
 
     # Numbers stored as text → if ≥90% coerce to number, treat as numeric.
     # Then check if all whole numbers to pick integer vs float.
-    coerced = pd.to_numeric(non_null, errors="coerce")
-    if coerced.notna().mean() >= 0.9:
-        is_int = (coerced.dropna() % 1 == 0).all()
-        return ("integer" if is_int else "float"), True, False
+    try:
+        coerced = pd.to_numeric(non_null, errors="coerce")
+    except Exception:
+        logger.warning(
+            "Numeric inference failed for column %s, treating as text",
+            column_name,
+            extra={"column": column_name},
+            exc_info=True,
+        )
+    else:
+        if coerced.notna().mean() >= 0.9:
+            is_int = (coerced.dropna() % 1 == 0).all()
+            return ("integer" if is_int else "float"), True, False
 
     # Default: plain text.
     return "string", False, False
@@ -163,10 +184,21 @@ def profile_dataframe(df: pd.DataFrame, source_filename: str) -> DatasetProfile:
 
     for col in df.columns:
         series = df[col]
-        data_type, is_numeric, is_datetime = _infer_logical_type(series, str(col))
-        distinct = int(series.nunique(dropna=True))
-        nulls = int(series.isna().sum())
-        identifier = _is_identifier(series, distinct, total, str(col))
+        try:
+            data_type, is_numeric, is_datetime = _infer_logical_type(series, str(col))
+            distinct = int(series.nunique(dropna=True))
+            nulls = int(series.isna().sum())
+            identifier = _is_identifier(series, distinct, total, str(col))
+        except Exception:
+            # Naming the offending column is the whole point: without it the
+            # user sees a pandas error with no idea which column caused it.
+            logger.exception(
+                "Could not profile column %s of %s",
+                col,
+                source_filename,
+                extra={"column": str(col), "file": source_filename},
+            )
+            raise
 
         profile = ColumnProfile(
             column_name=str(col),
@@ -206,11 +238,17 @@ def profile_csv(path: str | Path, source_filename: str | None = None) -> Dataset
 
     Raises:
         FileNotFoundError: If the CSV does not exist.
+        ValueError: If the CSV exists but cannot be parsed.
     """
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"CSV not found: {path}")
 
-    df = pd.read_csv(path, low_memory=False)
+    try:
+        df = pd.read_csv(path, low_memory=False)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, OSError) as exc:
+        logger.exception("Could not read CSV for profiling", extra={"file": str(path)})
+        raise ValueError(f"CSV could not be read for profiling: {path} ({exc})") from exc
+
     df.columns = [str(c).strip() for c in df.columns]
     return profile_dataframe(df, source_filename or path.name)

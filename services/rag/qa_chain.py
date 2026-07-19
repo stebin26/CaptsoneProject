@@ -169,7 +169,15 @@ def answer_question(
     if not question:
         return Answer(answer="Please enter a question.", grounded=False)
 
-    result = retrieve(dataset_id, question, top_k=top_k)
+    try:
+        result = retrieve(dataset_id, question, top_k=top_k)
+    except Exception:
+        logger.exception(
+            "Retrieval failed while answering a question for dataset %s",
+            dataset_id,
+            extra={"dataset_id": dataset_id, "question_length": len(question)},
+        )
+        raise
 
     if not result.has_documents:
         return Answer(answer=_NO_DOCS_MSG, grounded=False)

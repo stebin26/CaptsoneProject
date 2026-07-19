@@ -28,16 +28,23 @@ from ml_common import (
     write_forecasts,
 )
 
+logger = logging.getLogger(__name__)
+
+# statsmodels is optional: without it the job still runs, using the linear
+# fallback for every series. The reason it is unavailable is logged once at
+# import so a silently degraded run is never a mystery later.
 try:
     from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
     _HAS_SM = True
-except Exception:
+except ImportError:
+    logger.warning(
+        "statsmodels is not installed — falling back to linear trend forecasts",
+        exc_info=True,
+    )
     _HAS_SM = False
 
 warnings.filterwarnings("ignore")
-
-logger = logging.getLogger(__name__)
 
 # How many days ahead to forecast, and the minimum history each method needs.
 HORIZON = int(os.getenv("OPS_FORECAST_HORIZON", "7"))
@@ -92,7 +99,16 @@ def _forecast_series(series: pd.Series, horizon: int):
         try:
             return _forecast_smoothing(series, horizon)
         except Exception:
-            pass
+            # Holt-Winters fails on degenerate series (all-constant values,
+            # non-finite input). That is expected often enough not to fail the
+            # job, but it is recorded so a run that quietly used the weaker
+            # method everywhere can still be diagnosed.
+            logger.warning(
+                "Holt-Winters failed on a %d-point series — using linear trend",
+                len(series),
+                extra={"series_length": len(series), "method": "holt_winters"},
+                exc_info=True,
+            )
     if len(series) >= MIN_POINTS_LINEAR:
         return _forecast_linear(series, horizon)
     return None

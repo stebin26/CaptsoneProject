@@ -7,11 +7,14 @@ prefixed with ``OPS_`` (falling back to ``.env``), and the module-level
 """
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -146,8 +149,27 @@ def get_settings() -> Settings:
     Returns:
         The process-wide ``Settings`` instance.
     """
-    settings = Settings()
-    settings.ensure_dirs()
+    try:
+        settings = Settings()
+    except Exception:
+        # This runs at import time for every service, so a bad value here stops
+        # the whole container with a wall of validation output. The reminder
+        # about the prefix is what usually resolves it.
+        logger.exception(
+            "Configuration is invalid — check the OPS_-prefixed environment "
+            "variables and the .env file"
+        )
+        raise
+
+    try:
+        settings.ensure_dirs()
+    except OSError:
+        logger.exception(
+            "Could not create the configured working directories",
+            extra={"upload_dir": str(settings.upload_dir)},
+        )
+        raise
+
     return settings
 
 

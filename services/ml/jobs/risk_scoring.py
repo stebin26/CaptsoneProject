@@ -89,7 +89,17 @@ def _load_anomaly_weights(conn, dataset_id: int | None) -> dict:
         params = (dataset_id,)
     sql += " GROUP BY dataset_id, domain, entity_id, severity"
 
-    df = pd.read_sql(sql, conn, params=params)
+    try:
+        df = pd.read_sql(sql, conn, params=params)
+    except Exception:
+        logger.exception(
+            "Could not read ml.anomalies (dataset_id=%s) — has the anomaly "
+            "detection job run before this one?",
+            dataset_id,
+            extra={"table": "ml.anomalies", "dataset_id": dataset_id},
+        )
+        raise
+
     weight_map = {"high": 3.0, "medium": 2.0, "low": 1.0}
     out: dict = {}
     for _, r in df.iterrows():

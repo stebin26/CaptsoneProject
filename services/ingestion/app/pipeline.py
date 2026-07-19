@@ -103,12 +103,24 @@ def start_onboarding(
 
     Returns:
         The registered dataset and its suggested column mapping.
+
+    Raises:
+        SourceValidationError: If the upload cannot be read or parsed.
     """
     connector = CSVConnector.from_upload(csv_path, business_name, industry)
-    connector.validate_source()
-    df = connector.read_dataframe()
-
-    profile = profile_dataframe(df, connector.metadata.source_name)
+    try:
+        connector.validate_source()
+        df = connector.read_dataframe()
+        profile = profile_dataframe(df, connector.metadata.source_name)
+    except Exception:
+        # The upload is the least trustworthy input in the system, so the
+        # business and file are named here; the caller only sees the file id.
+        logger.exception(
+            "Could not read or profile the upload for %s",
+            business_name,
+            extra={"business": business_name, "file": str(csv_path)},
+        )
+        raise
 
     dataset = Dataset(
         business_name=business_name,
@@ -212,11 +224,30 @@ def complete_onboarding(
     if dataset is None:
         raise ValueError(f"Dataset {dataset_id} not found")
 
-    confirmed_columns = [ConfirmedColumn.from_dict(c) for c in confirmed]
+    try:
+        confirmed_columns = [ConfirmedColumn.from_dict(c) for c in confirmed]
+    except ValueError:
+        logger.exception(
+            "Rejected the confirmed mapping for dataset %s",
+            dataset_id,
+            extra={"dataset_id": dataset_id, "columns_submitted": len(confirmed)},
+        )
+        raise
+
     confirmation = confirm_mappings(session, dataset_id, confirmed_columns)
 
     connector = CSVConnector.from_upload(csv_path, dataset.business_name, dataset.industry)
-    df = connector.read_dataframe()
+    try:
+        df = connector.read_dataframe()
+    except Exception:
+        # The file was readable at stage one; if it is not readable now it has
+        # been moved, truncated, or replaced between the two stages.
+        logger.exception(
+            "Stored upload for dataset %s could not be re-read at confirm time",
+            dataset_id,
+            extra={"dataset_id": dataset_id, "file": str(csv_path)},
+        )
+        raise
 
     mapping = [
         {

@@ -26,12 +26,27 @@ logger = get_logger(__name__)
 # ============================================================
 
 
+_DEFAULT_MAX_STEPS = 8
+
+
 def _max_steps() -> int:
     # Total agent turns (reason cycles) before we force a stop. A 3B model can
     # loop or re-call the same tool; this bounds the cost and latency hard.
     # 8, not 6: a causal question spends one step confirming WHAT, one on the
     # rejected answer, then needs room to actually investigate WHY and write up.
-    return int(os.getenv("OPS_AGENT_MAX_STEPS", "8"))
+    raw = os.getenv("OPS_AGENT_MAX_STEPS", str(_DEFAULT_MAX_STEPS))
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        # Falling back keeps the hard step cap in force; dropping it would let a
+        # looping model run without a bound.
+        logger.warning(
+            "Invalid OPS_AGENT_MAX_STEPS %r — using %d steps instead",
+            raw,
+            _DEFAULT_MAX_STEPS,
+            extra={"env_value": raw},
+        )
+        return _DEFAULT_MAX_STEPS
 
 
 # Words that mark a question as causal — it asks WHY something happened, not
@@ -520,10 +535,24 @@ def run_once(
 
     # recursion_limit is LangGraph's own guard; set above our step cap so OUR
     # cap (with its graceful give_up) fires first, not LangGraph's hard error.
-    final_state = get_agent_graph().invoke(
-        initial,
-        config={"recursion_limit": _max_steps() * 2 + 4},
-    )
+    try:
+        final_state = get_agent_graph().invoke(
+            initial,
+            config={"recursion_limit": _max_steps() * 2 + 4},
+        )
+    except Exception:
+        # The caller has its own backstop; this log is what names the question
+        # and the exposed tool surface, which the caller cannot see.
+        logger.exception(
+            "Reasoning loop failed for question=%r",
+            question,
+            extra={
+                "tools_exposed": len(tool_schemas),
+                "dataset_hint": dataset_hint,
+                "history_turns": len(history or []),
+            },
+        )
+        raise
 
     return {
         "question": question,

@@ -21,8 +21,22 @@ from sqlalchemy import text
 logger = get_logger(__name__)
 
 
+_DEFAULT_HISTORY_TURNS = 6
+
+
 def _history_limit() -> int:
-    return int(os.getenv("OPS_AGENT_MEMORY_TURNS", "6"))
+    raw = os.getenv("OPS_AGENT_MEMORY_TURNS", str(_DEFAULT_HISTORY_TURNS))
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        # A typo in one setting should not stop the copilot from answering.
+        logger.warning(
+            "Invalid OPS_AGENT_MEMORY_TURNS %r — using %d turns instead",
+            raw,
+            _DEFAULT_HISTORY_TURNS,
+            extra={"env_value": raw},
+        )
+        return _DEFAULT_HISTORY_TURNS
 
 
 # ============================================================
@@ -77,8 +91,14 @@ def load_history(session_id: str | None, limit: int | None = None) -> list[Turn]
                 {"sid": session_id, "lim": cap},
             ).fetchall()
     except Exception:  # noqa: BLE001
+        # Degrading to a stateless answer is correct, but without the traceback
+        # a recurring memory outage would look like the feature simply not
+        # working, with nothing in the logs to explain it.
         logger.warning(
-            "Memory load failed for session %s; continuing stateless.", session_id
+            "Memory load failed for session %s; continuing stateless.",
+            session_id,
+            extra={"session_id": session_id},
+            exc_info=True,
         )
         return []
 
@@ -127,7 +147,12 @@ def load_full_conversation(session_id: str | None) -> list[Turn]:
                 {"sid": session_id},
             ).fetchall()
     except Exception:  # noqa: BLE001
-        logger.warning("Full conversation load failed for session %s.", session_id)
+        logger.warning(
+            "Full conversation load failed for session %s.",
+            session_id,
+            extra={"session_id": session_id},
+            exc_info=True,
+        )
         return []
 
     return [
@@ -227,8 +252,13 @@ def save_exchange(
                 },
             )
     except Exception:  # noqa: BLE001
+        # The answer has already been produced, so losing the transcript must
+        # not fail the request — but it is recorded with its cause.
         logger.warning(
-            "Memory save failed for session %s; answer was still returned.", session_id
+            "Memory save failed for session %s; answer was still returned.",
+            session_id,
+            extra={"session_id": session_id},
+            exc_info=True,
         )
 
 

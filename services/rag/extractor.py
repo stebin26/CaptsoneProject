@@ -12,6 +12,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ops_common.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class ExtractionError(RuntimeError):
+    """Raised when a document exists but its text cannot be extracted."""
+
+    pass
+
 
 @dataclass
 class ExtractedPage:
@@ -61,9 +71,20 @@ def detect_file_type(filename: str) -> str:
 
 
 def _extract_pdf(path: Path) -> list[ExtractedPage]:
-    from pypdf import PdfReader
+    try:
+        from pypdf import PdfReader
+    except ImportError as exc:
+        raise ExtractionError("pypdf is not installed; cannot read PDFs") from exc
 
-    reader = PdfReader(str(path))
+    try:
+        reader = PdfReader(str(path))
+    except Exception as exc:
+        # Encrypted, truncated, and non-PDF files renamed to .pdf all land here.
+        logger.warning(
+            "PDF could not be opened", extra={"file": path.name}, exc_info=True
+        )
+        raise ExtractionError(f"PDF could not be opened: {path.name} ({exc})") from exc
+
     pages: list[ExtractedPage] = []
     for i, page in enumerate(reader.pages):
         try:
@@ -75,9 +96,21 @@ def _extract_pdf(path: Path) -> list[ExtractedPage]:
 
 
 def _extract_docx(path: Path) -> list[ExtractedPage]:
-    from docx import Document as DocxDocument
+    try:
+        from docx import Document as DocxDocument
+    except ImportError as exc:
+        raise ExtractionError(
+            "python-docx is not installed; cannot read DOCX files"
+        ) from exc
 
-    doc = DocxDocument(str(path))
+    try:
+        doc = DocxDocument(str(path))
+    except Exception as exc:
+        logger.warning(
+            "DOCX could not be opened", extra={"file": path.name}, exc_info=True
+        )
+        raise ExtractionError(f"DOCX could not be opened: {path.name} ({exc})") from exc
+
     parts: list[str] = [p.text for p in doc.paragraphs if p.text and p.text.strip()]
     # docx has no intrinsic page breaks accessible here; treat as a single page.
     text = _clean("\n".join(parts))
@@ -85,7 +118,12 @@ def _extract_docx(path: Path) -> list[ExtractedPage]:
 
 
 def _extract_txt(path: Path) -> list[ExtractedPage]:
-    raw = path.read_text(encoding="utf-8", errors="ignore")
+    try:
+        raw = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        logger.exception("Text file could not be read", extra={"file": path.name})
+        raise ExtractionError(f"File could not be read: {path.name} ({exc})") from exc
+
     text = _clean(raw)
     return [ExtractedPage(page_number=1, text=text)] if text else []
 
@@ -115,10 +153,27 @@ def _clean(text: str) -> str:
 def extract_document(
     path: str | Path, filename: str | None = None
 ) -> ExtractedDocument:
-    """Extract text from a supported file. Raises ValueError on unsupported type."""
+    """Extract text from a supported file.
+
+    Args:
+        path: Path to the stored file.
+        filename: Original name to record; defaults to the path's own name.
+
+    Returns:
+        The extracted pages and their identifying metadata.
+
+    Raises:
+        ValueError: If the file type is not supported.
+        ExtractionError: If the file is missing or its text cannot be read.
+    """
     p = Path(path)
     name = filename or p.name
     ftype = detect_file_type(name)
+
+    if not p.exists():
+        raise ExtractionError(f"File not found: {p}")
+    if not p.is_file():
+        raise ExtractionError(f"Path is not a file: {p}")
 
     if ftype == "pdf":
         pages = _extract_pdf(p)

@@ -70,7 +70,18 @@ class CSVConnector(BaseConnector):
             raise SourceValidationError(f"CSV file not found: {self.path}")
         if not self.path.is_file():
             raise SourceValidationError(f"Path is not a file: {self.path}")
-        if self.path.stat().st_size == 0:
+        try:
+            size = self.path.stat().st_size
+        except OSError as exc:
+            # Permission problems and broken links surface here rather than as
+            # an opaque failure midway through parsing.
+            logger.exception(
+                "Could not stat the uploaded file", extra={"file": str(self.path)}
+            )
+            raise SourceValidationError(
+                f"CSV file could not be read: {self.path} ({exc})"
+            ) from exc
+        if size == 0:
             raise SourceValidationError(f"CSV file is empty: {self.path}")
 
     # The actual pandas read. If no delimiter is given, use the python engine
@@ -96,7 +107,41 @@ class CSVConnector(BaseConnector):
                 extra={"file": str(self.path)},
             )
             read_kwargs["encoding"] = "latin-1"
-            return pd.read_csv(self.path, **read_kwargs)
+            try:
+                return pd.read_csv(self.path, **read_kwargs)
+            except Exception as exc:
+                logger.exception(
+                    "CSV parse failed even after the latin-1 retry",
+                    extra={"file": str(self.path)},
+                )
+                raise SourceValidationError(
+                    f"CSV could not be parsed after retrying in latin-1: "
+                    f"{self.path.name} ({exc})"
+                ) from exc
+        except pd.errors.EmptyDataError as exc:
+            raise SourceValidationError(
+                f"CSV contains no parseable data: {self.path.name}"
+            ) from exc
+        except pd.errors.ParserError as exc:
+            # A user-uploaded file is the most likely thing in the whole system
+            # to be malformed, so this is turned into the connector's own error
+            # rather than surfacing a raw pandas traceback to the caller.
+            logger.warning(
+                "CSV is malformed and could not be parsed",
+                extra={"file": str(self.path), "delimiter": self.delimiter},
+                exc_info=True,
+            )
+            raise SourceValidationError(
+                f"CSV is malformed and could not be parsed: {self.path.name} ({exc})"
+            ) from exc
+        except OSError as exc:
+            logger.exception(
+                "Could not open the uploaded file for reading",
+                extra={"file": str(self.path)},
+            )
+            raise SourceValidationError(
+                f"CSV could not be opened: {self.path} ({exc})"
+            ) from exc
 
     # The main public method: validate → read → clean → cache → return.
     # Cleaning = normalize headers, drop dead columns, dedupe duplicate names.

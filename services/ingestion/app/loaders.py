@@ -26,6 +26,7 @@ from ops_common.domain.models import (
 from ops_common.domain.registry import features_for_domain
 from ops_common.logging import get_logger
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.transforms import HubRow, TransformResult
@@ -65,7 +66,19 @@ def _write_hub_rows(session: Session, dataset_id: int, rows: list[HubRow]) -> in
         grouped.setdefault(row.domain, []).append(row)
 
     for domain, domain_rows in grouped.items():
-        model = model_for_domain(domain)
+        try:
+            model = model_for_domain(domain)
+        except (KeyError, ValueError) as exc:
+            # A domain with no hub table means the mapping let through a value
+            # the universal model does not define; loading it is not possible.
+            logger.error(
+                "No hub table exists for domain %r — %d row(s) cannot be loaded",
+                domain,
+                len(domain_rows),
+                extra={"domain": domain, "rows": len(domain_rows)},
+            )
+            raise ValueError(f"Unknown hub domain {domain!r}") from exc
+
         for batch in _batched(domain_rows, _INSERT_BATCH_SIZE):
             mappings = [
                 {
@@ -78,7 +91,20 @@ def _write_hub_rows(session: Session, dataset_id: int, rows: list[HubRow]) -> in
                 }
                 for r in batch
             ]
-            session.bulk_insert_mappings(model, mappings)
+            try:
+                session.bulk_insert_mappings(model, mappings)
+            except SQLAlchemyError:
+                logger.exception(
+                    "Failed to insert a batch of %d row(s) into the %s hub table",
+                    len(mappings),
+                    domain,
+                    extra={
+                        "dataset_id": dataset_id,
+                        "domain": domain,
+                        "batch_size": len(mappings),
+                    },
+                )
+                raise
             written += len(mappings)
 
         logger.info(
@@ -155,7 +181,8 @@ def load_to_hub(
         Counts of what was written.
 
     Raises:
-        ValueError: If the dataset does not exist.
+        ValueError: If the dataset does not exist or a row names an unknown domain.
+        SQLAlchemyError: If the hub rows cannot be written.
     """
     dataset = session.get(Dataset, dataset_id)
     if dataset is None:
@@ -170,7 +197,19 @@ def load_to_hub(
     if row_count is not None:
         dataset.row_count = row_count
 
-    session.flush()
+    try:
+        session.flush()
+    except SQLAlchemyError:
+        logger.exception(
+            "Could not flush the hub load for dataset %s",
+            dataset_id,
+            extra={
+                "dataset_id": dataset_id,
+                "hub_rows": written,
+                "features_collected": collected,
+            },
+        )
+        raise
 
     logger.info(
         "Load complete",

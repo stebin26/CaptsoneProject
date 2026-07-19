@@ -23,6 +23,10 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
 
+from ops_common.logging import get_logger
+
+logger = get_logger(__name__)
+
 # Named strength → numeric, for ranking impacts (higher = stronger dependency).
 _STRENGTH_VALUE = {"critical": 5, "strong": 4, "medium": 3, "weak": 2, "very_weak": 1}
 
@@ -67,20 +71,83 @@ def load_graph(path: str = _GRAPH_PATH) -> tuple[Edge, ...]:
 
     Returns:
         Every edge in the graph, normalized to lowercase.
+
+    Raises:
+        FileNotFoundError: If the relationships file is missing.
+        ValueError: If the file is not valid JSON or does not contain an edge list.
     """
-    with open(path, encoding="utf-8") as fh:
-        data = json.load(fh)
-    edges = tuple(
-        Edge(
-            source=str(e["source"]).lower(),
-            target=str(e["target"]).lower(),
-            strength=str(e.get("strength", "weak")).lower(),
-            effect=str(e.get("effect", "negative")).lower(),
-            label=str(e.get("label", "")),
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        # The graph is baked into the image, so this means the file was not
+        # mounted where the engine expects it.
+        logger.error(
+            "Relationship graph not found at %s — set OPS_RELATIONSHIPS_PATH if "
+            "it lives elsewhere",
+            path,
+            extra={"graph_path": path},
         )
-        for e in data.get("edges", [])
-    )
-    return edges
+        raise
+    except json.JSONDecodeError as exc:
+        logger.exception(
+            "Relationship graph is not valid JSON", extra={"graph_path": path}
+        )
+        raise ValueError(f"Relationship graph is not valid JSON: {path}") from exc
+    except OSError as exc:
+        logger.exception(
+            "Relationship graph could not be read", extra={"graph_path": path}
+        )
+        raise ValueError(f"Relationship graph could not be read: {path}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Relationship graph must be a JSON object, got "
+            f"{type(data).__name__}: {path}"
+        )
+
+    raw_edges = data.get("edges", [])
+    if not isinstance(raw_edges, list):
+        raise ValueError(
+            f"Relationship graph 'edges' must be a list, got "
+            f"{type(raw_edges).__name__}: {path}"
+        )
+
+    edges: list[Edge] = []
+    for index, e in enumerate(raw_edges):
+        try:
+            edges.append(
+                Edge(
+                    source=str(e["source"]).lower(),
+                    target=str(e["target"]).lower(),
+                    strength=str(e.get("strength", "weak")).lower(),
+                    effect=str(e.get("effect", "negative")).lower(),
+                    label=str(e.get("label", "")),
+                )
+            )
+        except (KeyError, TypeError, AttributeError):
+            # One malformed edge is dropped rather than losing the whole graph,
+            # but its position is logged so the file can be corrected.
+            logger.warning(
+                "Skipping malformed edge %d in the relationship graph: %r",
+                index,
+                e,
+                extra={"graph_path": path, "edge_index": index},
+            )
+
+    if not edges:
+        logger.warning(
+            "Relationship graph loaded with no usable edges — cross-domain "
+            "insights will be empty",
+            extra={"graph_path": path},
+        )
+    else:
+        logger.info(
+            "Loaded relationship graph",
+            extra={"graph_path": path, "edge_count": len(edges)},
+        )
+
+    return tuple(edges)
 
 
 def _adjacency(edges: tuple[Edge, ...]) -> dict[str, list[Edge]]:

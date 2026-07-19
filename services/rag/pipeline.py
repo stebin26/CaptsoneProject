@@ -62,7 +62,17 @@ def index_document(
 ) -> IngestResult:
     """Run the full extract→chunk→embed→store flow for one already-registered doc."""
     path = Path(stored_path)
-    set_document_status(document_id, "processing")
+    try:
+        set_document_status(document_id, "processing")
+    except Exception:
+        # If the status cannot even be set, the database is unavailable and
+        # every later step would fail anyway — stop here with a clear reason.
+        logger.exception(
+            "Could not mark document %s as processing",
+            document_id,
+            extra={"document_id": document_id, "dataset_id": dataset_id},
+        )
+        raise
 
     try:
         # 1. Extract
@@ -120,12 +130,30 @@ def index_document(
         return IngestResult(document_id, filename, "indexed", written)
 
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Document indexing failed")
-        set_document_status(
+        logger.exception(
+            "Indexing failed for document %s (%s)",
             document_id,
-            "failed",
-            error_detail=str(exc)[:1000],
+            filename,
+            extra={
+                "document_id": document_id,
+                "dataset_id": dataset_id,
+                "document_filename": filename,
+            },
         )
+        try:
+            set_document_status(
+                document_id,
+                "failed",
+                error_detail=str(exc)[:1000],
+            )
+        except Exception:
+            # Recording the failure must never replace the failure itself, or
+            # the document is left stuck in 'processing' with no explanation.
+            logger.exception(
+                "Could not record the failure status for document %s",
+                document_id,
+                extra={"document_id": document_id},
+            )
         return IngestResult(document_id, filename, "failed", 0, str(exc))
 
 

@@ -16,6 +16,7 @@ from pathlib import Path
 import duckdb
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from ops_common.config import settings
@@ -51,22 +52,43 @@ def get_engine() -> Engine:
     if _engine is None:
         with _engine_lock:
             if _engine is None:
-                logger.info("Creating Postgres engine", extra={"host": settings.postgres_host})
-                _engine = create_engine(
-                    settings.sqlalchemy_dsn,
-                    pool_pre_ping=True,
-                    pool_size=5,
-                    max_overflow=10,
-                    future=True,
+                logger.info(
+                    "Creating Postgres engine", extra={"host": settings.postgres_host}
                 )
-                # Session factory configured for explicit commits (autocommit off).
-                _SessionFactory = sessionmaker(
-                    bind=_engine,
-                    autoflush=False,
-                    autocommit=False,
-                    expire_on_commit=False,
-                    future=True,
-                )
+                try:
+                    engine = create_engine(
+                        settings.sqlalchemy_dsn,
+                        pool_pre_ping=True,
+                        pool_size=5,
+                        max_overflow=10,
+                        future=True,
+                    )
+                    # Configured for explicit commits (autocommit off).
+                    factory = sessionmaker(
+                        bind=engine,
+                        autoflush=False,
+                        autocommit=False,
+                        expire_on_commit=False,
+                        future=True,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Could not create the Postgres engine for %s:%s/%s",
+                        settings.postgres_host,
+                        settings.postgres_port,
+                        settings.postgres_db,
+                        extra={
+                            "db_host": settings.postgres_host,
+                            "db_port": settings.postgres_port,
+                            "db_name": settings.postgres_db,
+                        },
+                    )
+                    raise
+
+                # Published together: a caller must never see an engine without
+                # its session factory.
+                _engine = engine
+                _SessionFactory = factory
     return _engine
 
 
@@ -79,7 +101,12 @@ def get_session_factory() -> sessionmaker[Session]:
     """
     if _SessionFactory is None:
         get_engine()
-    assert _SessionFactory is not None
+    if _SessionFactory is None:
+        # A bare assert would be stripped under `python -O`, turning this into a
+        # confusing NoneType error much further downstream.
+        raise RuntimeError(
+            "Session factory was not initialised; the Postgres engine is missing."
+        )
     return _SessionFactory
 
 
@@ -155,11 +182,27 @@ def wait_for_postgres(retries: int = 30, delay: float = 2.0) -> None:
             return
         except Exception as exc:  # noqa: BLE001
             last_err = exc
+            # The reason matters here: "not ready" reads the same whether the
+            # container is still booting or the password is wrong.
             logger.warning(
-                "Postgres not ready, retrying",
-                extra={"attempt": attempt, "retries": retries},
+                "Postgres not ready (%s), retrying",
+                exc,
+                extra={
+                    "attempt": attempt,
+                    "retries": retries,
+                    "db_host": settings.postgres_host,
+                },
             )
             time.sleep(delay)
+
+    logger.error(
+        "Postgres never became available at %s:%s/%s after %d attempts",
+        settings.postgres_host,
+        settings.postgres_port,
+        settings.postgres_db,
+        retries,
+        extra={"db_host": settings.postgres_host, "retries": retries},
+    )
     raise RuntimeError(f"Postgres unavailable after {retries} attempts") from last_err
 
 
@@ -179,10 +222,27 @@ def apply_schema(schema_path: str | Path) -> None:
     schema_path = Path(schema_path)
     if not schema_path.exists():
         raise FileNotFoundError(f"Schema file not found: {schema_path}")
-    sql = schema_path.read_text(encoding="utf-8")
+
+    try:
+        sql = schema_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.exception("Could not read schema file", extra={"path": str(schema_path)})
+        raise OSError(f"Schema file could not be read: {schema_path}") from exc
+
     engine = get_engine()
-    with engine.begin() as conn:
-        conn.execute(text(sql))
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(sql))
+    except SQLAlchemyError:
+        # Naming the file is the point: several schemas are applied at startup
+        # and the raw error says only that some statement failed.
+        logger.exception(
+            "Failed to apply schema file %s",
+            schema_path.name,
+            extra={"path": str(schema_path)},
+        )
+        raise
+
     logger.info("Applied Postgres schema", extra={"path": str(schema_path)})
 
 
@@ -205,12 +265,46 @@ def get_duckdb(read_only: bool = False) -> duckdb.DuckDBPyConnection:
 
     Returns:
         An open DuckDB connection.
+
+    Raises:
+        RuntimeError: If the DuckDB file cannot be opened or the postgres
+            extension cannot be loaded.
     """
     Path(settings.duckdb_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = duckdb.connect(settings.duckdb_path, read_only=read_only)
-    conn.execute("INSTALL postgres;")
-    conn.execute("LOAD postgres;")
-    _attach_postgres(conn)
+
+    try:
+        conn = duckdb.connect(settings.duckdb_path, read_only=read_only)
+    except Exception as exc:
+        # DuckDB takes an exclusive lock on the file, so the usual cause is
+        # another process in this stack still holding it.
+        logger.exception(
+            "Could not open the DuckDB file at %s (read_only=%s) — another "
+            "process may still hold the lock",
+            settings.duckdb_path,
+            read_only,
+            extra={"duckdb_path": settings.duckdb_path, "read_only": read_only},
+        )
+        raise RuntimeError(
+            f"DuckDB could not be opened at {settings.duckdb_path}: {exc}"
+        ) from exc
+
+    try:
+        conn.execute("INSTALL postgres;")
+        conn.execute("LOAD postgres;")
+        _attach_postgres(conn)
+    except Exception as exc:
+        # The connection is closed here because the caller never receives it and
+        # would otherwise leave the file locked.
+        logger.exception(
+            "Could not prepare the DuckDB postgres extension",
+            extra={"duckdb_path": settings.duckdb_path},
+        )
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            logger.warning("Failed to close the DuckDB connection", exc_info=True)
+        raise RuntimeError(f"DuckDB postgres extension unavailable: {exc}") from exc
+
     return conn
 
 
@@ -232,7 +326,22 @@ def _attach_postgres(conn: duckdb.DuckDBPyConnection) -> None:
     ).fetchone()
     if attached and attached[0] > 0:
         return
-    conn.execute(f"ATTACH '{settings.duckdb_attach_dsn}' AS {alias} (TYPE postgres, READ_ONLY);")
+
+    try:
+        conn.execute(
+            f"ATTACH '{settings.duckdb_attach_dsn}' "
+            f"AS {alias} (TYPE postgres, READ_ONLY);"
+        )
+    except Exception:
+        # The DSN is built from the same settings as the SQLAlchemy one, so a
+        # failure here is Postgres being unreachable rather than a typo.
+        logger.exception(
+            "Could not attach Postgres to DuckDB as %s",
+            alias,
+            extra={"alias": alias, "db_host": settings.postgres_host},
+        )
+        raise
+
     logger.info("Attached Postgres to DuckDB", extra={"alias": alias})
 
 
@@ -252,13 +361,38 @@ def load_analytics_views(analytics_sql_path: str | Path) -> None:
     analytics_sql_path = Path(analytics_sql_path)
     if not analytics_sql_path.exists():
         raise FileNotFoundError(f"Analytics SQL not found: {analytics_sql_path}")
-    sql = analytics_sql_path.read_text(encoding="utf-8")
+
+    try:
+        sql = analytics_sql_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.exception(
+            "Could not read the analytics SQL file",
+            extra={"path": str(analytics_sql_path)},
+        )
+        raise OSError(
+            f"Analytics SQL could not be read: {analytics_sql_path}"
+        ) from exc
+
     conn = get_duckdb(read_only=False)
     try:
         conn.execute(sql)
-        logger.info("Loaded DuckDB analytics views", extra={"path": str(analytics_sql_path)})
+        logger.info(
+            "Loaded DuckDB analytics views", extra={"path": str(analytics_sql_path)}
+        )
+    except Exception:
+        logger.exception(
+            "Failed to create the DuckDB analytics views",
+            extra={"path": str(analytics_sql_path)},
+        )
+        raise
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            # Never allowed to mask the real error above.
+            logger.warning(
+                "Failed to close the DuckDB connection cleanly", exc_info=True
+            )
 
 
 # Context manager for DuckDB reads: opens (read-only by default), yields, closes.
@@ -277,4 +411,11 @@ def duckdb_scope(read_only: bool = True) -> Iterator[duckdb.DuckDBPyConnection]:
     try:
         yield conn
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            # A close failure must not replace whatever the block raised, but an
+            # unclosed DuckDB handle keeps the file locked, so it is recorded.
+            logger.warning(
+                "Failed to close the DuckDB connection cleanly", exc_info=True
+            )

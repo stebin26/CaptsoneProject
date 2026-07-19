@@ -26,17 +26,29 @@ logger = logging.getLogger(__name__)
 
 
 def _target_dataset_id() -> int | None:
+    # A bad value is ignored rather than failing the job, but it is logged:
+    # silently running the full batch when an incremental run was intended is
+    # the kind of thing that goes unnoticed for weeks.
     if len(sys.argv) > 1 and sys.argv[1].strip():
+        raw = sys.argv[1].strip()
         try:
-            return int(sys.argv[1].strip())
+            return int(raw)
         except ValueError:
-            pass
+            logger.warning(
+                "Ignoring non-integer dataset id argument %r",
+                raw,
+                extra={"argument": raw},
+            )
     env = os.environ.get("OPS_TARGET_DATASET_ID", "").strip()
     if env:
         try:
             return int(env)
         except ValueError:
-            pass
+            logger.warning(
+                "Ignoring non-integer OPS_TARGET_DATASET_ID %r — running full batch",
+                env,
+                extra={"env_value": env},
+            )
     return None
 
 
@@ -50,7 +62,20 @@ def _is_empty(df: DataFrame) -> bool:
 
 def _dataset_ids(df: DataFrame) -> list[int]:
     rows = df.select("dataset_id").distinct().collect()
-    return [int(r["dataset_id"]) for r in rows]
+    ids: list[int] = []
+    for r in rows:
+        value = r["dataset_id"]
+        try:
+            ids.append(int(value))
+        except (TypeError, ValueError):
+            # A null or malformed id cannot scope a delete, so it is dropped
+            # rather than allowed to widen the replace to the whole table.
+            logger.warning(
+                "Skipping unusable dataset_id %r found in the hub rows",
+                value,
+                extra={"dataset_id": value},
+            )
+    return ids
 
 
 def compute_metric_aggregates(df: DataFrame, domain: str) -> DataFrame:
@@ -208,17 +233,31 @@ def run() -> None:
             continue
 
         df = df.cache()
-        ds_ids = _dataset_ids(df)
+        # Computation is guarded so one malformed domain is skipped rather than
+        # aborting the whole run. The writes below are deliberately NOT guarded:
+        # a half-completed replace is a data-integrity problem, not something to
+        # skip past silently.
+        try:
+            ds_ids = _dataset_ids(df)
 
-        aggregates = _select_metric_columns(
-            label_with_business(spark, compute_metric_aggregates(df, domain))
-        )
-        trend = _select_trend_columns(
-            label_with_business(spark, compute_daily_trend(df, domain))
-        )
+            aggregates = _select_metric_columns(
+                label_with_business(spark, compute_metric_aggregates(df, domain))
+            )
+            trend = _select_trend_columns(
+                label_with_business(spark, compute_daily_trend(df, domain))
+            )
 
-        agg_count = aggregates.count()
-        trend_count = trend.count()
+            agg_count = aggregates.count()
+            trend_count = trend.count()
+        except Exception:
+            logger.exception(
+                "Skipping domain %s: aggregation failed",
+                domain,
+                extra={"domain": domain, "table": table},
+            )
+            skipped.append(domain)
+            df.unpersist()
+            continue
 
         replace_dataset_rows(aggregates, "analytics.domain_metrics", ds_ids, domain)
         replace_dataset_rows(trend, "analytics.daily_trend", ds_ids, domain)

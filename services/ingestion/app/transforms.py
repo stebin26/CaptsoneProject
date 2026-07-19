@@ -76,15 +76,32 @@ class _MappingSpec:
 
 
 def _normalize_specs(mapping: list[dict[str, Any]]) -> list[_MappingSpec]:
-    return [
-        _MappingSpec(
-            column_name=m["column_name"],
-            domain=m.get("domain"),
-            metric_name=m.get("metric_name"),
-            role=m.get("role", "skip"),
+    specs: list[_MappingSpec] = []
+    for index, m in enumerate(mapping):
+        try:
+            column_name = m["column_name"]
+        except (KeyError, TypeError) as exc:
+            # Naming the position makes a malformed mapping payload findable;
+            # a bare KeyError would not say which entry was at fault.
+            logger.error(
+                "Mapping entry %d has no column_name: %r",
+                index,
+                m,
+                extra={"entry_index": index},
+            )
+            raise ValueError(
+                f"Mapping entry {index} is missing 'column_name': {m!r}"
+            ) from exc
+
+        specs.append(
+            _MappingSpec(
+                column_name=column_name,
+                domain=m.get("domain"),
+                metric_name=m.get("metric_name"),
+                role=m.get("role", "skip"),
+            )
         )
-        for m in mapping
-    ]
+    return specs
 
 
 def _pick_entity_column(specs: list[_MappingSpec]) -> str | None:

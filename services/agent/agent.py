@@ -215,8 +215,12 @@ def _resolve_dataset(dataset_id: int | None) -> int | None:
         # own tool call can disambiguate.
         return None
     except Exception:  # noqa: BLE001
-        # Discovery is best-effort; never let it block a run.
-        logger.warning("Dataset auto-resolution failed; proceeding without a hint.")
+        # Discovery is best-effort; never let it block a run. The traceback is
+        # kept because a permanent failure here quietly degrades every answer.
+        logger.warning(
+            "Dataset auto-resolution failed; proceeding without a hint.",
+            exc_info=True,
+        )
         return None
 
 
@@ -268,11 +272,27 @@ def agent_health() -> dict[str, Any]:
     """
     from .llm import get_llm
 
-    health = get_llm().health_check()
+    try:
+        client = get_llm()
+        health = client.health_check()
+        model = client.config.model
+    except Exception as exc:  # noqa: BLE001
+        # This is the readiness probe the copilot page calls before letting a
+        # user ask anything, so it must always answer rather than raise.
+        logger.exception("Agent health check could not reach the model client")
+        return {
+            "llm_reachable": False,
+            "model_present": False,
+            "model": None,
+            "tool_count": len(ALL_TOOL_FUNCTIONS),
+            "tools": sorted(ALL_TOOL_FUNCTIONS),
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
     return {
         "llm_reachable": health.get("reachable", False),
         "model_present": health.get("model_present", False),
-        "model": get_llm().config.model,
+        "model": model,
         "tool_count": len(ALL_TOOL_FUNCTIONS),
         "tools": sorted(ALL_TOOL_FUNCTIONS),
     }
