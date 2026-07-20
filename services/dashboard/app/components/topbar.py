@@ -47,6 +47,7 @@ def render() -> html.Header:
                             placeholder="Select dataset",
                             clearable=False,
                         ),
+                        id=ids.TOPBAR_PICKER,
                         className="topbar-picker",
                     ),
                     dcc.DatePickerRange(

@@ -108,7 +108,22 @@ def sync_route(pathname: str | None, user: Any) -> tuple[Any, str, str]:
     permissions = (user or {}).get("permissions", [])
     return sidebar.nav_children(path, permissions), title, kicker
 
-
+# ---- Hide the dataset/date tools on routes that are not dataset-scoped ----
+# The evaluation page reports fixed, corpus-based metrics that do not change
+# with the selected dataset, so showing the picker there would imply a filter
+# that does nothing. This is a pure view toggle, hence clientside: no server
+# round-trip on navigation.
+clientside_callback(
+    """
+    function(pathname) {
+        const hidden = {display: "none"};
+        const shown = {};
+        return (pathname === "/evaluation") ? hidden : shown;
+    }
+    """,
+    Output(ids.TOPBAR_PICKER, "style"),
+    Input(ids.URL, "pathname"),
+)
 # ---- Dataset scope ----
 
 
