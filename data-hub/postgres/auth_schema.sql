@@ -129,6 +129,7 @@ INSERT INTO auth.permissions (code, description) VALUES
     ('intelligence:read', 'View cross-domain intelligence'),
     ('documents:read',    'Query documents via RAG'),
     ('documents:upload',  'Upload documents to RAG'),
+    ('evaluation:read',   'View model evaluation reports'),
     ('copilot:use',       'Use the agentic copilot'),
     ('user:manage',       'Create, edit, assign roles to users')
 ON CONFLICT (code) DO NOTHING;
@@ -150,7 +151,7 @@ SELECT r.id, p.id
 FROM auth.roles r JOIN auth.permissions p ON p.code IN (
     'dataset:read','dataset:upload','mapping:confirm',
     'analytics:read','ml:read','ml:trigger',
-    'intelligence:read','documents:read','documents:upload','copilot:use'
+    'intelligence:read','documents:read','documents:upload','copilot:use', 'evaluation:read'
 )
 WHERE r.name = 'Analyst'
 ON CONFLICT DO NOTHING;

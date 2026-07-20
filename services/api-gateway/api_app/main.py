@@ -28,6 +28,7 @@ from api_app.routers.v1 import (
     agent,
     analytics,
     domains,
+    evaluation,
     executive,
     features,
     intelligence,
@@ -362,5 +363,6 @@ app.include_router(ml.router, prefix="/api/v1", tags=["ml"])
 app.include_router(intelligence.router, prefix="/api/v1", tags=["intelligence"])
 app.include_router(rag.router, prefix="/api/v1", tags=["rag"])
 app.include_router(agent.router, prefix="/api/v1", tags=["agent"])
+app.include_router(evaluation.router, prefix="/api/v1", tags=["evaluation"])
 app.include_router(executive.router, prefix="/api/v1", tags=["executive"])
 app.include_router(auth_routes.router, prefix="/api/v1", tags=["auth"])

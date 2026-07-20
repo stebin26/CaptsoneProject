@@ -16,6 +16,7 @@ from app.callbacks import (  # noqa: F401
     copilot,
     datasets,
     documents,
+    evaluation,
     executive,
     feature_review,
     mapping_confirm,

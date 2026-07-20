@@ -123,6 +123,16 @@ NAV: tuple[NavGroup, ...] = (
                 "signals in this dataset.",
                 permission="intelligence:read",
             ),
+            NavItem(
+                "Evaluation",
+                "/evaluation",
+                "i-evaluation",
+                "How well the models actually work",
+                "Measured performance of the RAG assistant and the ML models "
+                "\u2014 retrieval accuracy, answer faithfulness, forecast error, "
+                "and anomaly detection, scored against held-out ground truth.",
+                permission="evaluation:read",
+            ),
         ),
     ),
     NavGroup(

@@ -549,7 +549,70 @@ def analytics_features(
         )
         raise APIError(f"Failed to load analytics features: {exc}") from exc
 
+def evaluation_reports(token: str | None = None) -> list[dict[str, Any]]:
+    """Fetch the catalogue of evaluation reports and their availability.
 
+    Args:
+        token: Caller's access token.
+
+    Returns:
+        One entry per known report, each carrying its slug, title, group, and an
+        ``available`` flag indicating whether the report has been generated.
+
+    Raises:
+        APIError: If the request fails or the API is unreachable.
+    """
+    try:
+        resp = requests.get(
+            _url("/evaluation/reports"), headers=_auth(token), timeout=_TIMEOUT
+        )
+        payload = _handle(resp)
+    except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
+        raise APIError(f"Failed to load evaluation reports: {exc}") from exc
+
+    # The endpoint wraps the list in a {"reports": [...]} object; callbacks want
+    # the list itself, so it is unwrapped here rather than in every caller.
+    if isinstance(payload, dict):
+        return payload.get("reports", [])
+    return []
+
+
+def evaluation_report(slug: str, token: str | None = None) -> dict[str, Any]:
+    """Fetch the parsed contents of one evaluation report.
+
+    Args:
+        slug: The report identifier, for example ``"retrieval"`` or ``"risk"``.
+        token: Caller's access token.
+
+    Returns:
+        The report's JSON content.
+
+    Raises:
+        APIError: If the report is unknown, has not been generated, or the API
+            is unreachable.
+    """
+    try:
+        resp = requests.get(
+            _url(f"/evaluation/reports/{slug}"),
+            headers=_auth(token),
+            timeout=_TIMEOUT,
+        )
+        return _handle(resp)
+    except requests.RequestException as exc:
+        logger.warning(
+            "Could not reach the API gateway at %s: %s",
+            API_BASE_URL,
+            exc,
+            extra={"api_base_url": API_BASE_URL},
+        )
+        raise APIError(f"Failed to load evaluation report '{slug}': {exc}") from exc
+    
 # ============================================================
 # ML (Phase 3 — forecasts, anomalies, risk scores)
 # ============================================================

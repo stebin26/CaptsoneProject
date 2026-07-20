@@ -243,6 +243,13 @@ PRED_KPIS = "pred-kpis"
 PRED_TABLE = "pred-table"
 PRED_DOMAIN_CHARTS = "pred-domain-charts"
 
+# ============================================================
+# Evaluation  --  /evaluation
+# ============================================================
+
+EVAL_INIT = "eval-init"
+EVAL_RAG_SECTION = "eval-rag-section"
+EVAL_ML_SECTION = "eval-ml-section"
 
 # ============================================================
 # Intelligence  --  /intelligence   (file: business_intelligence.py)
