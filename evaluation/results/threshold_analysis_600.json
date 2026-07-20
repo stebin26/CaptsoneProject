@@ -1,0 +1,120 @@
+{
+  "source_report": "evaluation/results/retrieval_600.json",
+  "separation": {
+    "answerable": {
+      "min": 0.3034,
+      "median": 0.4551,
+      "max": 0.6172,
+      "n": 24
+    },
+    "out_of_scope": {
+      "min": 0.5101,
+      "median": 0.6259,
+      "max": 0.7349,
+      "n": 6
+    },
+    "gap": -0.1071,
+    "separable": false
+  },
+  "sweep": [
+    {
+      "cutoff": 0.3,
+      "abstention_accuracy": 1.0,
+      "correctly_refused": 6,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.0,
+      "hit_rate@3": 0.0,
+      "hit_rate@5": 0.0
+    },
+    {
+      "cutoff": 0.35,
+      "abstention_accuracy": 1.0,
+      "correctly_refused": 6,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.0417,
+      "hit_rate@3": 0.0417,
+      "hit_rate@5": 0.0417
+    },
+    {
+      "cutoff": 0.4,
+      "abstention_accuracy": 1.0,
+      "correctly_refused": 6,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.1667,
+      "hit_rate@3": 0.1667,
+      "hit_rate@5": 0.1667
+    },
+    {
+      "cutoff": 0.45,
+      "abstention_accuracy": 1.0,
+      "correctly_refused": 6,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.2917,
+      "hit_rate@3": 0.2917,
+      "hit_rate@5": 0.2917
+    },
+    {
+      "cutoff": 0.5,
+      "abstention_accuracy": 1.0,
+      "correctly_refused": 6,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.4167,
+      "hit_rate@3": 0.4167,
+      "hit_rate@5": 0.4167
+    },
+    {
+      "cutoff": 0.55,
+      "abstention_accuracy": 0.8333,
+      "correctly_refused": 5,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.4583,
+      "hit_rate@3": 0.5417,
+      "hit_rate@5": 0.5417
+    },
+    {
+      "cutoff": 0.6,
+      "abstention_accuracy": 0.6667,
+      "correctly_refused": 4,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.5833,
+      "hit_rate@3": 0.6667,
+      "hit_rate@5": 0.7083
+    },
+    {
+      "cutoff": 0.65,
+      "abstention_accuracy": 0.3333,
+      "correctly_refused": 2,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.625,
+      "hit_rate@3": 0.7917,
+      "hit_rate@5": 0.9167
+    },
+    {
+      "cutoff": 0.7,
+      "abstention_accuracy": 0.1667,
+      "correctly_refused": 1,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.625,
+      "hit_rate@3": 0.7917,
+      "hit_rate@5": 0.9167
+    },
+    {
+      "cutoff": 0.75,
+      "abstention_accuracy": 0.0,
+      "correctly_refused": 0,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.625,
+      "hit_rate@3": 0.7917,
+      "hit_rate@5": 0.9167
+    },
+    {
+      "cutoff": 0.8,
+      "abstention_accuracy": 0.0,
+      "correctly_refused": 0,
+      "out_of_scope_questions": 6,
+      "hit_rate@1": 0.625,
+      "hit_rate@3": 0.7917,
+      "hit_rate@5": 0.9167
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "configuration": {
+    "dataset_id": 5,
+    "weights": {
+      "trend": 0.45,
+      "volatility": 0.25,
+      "anomaly": 0.3
+    },
+    "target_domains": [
+      "assets",
+      "maintenance"
+    ],
+    "validity_metrics": [
+      "breakdowns",
+      "downtime_minutes"
+    ],
+    "classification_metrics": "not computed \u2014 the scored entities carry no failure labels",
+    "generated_at": "2026-07-20T12:44:36.587098+00:00"
+  },
+  "domains": {
+    "assets": {
+      "entities": 0,
+      "note": "no rows in this domain"
+    },
+    "maintenance": {
+      "entities": 4,
+      "small_population": true,
+      "distribution": {
+        "min": 5.9,
+        "median": 29.37,
+        "max": 55.0,
+        "mean": 29.91,
+        "std": 20.586191974233603,
+        "range_used": 49.1,
+        "by_level": {
+          "medium": 2,
+          "low": 2
+        }
+      },
+      "ranking": [
+        {
+          "entity_id": "L-01",
+          "risk_score": 55.0,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "L-03",
+          "risk_score": 45.0,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "L-04",
+          "risk_score": 13.74,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "L-02",
+          "risk_score": 5.9,
+          "risk_level": "low"
+        }
+      ],
+      "weight_sensitivity": {
+        "trend": {
+          "weight": 0.45,
+          "rank_agreement_tau": 0.3333333333333333,
+          "mean_absolute_score_change": 13.280000000000001
+        },
+        "volatility": {
+          "weight": 0.25,
+          "rank_agreement_tau": 0.6666666666666666,
+          "mean_absolute_score_change": 9.1275
+        },
+        "anomaly": {
+          "weight": 0.3,
+          "rank_agreement_tau": 0.6666666666666666,
+          "mean_absolute_score_change": 7.5
+        }
+      },
+      "population_stability": {
+        "runs": 4,
+        "mean_score_shift": 5.576666666666666,
+        "max_score_shift": 14.803333333333333,
+        "mean_rank_agreement_tau": 1.0
+      },
+      "convergent_validity": {
+        "available": true,
+        "metrics": {
+          "downtime_minutes": {
+            "entities": 4,
+            "spearman": -0.39999999999999997,
+            "kendall_tau": -0.3333333333333333
+          },
+          "breakdowns": {
+            "entities": 4,
+            "spearman": 0.2581988897471611,
+            "kendall_tau": 0.23570226039551587
+          }
+        }
+      }
+    }
+  }
+}

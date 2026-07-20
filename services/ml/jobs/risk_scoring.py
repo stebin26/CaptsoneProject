@@ -71,10 +71,8 @@ def _volatility_component(std_values: np.ndarray, avg_values: np.ndarray) -> np.
 
 
 # Anomaly contribution: per-entity weighted anomaly count normalized across peers.
-def _anomaly_component(entity_ids, anomaly_weight: dict) -> np.ndarray:
-    raw = np.array([anomaly_weight.get(e, 0.0) for e in entity_ids], dtype=float)
-    return _minmax(raw)
-
+def _anomaly_component(weights) -> np.ndarray:
+    return _minmax(np.array(weights, dtype=float))
 
 # Builds a per-entity anomaly weight (high=3, medium=2, low=1) from ml.anomalies.
 def _load_anomaly_weights(conn, dataset_id: int | None) -> dict:
@@ -150,11 +148,14 @@ def _score_domain(
     trend_c = _trend_component(slopes, domain)
     vol_c = _volatility_component(stds, avgs)
 
-    ds_id = agg["dataset_id"].iloc[0]
-    weight_lookup = [anomaly_weights.get((ds_id, domain, e), 0.0) for e in entity_ids]
-    anomaly_c = _anomaly_component(
-        entity_ids, {e: w for e, w in zip(entity_ids, weight_lookup, strict=False)}
-    )
+    # One dataset id per row, not the first row's for everyone: a full-batch run
+    # spans many datasets, and keying every entity by the first would zero the
+    # anomaly contribution for all but one of them.
+    weight_lookup = [
+        anomaly_weights.get((ds, domain, e), 0.0)
+        for ds, e in zip(agg["dataset_id"].values, entity_ids, strict=False)
+    ]
+    anomaly_c = _anomaly_component(weight_lookup)
 
     score = (W_TREND * trend_c + W_VOLATILITY * vol_c + W_ANOMALY * anomaly_c) * 100.0
 

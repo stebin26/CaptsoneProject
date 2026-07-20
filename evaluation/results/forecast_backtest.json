@@ -1,0 +1,2794 @@
+{
+  "configuration": {
+    "dataset_id": null,
+    "horizon": 7,
+    "folds": 3,
+    "min_train_points": 10,
+    "statsmodels_available": true,
+    "generated_at": "2026-07-20T09:33:13.557357+00:00"
+  },
+  "summary": {
+    "counts": {
+      "series_total": 32,
+      "series_scored": 28,
+      "series_skipped": 4,
+      "folds_scored": 84
+    },
+    "overall": {
+      "folds": 84,
+      "mae": 232.40580812946882,
+      "rmse": 288.83280067405656,
+      "mape": 23.56928226182516,
+      "mape_folds": 84,
+      "smape": 22.977928074300102,
+      "interval_coverage": 0.9251700680272108,
+      "baselines": {
+        "naive_last_value": {
+          "mae": 247.52514219576716,
+          "rmse": 335.21835733306955,
+          "skill_score_mae": 0.06108201345599262,
+          "beaten_in_folds": 59
+        },
+        "seasonal_naive_7d": {
+          "mae": 59.08281566515496,
+          "rmse": 71.23509891267582,
+          "skill_score_mae": -2.933560131030348,
+          "beaten_in_folds": 52
+        },
+        "train_mean": {
+          "mae": 233.00294395328132,
+          "rmse": 263.7686905268927,
+          "skill_score_mae": 0.002562782313738632,
+          "beaten_in_folds": 66
+        }
+      }
+    },
+    "by_method": {
+      "holt_winters": {
+        "folds": 84,
+        "mae": 232.40580812946882,
+        "rmse": 288.83280067405656,
+        "mape": 23.56928226182516,
+        "mape_folds": 84,
+        "smape": 22.977928074300102,
+        "interval_coverage": 0.9251700680272108,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 247.52514219576716,
+            "rmse": 335.21835733306955,
+            "skill_score_mae": 0.06108201345599262,
+            "beaten_in_folds": 59
+          },
+          "seasonal_naive_7d": {
+            "mae": 59.08281566515496,
+            "rmse": 71.23509891267582,
+            "skill_score_mae": -2.933560131030348,
+            "beaten_in_folds": 52
+          },
+          "train_mean": {
+            "mae": 233.00294395328132,
+            "rmse": 263.7686905268927,
+            "skill_score_mae": 0.002562782313738632,
+            "beaten_in_folds": 66
+          }
+        }
+      }
+    },
+    "by_domain": {
+      "assets": {
+        "folds": 6,
+        "mae": 0.29586703292748434,
+        "rmse": 0.3851231107817539,
+        "mape": 3.158794147944398,
+        "mape_folds": 6,
+        "smape": 3.0068466495327013,
+        "interval_coverage": 0.9761904761904763,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 0.8254761904761851,
+            "rmse": 0.9346085218876833,
+            "skill_score_mae": 0.6415801735519348,
+            "beaten_in_folds": 6
+          },
+          "seasonal_naive_7d": {
+            "mae": 0.9810317460317449,
+            "rmse": 1.0788128585279697,
+            "skill_score_mae": 0.6984123764350532,
+            "beaten_in_folds": 6
+          },
+          "train_mean": {
+            "mae": 4.179914418763725,
+            "rmse": 4.245012952423418,
+            "skill_score_mae": 0.9292169639647809,
+            "beaten_in_folds": 4
+          }
+        }
+      },
+      "customers": {
+        "folds": 12,
+        "mae": 251.45427574483458,
+        "rmse": 310.42190270236193,
+        "mape": 28.816806687489585,
+        "mape_folds": 12,
+        "smape": 23.623287799294534,
+        "interval_coverage": 0.9880952380952381,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 319.7387566137566,
+            "rmse": 416.3969174724114,
+            "skill_score_mae": 0.21356335275741833,
+            "beaten_in_folds": 10
+          },
+          "seasonal_naive_7d": {
+            "mae": 162.5966931216931,
+            "rmse": 189.92163711582955,
+            "skill_score_mae": -0.5464907121858704,
+            "beaten_in_folds": 6
+          },
+          "train_mean": {
+            "mae": 289.99297154968207,
+            "rmse": 330.1829596240177,
+            "skill_score_mae": 0.13289527535409584,
+            "beaten_in_folds": 11
+          }
+        }
+      },
+      "finance": {
+        "folds": 12,
+        "mae": 376.73495198207684,
+        "rmse": 468.9233904073488,
+        "mape": 34.97477183381388,
+        "mape_folds": 12,
+        "smape": 27.55108553106194,
+        "interval_coverage": 0.9880952380952381,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 492.6387142857141,
+            "rmse": 661.456369087641,
+            "skill_score_mae": 0.2352713234721885,
+            "beaten_in_folds": 10
+          },
+          "seasonal_naive_7d": {
+            "mae": 82.55447023809528,
+            "rmse": 100.70756038205275,
+            "skill_score_mae": -3.563471255954231,
+            "beaten_in_folds": 6
+          },
+          "train_mean": {
+            "mae": 495.12917662601745,
+            "rmse": 550.6152205901464,
+            "skill_score_mae": 0.23911785092270277,
+            "beaten_in_folds": 12
+          }
+        }
+      },
+      "inventory": {
+        "folds": 9,
+        "mae": 1003.4430523987598,
+        "rmse": 1242.8680138326567,
+        "mape": 30.207054790069215,
+        "mape_folds": 9,
+        "smape": 50.3643698248058,
+        "interval_coverage": 0.9523809523809523,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 796.9921957671957,
+            "rmse": 1114.4296928982906,
+            "skill_score_mae": -0.2590374883568738,
+            "beaten_in_folds": 5
+          },
+          "seasonal_naive_7d": {
+            "mae": 150.2883597883598,
+            "rmse": 180.51374170794645,
+            "skill_score_mae": -5.676784907439512,
+            "beaten_in_folds": 6
+          },
+          "train_mean": {
+            "mae": 740.7962974609278,
+            "rmse": 849.0946091953707,
+            "skill_score_mae": -0.35454652761906513,
+            "beaten_in_folds": 5
+          }
+        }
+      },
+      "maintenance": {
+        "folds": 15,
+        "mae": 7.865317158962623,
+        "rmse": 12.305997662653938,
+        "mape": 10.293865097054784,
+        "mape_folds": 15,
+        "smape": 12.293003526757877,
+        "interval_coverage": 0.942857142857143,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 23.497066137566126,
+            "rmse": 27.56553858621071,
+            "skill_score_mae": 0.6652638626067497,
+            "beaten_in_folds": 8
+          },
+          "seasonal_naive_7d": {
+            "mae": 10.301112169312166,
+            "rmse": 17.970153191979232,
+            "skill_score_mae": 0.23645942013969823,
+            "beaten_in_folds": 11
+          },
+          "train_mean": {
+            "mae": 22.11293523634698,
+            "rmse": 25.180344974961404,
+            "skill_score_mae": 0.6443114821756264,
+            "beaten_in_folds": 12
+          }
+        }
+      },
+      "operations": {
+        "folds": 9,
+        "mae": 308.0742486900933,
+        "rmse": 384.87232500936216,
+        "mape": 44.05263433790998,
+        "mape_folds": 9,
+        "smape": 37.071766343503086,
+        "interval_coverage": 0.9682539682539684,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 381.93650793650795,
+            "rmse": 519.5252938979532,
+            "skill_score_mae": 0.19338884267825285,
+            "beaten_in_folds": 8
+          },
+          "seasonal_naive_7d": {
+            "mae": 53.46190476190476,
+            "rmse": 62.099527275250935,
+            "skill_score_mae": -4.762500420853264,
+            "beaten_in_folds": 3
+          },
+          "train_mean": {
+            "mae": 340.29079628418873,
+            "rmse": 385.2318740994226,
+            "skill_score_mae": 0.0946735790267752,
+            "beaten_in_folds": 9
+          }
+        }
+      },
+      "quality": {
+        "folds": 12,
+        "mae": 4.77558481522319,
+        "rmse": 5.802155047883453,
+        "mape": 25.878364760256503,
+        "mape_folds": 12,
+        "smape": 22.08386477967882,
+        "interval_coverage": 0.8928571428571428,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 6.051854497354498,
+            "rmse": 7.972940016566491,
+            "skill_score_mae": 0.21088902297456347,
+            "beaten_in_folds": 8
+          },
+          "seasonal_naive_7d": {
+            "mae": 1.907572751322751,
+            "rmse": 2.637055866974868,
+            "skill_score_mae": -1.5034876451824442,
+            "beaten_in_folds": 8
+          },
+          "train_mean": {
+            "mae": 5.073917521019298,
+            "rmse": 5.913023336935648,
+            "skill_score_mae": 0.05879731086684592,
+            "beaten_in_folds": 7
+          }
+        }
+      },
+      "workforce": {
+        "folds": 9,
+        "mae": 0.3443847764542032,
+        "rmse": 0.40245839410622364,
+        "mape": 6.898049679921417,
+        "mape_folds": 9,
+        "smape": 6.85397140082673,
+        "interval_coverage": 0.6666666666666666,
+        "baselines": {
+          "naive_last_value": {
+            "mae": 0.3547619047619047,
+            "rmse": 0.4157428853037083,
+            "skill_score_mae": 0.029250965699561426,
+            "beaten_in_folds": 4
+          },
+          "seasonal_naive_7d": {
+            "mae": 0.45515873015873015,
+            "rmse": 0.5565191563166625,
+            "skill_score_mae": 0.24337433595066083,
+            "beaten_in_folds": 6
+          },
+          "train_mean": {
+            "mae": 0.3707938834630964,
+            "rmse": 0.43577329485417177,
+            "skill_score_mae": 0.07122314629961146,
+            "beaten_in_folds": 6
+          }
+        }
+      }
+    }
+  },
+  "series": [
+    {
+      "dataset_id": "2",
+      "business_name": "Manufacturing ",
+      "industry": NaN,
+      "domain": "assets",
+      "metric_name": "units_produced",
+      "series_points": 13,
+      "folds_attempted": 0,
+      "folds_scored": 0,
+      "folds": []
+    },
+    {
+      "dataset_id": "2",
+      "business_name": "Manufacturing ",
+      "industry": NaN,
+      "domain": "customers",
+      "metric_name": "customer_orders",
+      "series_points": 13,
+      "folds_attempted": 0,
+      "folds_scored": 0,
+      "folds": []
+    },
+    {
+      "dataset_id": "2",
+      "business_name": "Manufacturing ",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "downtime_minutes",
+      "series_points": 13,
+      "folds_attempted": 0,
+      "folds_scored": 0,
+      "folds": []
+    },
+    {
+      "dataset_id": "2",
+      "business_name": "Manufacturing ",
+      "industry": NaN,
+      "domain": "quality",
+      "metric_name": "defect_count",
+      "series_points": 13,
+      "folds_attempted": 0,
+      "folds_scored": 0,
+      "folds": []
+    },
+    {
+      "dataset_id": "3",
+      "business_name": "Telecom",
+      "industry": NaN,
+      "domain": "assets",
+      "metric_name": "field_engineers",
+      "series_points": 209,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 188,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.3419215559740498,
+          "rmse": 0.42940019065378376,
+          "mape": 4.041292378178097,
+          "mape_points": 7,
+          "smape": 4.002021381955143,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1.559523809523809,
+              "rmse": 1.6169673259943544
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.7619047619047619,
+              "rmse": 1.0247434831943094
+            },
+            "train_mean": {
+              "mae": 0.4058149971366904,
+              "rmse": 0.45120403767961814
+            }
+          }
+        },
+        {
+          "train_points": 195,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.5782797745103697,
+          "rmse": 0.7339123878879437,
+          "mape": 7.523258068258887,
+          "mape_points": 7,
+          "smape": 7.090726032758431,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.6130952380952375,
+              "rmse": 0.7703907996121082
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.7023809523809523,
+              "rmse": 0.8404458378439424
+            },
+            "train_mean": {
+              "mae": 0.5130872750437965,
+              "rmse": 0.6311683837577382
+            }
+          }
+        },
+        {
+          "train_points": 202,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.5301709711245531,
+          "rmse": 0.7364310297219193,
+          "mape": 7.00538138017281,
+          "mape_points": 7,
+          "smape": 6.565572749678035,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.5595238095238093,
+              "rmse": 0.7731224055531272
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.5833333333333336,
+              "rmse": 0.7302288182372203
+            },
+            "train_mean": {
+              "mae": 0.48664878133776124,
+              "rmse": 0.6879159858859111
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "3",
+      "business_name": "Telecom",
+      "industry": NaN,
+      "domain": "customers",
+      "metric_name": "active_subscribers",
+      "series_points": 209,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 188,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 345.39353007414104,
+          "rmse": 419.10912017149406,
+          "mape": 7.773702230017736,
+          "mape_points": 7,
+          "smape": 7.927224492285894,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 387.50000000000006,
+              "rmse": 434.0830322289131
+            },
+            "seasonal_naive_7d": {
+              "mae": 581.767857142857,
+              "rmse": 678.9252614718961
+            },
+            "train_mean": {
+              "mae": 348.8306448504472,
+              "rmse": 412.7957893648911
+            }
+          }
+        },
+        {
+          "train_points": 195,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 226.21620460897404,
+          "rmse": 265.40869270983063,
+          "mape": 5.639768471993664,
+          "mape_points": 7,
+          "smape": 5.465511530702934,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 413.84523809523796,
+              "rmse": 472.09651612325433
+            },
+            "seasonal_naive_7d": {
+              "mae": 513.1666666666666,
+              "rmse": 634.2443279679558
+            },
+            "train_mean": {
+              "mae": 230.88324972129314,
+              "rmse": 271.2928974017865
+            }
+          }
+        },
+        {
+          "train_points": 202,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 258.9628728767493,
+          "rmse": 330.54269340376857,
+          "mape": 6.243755175145116,
+          "mape_points": 7,
+          "smape": 6.1554594407185235,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 337.23412698412693,
+              "rmse": 419.93482732936616
+            },
+            "seasonal_naive_7d": {
+              "mae": 411.0257936507937,
+              "rmse": 462.58039147714055
+            },
+            "train_mean": {
+              "mae": 262.83605670349647,
+              "rmse": 332.2994838470607
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "3",
+      "business_name": "Telecom",
+      "industry": NaN,
+      "domain": "inventory",
+      "metric_name": "spare_parts_stock",
+      "series_points": 209,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 188,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 9.148916968548338,
+          "rmse": 13.24330827419787,
+          "mape": 7.969731060565531,
+          "mape_points": 7,
+          "smape": 7.359489196870565,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.785714285714288,
+              "rmse": 11.920932469919496
+            },
+            "seasonal_naive_7d": {
+              "mae": 13.42261904761905,
+              "rmse": 18.590799002186074
+            },
+            "train_mean": {
+              "mae": 9.606681699044094,
+              "rmse": 12.17312059707707
+            }
+          }
+        },
+        {
+          "train_points": 195,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 6.214444276699551,
+          "rmse": 7.972771493847223,
+          "mape": 4.81468113051665,
+          "mape_points": 7,
+          "smape": 4.740491796253215,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 6.97023809523809,
+              "rmse": 8.607614177308177
+            },
+            "seasonal_naive_7d": {
+              "mae": 13.98214285714286,
+              "rmse": 16.956724505410268
+            },
+            "train_mean": {
+              "mae": 6.568755640494771,
+              "rmse": 8.048539583000982
+            }
+          }
+        },
+        {
+          "train_points": 202,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 10.214702478328812,
+          "rmse": 11.535407854500182,
+          "mape": 8.070971954485168,
+          "mape_points": 7,
+          "smape": 7.859213488679186,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 8.80952380952381,
+              "rmse": 11.329634375361154
+            },
+            "seasonal_naive_7d": {
+              "mae": 15.190476190476192,
+              "rmse": 17.023501495714775
+            },
+            "train_mean": {
+              "mae": 9.172698481028233,
+              "rmse": 11.08354341121522
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "3",
+      "business_name": "Telecom",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "downtime_minutes",
+      "series_points": 209,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 188,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 11.346452325121163,
+          "rmse": 12.513717458524258,
+          "mape": 11.20266343898405,
+          "mape_points": 7,
+          "smape": 11.94743208460757,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.065476190476192,
+              "rmse": 9.256017454984846
+            },
+            "seasonal_naive_7d": {
+              "mae": 5.154761904761904,
+              "rmse": 6.9193913164725815
+            },
+            "train_mean": {
+              "mae": 10.66858838817673,
+              "rmse": 11.370090404277395
+            }
+          }
+        },
+        {
+          "train_points": 195,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 5.81823268083837,
+          "rmse": 8.502395475424747,
+          "mape": 5.781907515815383,
+          "mape_points": 7,
+          "smape": 6.103587309953717,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.136904761904757,
+              "rmse": 11.772510942398348
+            },
+            "seasonal_naive_7d": {
+              "mae": 12.17857142857143,
+              "rmse": 14.496766880929004
+            },
+            "train_mean": {
+              "mae": 5.715127143388015,
+              "rmse": 8.179517748048568
+            }
+          }
+        },
+        {
+          "train_points": 202,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 10.343701906952031,
+          "rmse": 15.585203652788952,
+          "mape": 9.163454042786915,
+          "mape_points": 7,
+          "smape": 10.167920511293902,
+          "interval_coverage": 0.7142857142857143,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 14.111111111111114,
+              "rmse": 14.953281891605137
+            },
+            "seasonal_naive_7d": {
+              "mae": 10.331349206349206,
+              "rmse": 13.942650907550039
+            },
+            "train_mean": {
+              "mae": 10.223342831177524,
+              "rmse": 15.403592763397743
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "3",
+      "business_name": "Telecom",
+      "industry": NaN,
+      "domain": "quality",
+      "metric_name": "customer_complaints",
+      "series_points": 209,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 188,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.3002928648331147,
+          "rmse": 3.071997579364828,
+          "mape": 14.372539113571984,
+          "mape_points": 7,
+          "smape": 12.635160745766392,
+          "interval_coverage": 0.7142857142857143,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 2.75,
+              "rmse": 3.5044614422190468
+            },
+            "seasonal_naive_7d": {
+              "mae": 3.392857142857143,
+              "rmse": 4.671553563688712
+            },
+            "train_mean": {
+              "mae": 2.242523732434695,
+              "rmse": 2.978698737372706
+            }
+          }
+        },
+        {
+          "train_points": 195,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.362980217207673,
+          "rmse": 2.6717952296214116,
+          "mape": 10.684177489091534,
+          "mape_points": 7,
+          "smape": 11.189442852698276,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 6.071428571428572,
+              "rmse": 6.461347223026166
+            },
+            "seasonal_naive_7d": {
+              "mae": 3.875,
+              "rmse": 5.052035775426623
+            },
+            "train_mean": {
+              "mae": 2.3185937251154636,
+              "rmse": 2.615641184987502
+            }
+          }
+        },
+        {
+          "train_points": 202,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 1.9188432758683835,
+          "rmse": 2.3767159675366862,
+          "mape": 8.585327194860014,
+          "mape_points": 7,
+          "smape": 8.994647173078137,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1.4682539682539684,
+              "rmse": 1.9585092232167411
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.998015873015873,
+              "rmse": 2.637995880647643
+            },
+            "train_mean": {
+              "mae": 1.9586835236318672,
+              "rmse": 2.4096659578011437
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "assets",
+      "metric_name": "asset_health",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.11318894817664825,
+          "rmse": 0.1654152603969285,
+          "mape": 0.1316033059857674,
+          "mape_points": 7,
+          "smape": 0.13146588361383071,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.4957142857142612,
+              "rmse": 0.567620345955663
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.2649999999999966,
+              "rmse": 1.2881534402835244
+            },
+            "train_mean": {
+              "mae": 7.288788819875778,
+              "rmse": 7.2976907594066915
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.08147916363310312,
+          "rmse": 0.08780595891181019,
+          "mape": 0.09592379160018775,
+          "mape_points": 7,
+          "smape": 0.09596682640007607,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.8828571428571479,
+              "rmse": 0.95402530664249
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.2392857142857119,
+              "rmse": 1.2505641584044012
+            },
+            "train_mean": {
+              "mae": 7.856738721804518,
+              "rmse": 7.865053775640884
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.13016178414618196,
+          "rmse": 0.15777383711813797,
+          "mape": 0.1553059634706337,
+          "mape_points": 7,
+          "smape": 0.15532702279069055,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.8421428571428464,
+              "rmse": 0.925524947568357
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.3342857142857127,
+              "rmse": 1.3387414132044195
+            },
+            "train_mean": {
+              "mae": 8.528407917383802,
+              "rmse": 8.537044772169665
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "customers",
+      "metric_name": "customer_orders",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 12.954014015512744,
+          "rmse": 13.459781635221027,
+          "mape": 0.9005775115872996,
+          "mape_points": 7,
+          "smape": 0.9029063500676229,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 13.507142857142883,
+              "rmse": 15.399246270979821
+            },
+            "seasonal_naive_7d": {
+              "mae": 26.50714285714285,
+              "rmse": 28.8283280819405
+            },
+            "train_mean": {
+              "mae": 100.47670807453417,
+              "rmse": 101.56690912280666
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 13.351014546448498,
+          "rmse": 13.981601468540543,
+          "mape": 0.9305723134431825,
+          "mape_points": 7,
+          "smape": 0.9258428404196358,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 19.01428571428583,
+              "rmse": 20.66769390688222
+            },
+            "seasonal_naive_7d": {
+              "mae": 9.671428571428578,
+              "rmse": 11.560431282117971
+            },
+            "train_mean": {
+              "mae": 91.45084586466159,
+              "rmse": 91.80886514692453
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 9.376619586110369,
+          "rmse": 11.25848731706103,
+          "mape": 0.6364843029705005,
+          "mape_points": 7,
+          "smape": 0.6382588619283173,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 13.942857142857097,
+              "rmse": 18.317555981703872
+            },
+            "seasonal_naive_7d": {
+              "mae": 29.700000000000014,
+              "rmse": 32.07330888538231
+            },
+            "train_mean": {
+              "mae": 113.43812392426854,
+              "rmse": 114.12520961497414
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "finance",
+      "metric_name": "operating_cost",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 7.214498465712268,
+          "rmse": 8.086799516227577,
+          "mape": 0.7152250130408001,
+          "mape_points": 7,
+          "smape": 0.7143747090723634,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 7.043428571428649,
+              "rmse": 7.91336642288594
+            },
+            "seasonal_naive_7d": {
+              "mae": 15.500857142857058,
+              "rmse": 18.606634765204372
+            },
+            "train_mean": {
+              "mae": 94.32628778467915,
+              "rmse": 94.65708849958203
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 5.374488014335855,
+          "rmse": 6.013345519979337,
+          "mape": 0.5240149369062262,
+          "mape_points": 7,
+          "smape": 0.5235427766266245,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.348285714285614,
+              "rmse": 10.388917350440474
+            },
+            "seasonal_naive_7d": {
+              "mae": 18.210500000000106,
+              "rmse": 19.272964655370156
+            },
+            "train_mean": {
+              "mae": 103.84884022556398,
+              "rmse": 104.21015716208153
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 6.906888738296435,
+          "rmse": 7.337301884986655,
+          "mape": 0.6585222921148812,
+          "mape_points": 7,
+          "smape": 0.6593531719718837,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 10.168428571428649,
+              "rmse": 12.177697489380279
+            },
+            "seasonal_naive_7d": {
+              "mae": 18.54650000000002,
+              "rmse": 20.69659627381821
+            },
+            "train_mean": {
+              "mae": 113.63700430292609,
+              "rmse": 114.02039778193814
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "finance",
+      "metric_name": "revenue",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 61.97993300712512,
+          "rmse": 107.33924104501673,
+          "mape": 1.3128506805642581,
+          "mape_points": 7,
+          "smape": 1.2895868427861872,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 61.21849999999995,
+              "rmse": 125.64939733511842
+            },
+            "seasonal_naive_7d": {
+              "mae": 83.11221428571467,
+              "rmse": 132.7523324074086
+            },
+            "train_mean": {
+              "mae": 295.3053768115936,
+              "rmse": 316.37877490796666
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 22.571086823833216,
+          "rmse": 27.476589307904426,
+          "mape": 0.46285617542425944,
+          "mape_points": 7,
+          "smape": 0.4644465021494279,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 259.6091428571425,
+              "rmse": 260.5331921118686
+            },
+            "seasonal_naive_7d": {
+              "mae": 82.34321428571418,
+              "rmse": 106.07420476504008
+            },
+            "train_mean": {
+              "mae": 283.59155451127856,
+              "rmse": 284.43770306888484
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 20.813590106732722,
+          "rmse": 25.55309822164471,
+          "mape": 0.43086525298279016,
+          "mape_points": 7,
+          "smape": 0.43220734491679347,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 29.92928571428521,
+              "rmse": 34.66395606802075
+            },
+            "seasonal_naive_7d": {
+              "mae": 49.457500000000046,
+              "rmse": 52.304913687161566
+            },
+            "train_mean": {
+              "mae": 309.1316944922543,
+              "rmse": 310.1533991486942
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "inventory",
+      "metric_name": "spare_parts_stock",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.4950359834652187,
+          "rmse": 4.120026255539021,
+          "mape": 0.2534419572551128,
+          "mape_points": 7,
+          "smape": 0.253322295850688,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 5.014285714285701,
+              "rmse": 6.236814663179995
+            },
+            "seasonal_naive_7d": {
+              "mae": 8.185714285714344,
+              "rmse": 10.42918295662985
+            },
+            "train_mean": {
+              "mae": 51.66397515527952,
+              "rmse": 51.922191613091265
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.15265198642669,
+          "rmse": 3.7110076700262953,
+          "mape": 0.22644443609528309,
+          "mape_points": 7,
+          "smape": 0.22665381881046254,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 7.071428571428539,
+              "rmse": 8.029454704844072
+            },
+            "seasonal_naive_7d": {
+              "mae": 11.992857142857117,
+              "rmse": 13.111213848131248
+            },
+            "train_mean": {
+              "mae": 58.898308270676644,
+              "rmse": 59.0379349059906
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.490427379887836,
+          "rmse": 3.215576484949141,
+          "mape": 0.17843885968666506,
+          "mape_points": 7,
+          "smape": 0.1781737425517544,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 3.278571428571435,
+              "rmse": 4.325794724671984
+            },
+            "seasonal_naive_7d": {
+              "mae": 6.035714285714254,
+              "rmse": 6.659123708974617
+            },
+            "train_mean": {
+              "mae": 59.966695352840006,
+              "rmse": 60.0994775734494
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "downtime_minutes",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 4.848544693497529,
+          "rmse": 10.545092913855376,
+          "mape": 14.74309654783162,
+          "mape_points": 7,
+          "smape": 18.532364959545905,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 4.5221428571428595,
+              "rmse": 11.001956806469865
+            },
+            "seasonal_naive_7d": {
+              "mae": 5.16857142857143,
+              "rmse": 11.065233197465192
+            },
+            "train_mean": {
+              "mae": 9.106739130434784,
+              "rmse": 13.706039769430873
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.1211647380074217,
+          "rmse": 2.1761099610978096,
+          "mape": 12.891859158548327,
+          "mape_points": 7,
+          "smape": 12.066534565459696,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 28.004285714285718,
+              "rmse": 28.00984865058309
+            },
+            "seasonal_naive_7d": {
+              "mae": 4.9478571428571465,
+              "rmse": 10.50642983401797
+            },
+            "train_mean": {
+              "mae": 5.328674812030078,
+              "rmse": 5.357833360005541
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 1.5771019474439723,
+          "rmse": 1.6437431018383708,
+          "mape": 9.01840272317972,
+          "mape_points": 7,
+          "smape": 8.593060087895909,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.764285714285713,
+              "rmse": 0.921485601778841
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.0878571428571406,
+              "rmse": 1.2536589306050134
+            },
+            "train_mean": {
+              "mae": 5.967125645438898,
+              "rmse": 5.9984659347616045
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "maintenance_cost",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 37.8677055242618,
+          "rmse": 82.80579233761424,
+          "mape": 5.405139849450683,
+          "mape_points": 7,
+          "smape": 6.08283267161473,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 39.58557142857145,
+              "rmse": 84.54760190567202
+            },
+            "seasonal_naive_7d": {
+              "mae": 43.127357142857136,
+              "rmse": 85.24100016319275
+            },
+            "train_mean": {
+              "mae": 93.55883229813665,
+              "rmse": 123.76732318672478
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 19.979085609772987,
+          "rmse": 21.5949491691784,
+          "mape": 3.7543053619012237,
+          "mape_points": 7,
+          "smape": 3.672910823862537,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 220.69557142857138,
+              "rmse": 220.89288519228364
+            },
+            "seasonal_naive_7d": {
+              "mae": 39.29285714285712,
+              "rmse": 81.58383828133042
+            },
+            "train_mean": {
+              "mae": 62.3874285714286,
+              "rmse": 63.081873181943955
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 13.03995359668886,
+          "rmse": 14.90782793512219,
+          "mape": 2.389480614466355,
+          "mape_points": 7,
+          "smape": 2.35259424173806,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.10635714285708,
+              "rmse": 11.253911905580633
+            },
+            "seasonal_naive_7d": {
+              "mae": 14.370357142857106,
+              "rmse": 19.32744126051276
+            },
+            "train_mean": {
+              "mae": 71.3394810671256,
+              "rmse": 71.84300968749419
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "operations",
+      "metric_name": "production_units",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 9.301013944326412,
+          "rmse": 16.448113498597092,
+          "mape": 1.5622816469143934,
+          "mape_points": 7,
+          "smape": 1.5272724689386998,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 8.814285714285704,
+              "rmse": 18.81813335209267
+            },
+            "seasonal_naive_7d": {
+              "mae": 11.085714285714289,
+              "rmse": 19.447511776207108
+            },
+            "train_mean": {
+              "mae": 35.12795031055897,
+              "rmse": 39.04550374126137
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.172056610850859,
+          "rmse": 3.451751339553265,
+          "mape": 0.5112011467364475,
+          "mape_points": 7,
+          "smape": 0.5127506390500131,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 40.750000000000014,
+              "rmse": 40.82351825672481
+            },
+            "seasonal_naive_7d": {
+              "mae": 11.27857142857142,
+              "rmse": 15.669453906064682
+            },
+            "train_mean": {
+              "mae": 32.57105263157892,
+              "rmse": 32.66298535630549
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.557877369214517,
+          "rmse": 3.109699519239152,
+          "mape": 0.41558428961489874,
+          "mape_points": 7,
+          "smape": 0.4168486586256145,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 2.878571428571458,
+              "rmse": 3.4699217776280395
+            },
+            "seasonal_naive_7d": {
+              "mae": 5.757142857142867,
+              "rmse": 6.066535843696729
+            },
+            "train_mean": {
+              "mae": 35.58123924268499,
+              "rmse": 35.687881586998614
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "quality",
+      "metric_name": "defect_rate",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.5617544550921599,
+          "rmse": 1.212901770589124,
+          "mape": 6.608411113780131,
+          "mape_points": 7,
+          "smape": 7.569754382195924,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.5509285714285713,
+              "rmse": 1.315810274534832
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.7148571428571431,
+              "rmse": 1.341554162689145
+            },
+            "train_mean": {
+              "mae": 1.773551759834368,
+              "rmse": 2.145794279447483
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.31310517849219516,
+          "rmse": 0.36428649384657036,
+          "mape": 5.1064116343817405,
+          "mape_points": 7,
+          "smape": 4.9338259108711515,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 3.215214285714286,
+              "rmse": 3.2188068608015086
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.6882142857142854,
+              "rmse": 1.2419075046073278
+            },
+            "train_mean": {
+              "mae": 1.34855545112782,
+              "rmse": 1.3570985626873937
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.15915501718476527,
+          "rmse": 0.19512976416439348,
+          "mape": 2.4461526333372676,
+          "mape_points": 7,
+          "smape": 2.402211498806135,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.32928571428571324,
+              "rmse": 0.34153654897494307
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.3379999999999996,
+              "rmse": 0.36959301941459866
+            },
+            "train_mean": {
+              "mae": 1.5728218588640277,
+              "rmse": 1.575432236680955
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "4",
+      "business_name": "Industrial ",
+      "industry": NaN,
+      "domain": "workforce",
+      "metric_name": "field_engineers",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.4107699963289115e-15,
+          "rmse": 2.578559769883726e-15,
+          "mape": 3.652681812619563e-14,
+          "mape_points": 7,
+          "smape": 3.652681812619562e-14,
+          "interval_coverage": 0.14285714285714285,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "train_mean": {
+              "mae": 2.6645352591003757e-15,
+              "rmse": 2.6645352591003757e-15
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.4107699963289115e-15,
+          "rmse": 2.578559769883726e-15,
+          "mape": 3.652681812619563e-14,
+          "mape_points": 7,
+          "smape": 3.652681812619562e-14,
+          "interval_coverage": 0.14285714285714285,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "train_mean": {
+              "mae": 1.7763568394002505e-15,
+              "rmse": 1.7763568394002505e-15
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2.4107699963289115e-15,
+          "rmse": 2.578559769883726e-15,
+          "mape": 3.652681812619563e-14,
+          "mape_points": 7,
+          "smape": 3.652681812619562e-14,
+          "interval_coverage": 0.14285714285714285,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "train_mean": {
+              "mae": 8.881784197001252e-16,
+              "rmse": 8.881784197001252e-16
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "customers",
+      "metric_name": "complaints",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.40829680857567074,
+          "rmse": 0.5099168573921807,
+          "mape": 23.7001982465206,
+          "mape_points": 7,
+          "smape": 27.80495600912972,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.35714285714285715,
+              "rmse": 0.4629100498862757
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.2857142857142857,
+              "rmse": 0.32732683535398854
+            },
+            "train_mean": {
+              "mae": 0.4736024844720497,
+              "rmse": 0.5779589881232673
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.2772653484060266,
+          "rmse": 0.3204799539408541,
+          "mape": 25.12473443534407,
+          "mape_points": 7,
+          "smape": 22.17221198528957,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.39285714285714285,
+              "rmse": 0.4531634835874829
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.2857142857142857,
+              "rmse": 0.32732683535398854
+            },
+            "train_mean": {
+              "mae": 0.337875939849624,
+              "rmse": 0.37328745947866554
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.44522089876305354,
+          "rmse": 0.5003076401547863,
+          "mape": 37.24913517461427,
+          "mape_points": 7,
+          "smape": 33.41368059330074,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.39285714285714285,
+              "rmse": 0.5900968443520823
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.35714285714285715,
+              "rmse": 0.3779644730092272
+            },
+            "train_mean": {
+              "mae": 0.41351118760757316,
+              "rmse": 0.5255225713520166
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "customers",
+      "metric_name": "orders_fulfilled",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 725.2699311903076,
+          "rmse": 906.6427990264904,
+          "mape": 76.34148838348759,
+          "mape_points": 7,
+          "smape": 59.587197534574884,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 937.5357142857143,
+              "rmse": 1250.2749090557188
+            },
+            "seasonal_naive_7d": {
+              "mae": 122.67857142857143,
+              "rmse": 140.18358498768677
+            },
+            "train_mean": {
+              "mae": 774.3530020703935,
+              "rmse": 873.2275709067553
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 689.2071352495074,
+          "rmse": 818.5842310225613,
+          "mape": 85.29255440920551,
+          "mape_points": 7,
+          "smape": 59.70305393891747,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 773.1428571428571,
+              "rmse": 1085.842513574466
+            },
+            "seasonal_naive_7d": {
+              "mae": 118.85714285714286,
+              "rmse": 134.1367905215738
+            },
+            "train_mean": {
+              "mae": 759.8919172932332,
+              "rmse": 852.5243694744646
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 735.5892037345187,
+          "rmse": 944.7447212218879,
+          "mape": 75.96870959554548,
+          "mape_points": 7,
+          "smape": 58.78315001419908,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 940.0,
+              "rmse": 1278.6405448198266
+            },
+            "seasonal_naive_7d": {
+              "mae": 136.85714285714286,
+              "rmse": 155.494602570544
+            },
+            "train_mean": {
+              "mae": 796.5301204819277,
+              "rmse": 911.0776515895956
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "finance",
+      "metric_name": "op_cost",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 524.0984182599265,
+          "rmse": 681.0003832671612,
+          "mape": 51.51926932831602,
+          "mape_points": 7,
+          "smape": 48.608355163376075,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 752.1003571428572,
+              "rmse": 987.9232382028729
+            },
+            "seasonal_naive_7d": {
+              "mae": 108.66857142857144,
+              "rmse": 138.38742007752828
+            },
+            "train_mean": {
+              "mae": 569.2370289855073,
+              "rmse": 640.5821955619164
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 526.337366847978,
+          "rmse": 624.0324577401359,
+          "mape": 64.6384682337975,
+          "mape_points": 7,
+          "smape": 51.34464037452049,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 587.9903571428571,
+              "rmse": 818.678818500642
+            },
+            "seasonal_naive_7d": {
+              "mae": 61.22285714285713,
+              "rmse": 75.72790386122067
+            },
+            "train_mean": {
+              "mae": 548.4332142857141,
+              "rmse": 629.4129929694413
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 557.8916703155985,
+          "rmse": 714.579751204453,
+          "mape": 57.9217246959146,
+          "mape_points": 7,
+          "smape": 50.399549419284895,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 722.2239285714285,
+              "rmse": 983.0094912059053
+            },
+            "seasonal_naive_7d": {
+              "mae": 100.70321428571421,
+              "rmse": 116.60056049623299
+            },
+            "train_mean": {
+              "mae": 594.1538855421687,
+              "rmse": 694.7480975375851
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "finance",
+      "metric_name": "revenue",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 925.0543075632049,
+          "rmse": 1146.5709999791975,
+          "mape": 76.9516587087601,
+          "mape_points": 7,
+          "smape": 58.3669813558081,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1187.2228571428573,
+              "rmse": 1583.2046511652966
+            },
+            "seasonal_naive_7d": {
+              "mae": 114.784642857143,
+              "rmse": 142.0627713591779
+            },
+            "train_mean": {
+              "mae": 1003.123814699793,
+              "rmse": 1122.6308681071068
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 889.613778382183,
+          "rmse": 1059.363422605818,
+          "mape": 83.23722490295603,
+          "mape_points": 7,
+          "smape": 58.89128482070946,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1018.2707142857142,
+              "rmse": 1412.7205332152064
+            },
+            "seasonal_naive_7d": {
+              "mae": 135.89892857142866,
+              "rmse": 154.13661137179125
+            },
+            "train_mean": {
+              "mae": 982.2730874060153,
+              "rmse": 1105.6258100916452
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 972.963397259995,
+          "rmse": 1219.727294595661,
+          "mape": 81.32458178498915,
+          "mape_points": 7,
+          "smape": 58.918703891521,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1266.5392857142856,
+              "rmse": 1700.6131699840544
+            },
+            "seasonal_naive_7d": {
+              "mae": 202.20464285714283,
+              "rmse": 231.867810864679
+            },
+            "train_mean": {
+              "mae": 1044.4883304647158,
+              "rmse": 1190.5251622449143
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "inventory",
+      "metric_name": "raw_stock_units",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3221.0927060923045,
+          "rmse": 3956.7710273824277,
+          "mape": 87.20951926423288,
+          "mape_points": 7,
+          "smape": 154.9239125874999,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 2548.285714285714,
+              "rmse": 3528.966823205584
+            },
+            "seasonal_naive_7d": {
+              "mae": 429.17857142857144,
+              "rmse": 525.5203968448799
+            },
+            "train_mean": {
+              "mae": 2204.9922360248447,
+              "rmse": 2556.236271327065
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 2554.9245784262444,
+          "rmse": 3221.851276553699,
+          "mape": 76.00050594507091,
+          "mape_points": 7,
+          "smape": 122.37591993655097,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 2045.1785714285713,
+              "rmse": 2925.078501693831
+            },
+            "seasonal_naive_7d": {
+              "mae": 431.10714285714283,
+              "rmse": 510.60530430628535
+            },
+            "train_mean": {
+              "mae": 2072.9234022556393,
+              "rmse": 2328.547935557373
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3220.2540079969317,
+          "rmse": 3963.3917225247246,
+          "mape": 87.13975850271467,
+          "mape_points": 7,
+          "smape": 155.36215156018545,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 2538.535714285714,
+              "rmse": 3525.3716660699156
+            },
+            "seasonal_naive_7d": {
+              "mae": 423.5,
+              "rmse": 505.7274287033057
+            },
+            "train_mean": {
+              "mae": 2193.373924268503,
+              "rmse": 2554.7024681900734
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "breakdowns",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.07954477334483148,
+          "rmse": 0.09584987912971694,
+          "mape": 23.64609469549508,
+          "mape_points": 6,
+          "smape": 51.96934048090497,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.21428571428571427,
+              "rmse": 0.23145502494313785
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.14285714285714285,
+              "rmse": 0.1889822365046136
+            },
+            "train_mean": {
+              "mae": 0.19875776397515527,
+              "rmse": 0.2114881750291341
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.026580753375444983,
+          "rmse": 0.03219024529493173,
+          "mape": 10.632301350177993,
+          "mape_points": 7,
+          "smape": 9.87656918719895,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.03571428571428571,
+              "rmse": 0.0944911182523068
+            },
+            "train_mean": {
+              "mae": 0.21052631578947367,
+              "rmse": 0.21052631578947364
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.05941598746617412,
+          "rmse": 0.06109544367780202,
+          "mape": 23.766394986469646,
+          "mape_points": 7,
+          "smape": 21.12640833219026,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.0,
+              "rmse": 0.0
+            },
+            "train_mean": {
+              "mae": 0.19277108433734938,
+              "rmse": 0.19277108433734938
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "maintenance",
+      "metric_name": "downtime_minutes",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.3601694169040743,
+          "rmse": 3.821167751857502,
+          "mape": 7.228828142201193,
+          "mape_points": 7,
+          "smape": 7.269415025502537,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 9.035714285714286,
+              "rmse": 9.63114367930562
+            },
+            "seasonal_naive_7d": {
+              "mae": 7.142857142857143,
+              "rmse": 7.954109450017466
+            },
+            "train_mean": {
+              "mae": 17.811076604554863,
+              "rmse": 18.120409645802408
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.667469094532925,
+          "rmse": 5.39505818637792,
+          "mape": 7.0845553194230835,
+          "mape_points": 7,
+          "smape": 7.209815248174111,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 4.857142857142857,
+              "rmse": 6.510979737555412
+            },
+            "seasonal_naive_7d": {
+              "mae": 5.571428571428571,
+              "rmse": 8.453655168877289
+            },
+            "train_mean": {
+              "mae": 19.88486842105263,
+              "rmse": 20.707507075102818
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 3.8446343362317825,
+          "rmse": 4.909771428026855,
+          "mape": 7.699492709090492,
+          "mape_points": 7,
+          "smape": 7.4242673714252945,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 3.357142857142857,
+              "rmse": 4.5
+            },
+            "seasonal_naive_7d": {
+              "mae": 5.964285714285714,
+              "rmse": 8.524649133961049
+            },
+            "train_mean": {
+              "mae": 19.100688468158353,
+              "rmse": 19.55472629227524
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "operations",
+      "metric_name": "kwh",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 122.45912052028689,
+          "rmse": 156.80061878571118,
+          "mape": 51.13133572632257,
+          "mape_points": 7,
+          "smape": 50.92915401733957,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 154.4392857142857,
+              "rmse": 204.38777417483377
+            },
+            "seasonal_naive_7d": {
+              "mae": 22.992857142857133,
+              "rmse": 27.107155091282756
+            },
+            "train_mean": {
+              "mae": 127.88374741200826,
+              "rmse": 141.87282600414215
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 115.48554932733715,
+          "rmse": 146.82519078241728,
+          "mape": 53.91261438838239,
+          "mape_points": 7,
+          "smape": 49.41294586277859,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 134.8892857142857,
+              "rmse": 187.31816873780747
+            },
+            "seasonal_naive_7d": {
+              "mae": 14.374999999999998,
+              "rmse": 17.47726839967521
+            },
+            "train_mean": {
+              "mae": 127.11597744360903,
+              "rmse": 143.57776765850403
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 132.3991773847334,
+          "rmse": 168.85700101358188,
+          "mape": 53.986746647516206,
+          "mape_points": 7,
+          "smape": 52.369563648889425,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 165.94285714285715,
+              "rmse": 223.47223740961007
+            },
+            "seasonal_naive_7d": {
+              "mae": 25.417857142857127,
+              "rmse": 31.36916564990893
+            },
+            "train_mean": {
+              "mae": 134.53575731497418,
+              "rmse": 155.60594344848613
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "operations",
+      "metric_name": "units_produced",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 799.4445023611507,
+          "rmse": 1010.2646891807367,
+          "mape": 73.49368759738519,
+          "mape_points": 7,
+          "smape": 59.296857413195795,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1018.7142857142857,
+              "rmse": 1364.2370709353581
+            },
+            "seasonal_naive_7d": {
+              "mae": 114.39285714285714,
+              "rmse": 132.4781316185538
+            },
+            "train_mean": {
+              "mae": 852.1920289855072,
+              "rmse": 963.5545742963799
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 764.1033894264898,
+          "rmse": 906.705051015102,
+          "mape": 84.51871630202155,
+          "mape_points": 7,
+          "smape": 59.673887366474965,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 863.1071428571429,
+              "rmse": 1209.2237659223492
+            },
+            "seasonal_naive_7d": {
+              "mae": 122.89285714285714,
+              "rmse": 134.2331061464134
+            },
+            "train_mean": {
+              "mae": 834.608552631579,
+              "rmse": 942.5847961802397
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 823.7455512664501,
+          "rmse": 1051.3888099493206,
+          "mape": 76.94154129629617,
+          "mape_points": 7,
+          "smape": 59.50661701623511,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1047.892857142857,
+              "rmse": 1423.9770545151753
+            },
+            "seasonal_naive_7d": {
+              "mae": 152.96428571428572,
+              "rmse": 175.04741704545575
+            },
+            "train_mean": {
+              "mae": 883.000860585198,
+              "rmse": 1012.4945886224865
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "quality",
+      "metric_name": "defect_count",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 15.378304755991845,
+          "rmse": 18.502613904043052,
+          "mape": 76.39905975299402,
+          "mape_points": 7,
+          "smape": 61.23579607663674,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 19.071428571428573,
+              "rmse": 25.1984976876457
+            },
+            "seasonal_naive_7d": {
+              "mae": 3.9285714285714284,
+              "rmse": 5.18927465341462
+            },
+            "train_mean": {
+              "mae": 14.76863354037267,
+              "rmse": 17.553388239834288
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 15.95184872502536,
+          "rmse": 18.742218963833505,
+          "mape": 72.94610711716233,
+          "mape_points": 7,
+          "smape": 60.67668910814456,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 17.75,
+              "rmse": 24.311776981537157
+            },
+            "seasonal_naive_7d": {
+              "mae": 3.857142857142857,
+              "rmse": 4.9298652546059945
+            },
+            "train_mean": {
+              "mae": 16.537124060150376,
+              "rmse": 18.109533941164397
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 17.710657802433285,
+          "rmse": 21.687664307529154,
+          "mape": 81.70388635673199,
+          "mape_points": 7,
+          "smape": 63.720121955168274,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 20.821428571428573,
+              "rmse": 28.58899013856308
+            },
+            "seasonal_naive_7d": {
+              "mae": 3.2857142857142856,
+              "rmse": 5.209880722517277
+            },
+            "train_mean": {
+              "mae": 17.369621342512907,
+              "rmse": 21.070697241449782
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "quality",
+      "metric_name": "reject_rate_pct",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.22966763965487977,
+          "rmse": 0.27460648507147645,
+          "mape": 13.031660655857255,
+          "mape_points": 7,
+          "smape": 11.942193127696417,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.20285714285714276,
+              "rmse": 0.2477001355325772
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.19250000000000003,
+              "rmse": 0.25026236233201354
+            },
+            "train_mean": {
+              "mae": 0.21111801242236025,
+              "rmse": 0.25970400198503474
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.26690376946851035,
+          "rmse": 0.35604391706354704,
+          "mape": 11.375334939318693,
+          "mape_points": 7,
+          "smape": 12.526051768552234,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.21964285714285708,
+              "rmse": 0.3213184335115022
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.36214285714285704,
+              "rmse": 0.45488617100482237
+            },
+            "train_mean": {
+              "mae": 0.4251033834586465,
+              "rmse": 0.48550534255391786
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.15350408142609484,
+          "rmse": 0.16988619193769236,
+          "mape": 7.281309121991139,
+          "mape_points": 7,
+          "smape": 7.180482756531623,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.17178571428571426,
+              "rmse": 0.20652524923463614
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.25785714285714284,
+              "rmse": 0.29586133334964293
+            },
+            "train_mean": {
+              "mae": 0.36067986230636795,
+              "rmse": 0.39512031726318103
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "workforce",
+      "metric_name": "overtime_hours",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.08053821007257488,
+          "rmse": 0.10173203430070137,
+          "mape": 10.452786837359618,
+          "mape_points": 7,
+          "smape": 11.02981925728882,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.1678571428571428,
+              "rmse": 0.19616865921227794
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.14285714285714285,
+              "rmse": 0.19086270308410552
+            },
+            "train_mean": {
+              "mae": 0.2877846790890269,
+              "rmse": 0.30516576473673085
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.11890134891203553,
+          "rmse": 0.1292965763993567,
+          "mape": 17.009112497894392,
+          "mape_points": 7,
+          "smape": 16.143224623537026,
+          "interval_coverage": 0.8571428571428571,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.15,
+              "rmse": 0.1866050068230447
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.1857142857142857,
+              "rmse": 0.20830952244882403
+            },
+            "train_mean": {
+              "mae": 0.28270676691729324,
+              "rmse": 0.31036458767926245
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.1097615578261,
+          "rmse": 0.11837130532394308,
+          "mape": 14.807155410069232,
+          "mape_points": 7,
+          "smape": 14.26345931863873,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.19642857142857148,
+              "rmse": 0.2226063148892489
+            },
+            "seasonal_naive_7d": {
+              "mae": 0.16071428571428573,
+              "rmse": 0.18588590970961574
+            },
+            "train_mean": {
+              "mae": 0.2910068846815834,
+              "rmse": 0.3092804466615736
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset_id": "5",
+      "business_name": "Bottle Plant ",
+      "industry": NaN,
+      "domain": "workforce",
+      "metric_name": "staff_present",
+      "series_points": 90,
+      "folds_attempted": 3,
+      "folds_scored": 3,
+      "folds": [
+        {
+          "train_points": 69,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 1.0908849127331839,
+          "rmse": 1.2927489140179016,
+          "mape": 7.628255867627878,
+          "mape_points": 7,
+          "smape": 7.98996908105549,
+          "interval_coverage": 0.7142857142857143,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 1.0714285714285714,
+              "rmse": 1.2747548783981961
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.3571428571428572,
+              "rmse": 1.5236235005501102
+            },
+            "train_mean": {
+              "mae": 0.7298136645962732,
+              "rmse": 0.9757213414217507
+            }
+          }
+        },
+        {
+          "train_points": 76,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 0.682297742756065,
+          "rmse": 0.8583688189391387,
+          "mape": 5.14291103076614,
+          "mape_points": 7,
+          "smape": 5.045595614102542,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.7142857142857143,
+              "rmse": 0.8660254037844386
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.1428571428571428,
+              "rmse": 1.4638501094227998
+            },
+            "train_mean": {
+              "mae": 0.6954887218045113,
+              "rmse": 0.8542359360435358
+            }
+          }
+        },
+        {
+          "train_points": 83,
+          "test_points": 7,
+          "method": "holt_winters",
+          "mae": 1.0170792157878616,
+          "rmse": 1.121607897974964,
+          "mape": 7.042225475575377,
+          "mape_points": 7,
+          "smape": 7.213674712817846,
+          "interval_coverage": 1.0,
+          "baselines": {
+            "naive_last_value": {
+              "mae": 0.8928571428571429,
+              "rmse": 0.9955257046261682
+            },
+            "seasonal_naive_7d": {
+              "mae": 1.1071428571428572,
+              "rmse": 1.4361406616345072
+            },
+            "train_mean": {
+              "mae": 1.050344234079174,
+              "rmse": 1.167191577144687
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

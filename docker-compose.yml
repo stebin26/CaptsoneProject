@@ -79,6 +79,7 @@ services:
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
       - ./tests:/app/tests
+      - ./evaluation:/app/evaluation
     networks:
       - ops_net
     healthcheck:

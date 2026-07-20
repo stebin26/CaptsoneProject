@@ -1,0 +1,1700 @@
+{
+  "configuration": {
+    "dataset_id": null,
+    "weights": {
+      "trend": 0.45,
+      "volatility": 0.25,
+      "anomaly": 0.3
+    },
+    "target_domains": [
+      "assets",
+      "maintenance"
+    ],
+    "validity_metrics": [
+      "breakdowns",
+      "downtime_minutes"
+    ],
+    "classification_metrics": "not computed \u2014 the scored entities carry no failure labels",
+    "generated_at": "2026-07-20T13:04:19.459197+00:00"
+  },
+  "domains": {
+    "assets": {
+      "entities": 155,
+      "small_population": false,
+      "distribution": {
+        "min": 2.34,
+        "median": 19.25,
+        "max": 50.52,
+        "mean": 17.954967741935487,
+        "std": 7.492210524761468,
+        "range_used": 48.18000000000001,
+        "by_level": {
+          "low": 152,
+          "medium": 3
+        }
+      },
+      "ranking": [
+        {
+          "entity_id": "M-12",
+          "risk_score": 50.52,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-001",
+          "risk_score": 49.26,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "M-13",
+          "risk_score": 42.09,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "MCH-001",
+          "risk_score": 31.06,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-10",
+          "risk_score": 29.73,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-095",
+          "risk_score": 27.94,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-02",
+          "risk_score": 27.04,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-118",
+          "risk_score": 26.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-093",
+          "risk_score": 25.93,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-103",
+          "risk_score": 25.0,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-039",
+          "risk_score": 24.92,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-027",
+          "risk_score": 24.61,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-115",
+          "risk_score": 24.4,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-050",
+          "risk_score": 23.41,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-079",
+          "risk_score": 23.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-087",
+          "risk_score": 22.98,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-061",
+          "risk_score": 22.82,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-068",
+          "risk_score": 22.7,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-055",
+          "risk_score": 22.46,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-012",
+          "risk_score": 22.45,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-034",
+          "risk_score": 22.35,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-072",
+          "risk_score": 22.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-086",
+          "risk_score": 22.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-006",
+          "risk_score": 22.08,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-116",
+          "risk_score": 21.96,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-013",
+          "risk_score": 21.96,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-109",
+          "risk_score": 21.96,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-043",
+          "risk_score": 21.72,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-002",
+          "risk_score": 21.53,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-004",
+          "risk_score": 21.5,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-021",
+          "risk_score": 21.46,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-094",
+          "risk_score": 21.36,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-026",
+          "risk_score": 21.27,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-071",
+          "risk_score": 21.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-075",
+          "risk_score": 21.16,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-112",
+          "risk_score": 21.1,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-088",
+          "risk_score": 21.09,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-025",
+          "risk_score": 21.09,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-063",
+          "risk_score": 21.06,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-113",
+          "risk_score": 21.01,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-024",
+          "risk_score": 20.99,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-031",
+          "risk_score": 20.94,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-020",
+          "risk_score": 20.9,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-117",
+          "risk_score": 20.88,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-119",
+          "risk_score": 20.86,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-037",
+          "risk_score": 20.84,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-083",
+          "risk_score": 20.6,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-089",
+          "risk_score": 20.46,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-041",
+          "risk_score": 20.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-030",
+          "risk_score": 20.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-056",
+          "risk_score": 20.22,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-054",
+          "risk_score": 20.21,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-096",
+          "risk_score": 20.19,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-066",
+          "risk_score": 19.92,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-057",
+          "risk_score": 19.91,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-018",
+          "risk_score": 19.86,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-098",
+          "risk_score": 19.81,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-017",
+          "risk_score": 19.65,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-053",
+          "risk_score": 19.61,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-008",
+          "risk_score": 19.58,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-003",
+          "risk_score": 19.49,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-003",
+          "risk_score": 19.47,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-082",
+          "risk_score": 19.47,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-064",
+          "risk_score": 19.47,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-004",
+          "risk_score": 19.46,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-017",
+          "risk_score": 19.45,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-110",
+          "risk_score": 19.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-092",
+          "risk_score": 19.42,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-105",
+          "risk_score": 19.42,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-107",
+          "risk_score": 19.42,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-099",
+          "risk_score": 19.4,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-077",
+          "risk_score": 19.37,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-008",
+          "risk_score": 19.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-101",
+          "risk_score": 19.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-114",
+          "risk_score": 19.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-051",
+          "risk_score": 19.29,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-022",
+          "risk_score": 19.27,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-081",
+          "risk_score": 19.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-059",
+          "risk_score": 19.22,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-019",
+          "risk_score": 19.2,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-036",
+          "risk_score": 19.2,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-033",
+          "risk_score": 19.19,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-009",
+          "risk_score": 19.14,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-058",
+          "risk_score": 19.14,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-052",
+          "risk_score": 19.11,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-091",
+          "risk_score": 19.02,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-060",
+          "risk_score": 18.98,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-046",
+          "risk_score": 18.91,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-014",
+          "risk_score": 18.89,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-038",
+          "risk_score": 18.88,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-102",
+          "risk_score": 18.87,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-062",
+          "risk_score": 18.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-010",
+          "risk_score": 18.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-070",
+          "risk_score": 18.66,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-073",
+          "risk_score": 18.53,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-009",
+          "risk_score": 18.5,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-016",
+          "risk_score": 18.41,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-100",
+          "risk_score": 18.15,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-005",
+          "risk_score": 17.84,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-032",
+          "risk_score": 17.73,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-028",
+          "risk_score": 17.71,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-047",
+          "risk_score": 17.55,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-084",
+          "risk_score": 17.5,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-120",
+          "risk_score": 17.49,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-011",
+          "risk_score": 17.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-078",
+          "risk_score": 17.41,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-042",
+          "risk_score": 17.4,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-067",
+          "risk_score": 17.12,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-076",
+          "risk_score": 17.07,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-035",
+          "risk_score": 17.04,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-023",
+          "risk_score": 17.02,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-104",
+          "risk_score": 16.94,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-007",
+          "risk_score": 16.92,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-106",
+          "risk_score": 16.9,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-097",
+          "risk_score": 16.85,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-074",
+          "risk_score": 16.78,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-040",
+          "risk_score": 16.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-14",
+          "risk_score": 16.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-069",
+          "risk_score": 16.75,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-108",
+          "risk_score": 16.65,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-085",
+          "risk_score": 16.63,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-111",
+          "risk_score": 16.42,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-080",
+          "risk_score": 16.36,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-045",
+          "risk_score": 16.27,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-065",
+          "risk_score": 15.36,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-049",
+          "risk_score": 15.06,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-044",
+          "risk_score": 14.82,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-048",
+          "risk_score": 14.18,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-015",
+          "risk_score": 14.02,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-029",
+          "risk_score": 13.93,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-090",
+          "risk_score": 13.77,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-01",
+          "risk_score": 9.52,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-04",
+          "risk_score": 8.14,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-05",
+          "risk_score": 8.09,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-08",
+          "risk_score": 7.72,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-03",
+          "risk_score": 6.8,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-11",
+          "risk_score": 6.62,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-09",
+          "risk_score": 6.59,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-07",
+          "risk_score": 6.45,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-15",
+          "risk_score": 5.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-06",
+          "risk_score": 4.78,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-006",
+          "risk_score": 2.79,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-002",
+          "risk_score": 2.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-016",
+          "risk_score": 2.62,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-005",
+          "risk_score": 2.62,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-014",
+          "risk_score": 2.59,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-015",
+          "risk_score": 2.57,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-011",
+          "risk_score": 2.53,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-020",
+          "risk_score": 2.52,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-013",
+          "risk_score": 2.5,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-019",
+          "risk_score": 2.49,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-012",
+          "risk_score": 2.46,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-007",
+          "risk_score": 2.45,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-018",
+          "risk_score": 2.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-010",
+          "risk_score": 2.34,
+          "risk_level": "low"
+        }
+      ],
+      "weight_sensitivity": {
+        "trend": {
+          "weight": 0.45,
+          "rank_agreement_tau": 0.7005076296238032,
+          "mean_absolute_score_change": 2.2192903225806444
+        },
+        "volatility": {
+          "weight": 0.25,
+          "rank_agreement_tau": 0.1239096072110604,
+          "mean_absolute_score_change": 15.444903225806453
+        },
+        "anomaly": {
+          "weight": 0.3,
+          "rank_agreement_tau": 0.9727691663175534,
+          "mean_absolute_score_change": 0.29032258064516125
+        }
+      },
+      "population_stability": {
+        "runs": 155,
+        "mean_score_shift": 0.01151319648093842,
+        "max_score_shift": 1.0585064935064936,
+        "mean_rank_agreement_tau": 0.9977059500736243
+      },
+      "convergent_validity": {
+        "available": true,
+        "metrics": {
+          "downtime_minutes": {
+            "entities": 155,
+            "spearman": 0.3351565439978835,
+            "kendall_tau": 0.23328169743127933
+          }
+        }
+      }
+    },
+    "maintenance": {
+      "entities": 159,
+      "small_population": false,
+      "distribution": {
+        "min": 0.04,
+        "median": 12.67,
+        "max": 75.83,
+        "mean": 16.20182389937107,
+        "std": 11.525371512332713,
+        "range_used": 75.78999999999999,
+        "by_level": {
+          "low": 145,
+          "medium": 13,
+          "high": 1
+        }
+      },
+      "ranking": [
+        {
+          "entity_id": "MCH-001",
+          "risk_score": 75.83,
+          "risk_level": "high"
+        },
+        {
+          "entity_id": "MCH-003",
+          "risk_score": 49.71,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "M-04",
+          "risk_score": 49.04,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "MCH-008",
+          "risk_score": 48.38,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "MCH-017",
+          "risk_score": 48.05,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "MCH-004",
+          "risk_score": 47.17,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-045",
+          "risk_score": 46.21,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "MCH-009",
+          "risk_score": 46.16,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-001",
+          "risk_score": 45.67,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-096",
+          "risk_score": 40.48,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-032",
+          "risk_score": 38.86,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "L-01",
+          "risk_score": 38.21,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-018",
+          "risk_score": 35.2,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "TWR-065",
+          "risk_score": 34.59,
+          "risk_level": "medium"
+        },
+        {
+          "entity_id": "M-11",
+          "risk_score": 30.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-039",
+          "risk_score": 28.86,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-13",
+          "risk_score": 27.8,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-008",
+          "risk_score": 27.7,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-108",
+          "risk_score": 26.92,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-076",
+          "risk_score": 26.26,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-105",
+          "risk_score": 25.94,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-060",
+          "risk_score": 25.75,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-092",
+          "risk_score": 25.08,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-07",
+          "risk_score": 24.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-106",
+          "risk_score": 23.16,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-093",
+          "risk_score": 22.95,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-069",
+          "risk_score": 22.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-051",
+          "risk_score": 22.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-107",
+          "risk_score": 22.24,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-073",
+          "risk_score": 22.14,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-071",
+          "risk_score": 21.99,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-010",
+          "risk_score": 21.98,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-036",
+          "risk_score": 21.3,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-011",
+          "risk_score": 21.06,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-09",
+          "risk_score": 20.98,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-112",
+          "risk_score": 20.79,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-006",
+          "risk_score": 20.75,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-084",
+          "risk_score": 20.59,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-102",
+          "risk_score": 20.35,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-061",
+          "risk_score": 19.73,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-059",
+          "risk_score": 19.69,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-063",
+          "risk_score": 19.01,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-052",
+          "risk_score": 18.57,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-104",
+          "risk_score": 18.26,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-10",
+          "risk_score": 18.15,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-15",
+          "risk_score": 18.15,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-067",
+          "risk_score": 17.85,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "L-03",
+          "risk_score": 17.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-089",
+          "risk_score": 17.38,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-064",
+          "risk_score": 17.31,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-070",
+          "risk_score": 16.92,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-05",
+          "risk_score": 16.87,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-074",
+          "risk_score": 16.84,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-12",
+          "risk_score": 16.55,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-054",
+          "risk_score": 16.45,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-118",
+          "risk_score": 16.39,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-014",
+          "risk_score": 16.32,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-086",
+          "risk_score": 16.26,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-079",
+          "risk_score": 16.21,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-14",
+          "risk_score": 15.97,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-058",
+          "risk_score": 15.4,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-033",
+          "risk_score": 14.82,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-111",
+          "risk_score": 14.74,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-062",
+          "risk_score": 14.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "L-04",
+          "risk_score": 14.67,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-040",
+          "risk_score": 14.36,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-088",
+          "risk_score": 14.13,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-055",
+          "risk_score": 14.0,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-030",
+          "risk_score": 13.71,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-022",
+          "risk_score": 13.54,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-012",
+          "risk_score": 13.51,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-02",
+          "risk_score": 13.19,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-083",
+          "risk_score": 13.0,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-01",
+          "risk_score": 12.84,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-047",
+          "risk_score": 12.78,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-021",
+          "risk_score": 12.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-031",
+          "risk_score": 12.72,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-027",
+          "risk_score": 12.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-025",
+          "risk_score": 12.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-037",
+          "risk_score": 12.67,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-066",
+          "risk_score": 12.56,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-113",
+          "risk_score": 12.48,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-097",
+          "risk_score": 12.39,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-03",
+          "risk_score": 12.28,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-044",
+          "risk_score": 12.13,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-029",
+          "risk_score": 12.13,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-081",
+          "risk_score": 12.11,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-002",
+          "risk_score": 11.89,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-015",
+          "risk_score": 11.83,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-090",
+          "risk_score": 11.75,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-120",
+          "risk_score": 11.72,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-100",
+          "risk_score": 11.68,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-050",
+          "risk_score": 11.65,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-026",
+          "risk_score": 11.6,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-109",
+          "risk_score": 11.55,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-009",
+          "risk_score": 11.52,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-080",
+          "risk_score": 11.47,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-035",
+          "risk_score": 11.41,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-048",
+          "risk_score": 11.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-085",
+          "risk_score": 11.28,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "L-02",
+          "risk_score": 11.28,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-019",
+          "risk_score": 11.27,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-017",
+          "risk_score": 11.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-110",
+          "risk_score": 11.23,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-005",
+          "risk_score": 11.21,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-053",
+          "risk_score": 11.18,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-082",
+          "risk_score": 11.0,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-087",
+          "risk_score": 10.9,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-077",
+          "risk_score": 10.89,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-024",
+          "risk_score": 10.77,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-003",
+          "risk_score": 10.71,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-098",
+          "risk_score": 10.65,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-028",
+          "risk_score": 10.63,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-101",
+          "risk_score": 10.61,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-117",
+          "risk_score": 10.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-043",
+          "risk_score": 10.4,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-078",
+          "risk_score": 10.39,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-020",
+          "risk_score": 10.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-119",
+          "risk_score": 10.31,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-057",
+          "risk_score": 10.26,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-099",
+          "risk_score": 10.25,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-114",
+          "risk_score": 10.18,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-115",
+          "risk_score": 10.17,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-103",
+          "risk_score": 10.17,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-013",
+          "risk_score": 10.13,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-004",
+          "risk_score": 10.13,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-116",
+          "risk_score": 10.07,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-056",
+          "risk_score": 10.06,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-075",
+          "risk_score": 9.97,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-095",
+          "risk_score": 9.9,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-007",
+          "risk_score": 9.76,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-094",
+          "risk_score": 9.69,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-016",
+          "risk_score": 9.59,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-068",
+          "risk_score": 9.52,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-034",
+          "risk_score": 9.49,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-041",
+          "risk_score": 9.41,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-08",
+          "risk_score": 9.39,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-042",
+          "risk_score": 9.37,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-072",
+          "risk_score": 9.33,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-038",
+          "risk_score": 9.31,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-091",
+          "risk_score": 9.14,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-046",
+          "risk_score": 8.78,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-023",
+          "risk_score": 8.7,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "M-06",
+          "risk_score": 8.31,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "TWR-049",
+          "risk_score": 8.23,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-013",
+          "risk_score": 2.64,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-007",
+          "risk_score": 1.15,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-005",
+          "risk_score": 0.81,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-002",
+          "risk_score": 0.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-006",
+          "risk_score": 0.43,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-020",
+          "risk_score": 0.34,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-010",
+          "risk_score": 0.2,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-014",
+          "risk_score": 0.19,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-018",
+          "risk_score": 0.12,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-015",
+          "risk_score": 0.12,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-019",
+          "risk_score": 0.1,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-016",
+          "risk_score": 0.08,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-012",
+          "risk_score": 0.05,
+          "risk_level": "low"
+        },
+        {
+          "entity_id": "MCH-011",
+          "risk_score": 0.04,
+          "risk_level": "low"
+        }
+      ],
+      "weight_sensitivity": {
+        "trend": {
+          "weight": 0.45,
+          "rank_agreement_tau": 0.423547245119782,
+          "mean_absolute_score_change": 5.722704402515723
+        },
+        "volatility": {
+          "weight": 0.25,
+          "rank_agreement_tau": 0.7156360812968653,
+          "mean_absolute_score_change": 10.02440251572327
+        },
+        "anomaly": {
+          "weight": 0.3,
+          "rank_agreement_tau": 0.9820078019265982,
+          "mean_absolute_score_change": 0.45528301886792455
+        }
+      },
+      "population_stability": {
+        "runs": 159,
+        "mean_score_shift": 0.032637130801687765,
+        "max_score_shift": 5.065253164556962,
+        "mean_rank_agreement_tau": 0.9990521288807562
+      },
+      "convergent_validity": {
+        "available": true,
+        "metrics": {
+          "downtime_minutes": {
+            "entities": 159,
+            "spearman": -0.11146173550315422,
+            "kendall_tau": -0.12256112750522137
+          },
+          "breakdowns": {
+            "entities": 4,
+            "spearman": 0.2581988897471611,
+            "kendall_tau": 0.23570226039551587
+          }
+        }
+      }
+    }
+  }
+}

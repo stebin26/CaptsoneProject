@@ -97,7 +97,11 @@ def _call_ollama(question: str, context: str) -> str | None:
                     {"role": "user", "content": _build_user_prompt(question, context)},
                 ],
                 "stream": False,
-                "options": {"num_predict": settings.rag_max_answer_tokens},
+                "options": {
+                    "num_predict": settings.rag_max_answer_tokens,
+                    "temperature": 0,
+                    "seed": 42,
+                },
             },
             timeout=(5, 120),
         )

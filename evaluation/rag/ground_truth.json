@@ -1,0 +1,414 @@
+[
+  {
+    "id": "Q01",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "How often should Line L-03 undergo preventive maintenance?",
+    "gold_answer": "Every 350 operating hours.",
+    "answer_keywords": [
+      "350"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 2.2",
+    "domain": "maintenance",
+    "notes": "Direct interval lookup."
+  },
+  {
+    "id": "Q02",
+    "scope": "in_scope",
+    "question_type": "reason",
+    "question": "Why does Line L-03 require maintenance more frequently than Line L-01?",
+    "gold_answer": "Because L-03 carries the carbonation stage, and pressurised mixing and holding equipment has more seals, valves and pressure sensors in the wet path, so it wears faster than a still water filler.",
+    "answer_keywords": [
+      "carbonation"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 2.2",
+    "domain": "maintenance",
+    "notes": "Reason, not a number. L-04 shares the 350 figure for a different reason, so a wrong retrieval gives a wrong explanation."
+  },
+  {
+    "id": "Q03",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "What does the fault code RBP-F04 indicate?",
+    "gold_answer": "Carbonation pressure deviation, on L-03 only.",
+    "answer_keywords": [
+      "carbonation pressure"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 3.2",
+    "domain": "maintenance",
+    "notes": "Code lookup with a line constraint attached."
+  },
+  {
+    "id": "Q04",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "When should unplanned downtime be treated as an alert?",
+    "gold_answer": "More than 120 minutes of unplanned downtime in a single production day.",
+    "answer_keywords": [
+      "120"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 4.2",
+    "domain": "maintenance",
+    "notes": "Threshold lookup."
+  },
+  {
+    "id": "Q05",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "What energy efficiency target does the plant aim to maintain?",
+    "gold_answer": "Below 0.045 kilowatt-hours per unit produced.",
+    "answer_keywords": [
+      "0.045"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 4.2",
+    "domain": "operations",
+    "notes": "Threshold lookup."
+  },
+  {
+    "id": "Q06",
+    "scope": "in_scope",
+    "question_type": "reason",
+    "question": "If energy used per unit suddenly increases, what could be the reasons?",
+    "gold_answer": "Either the line is genuinely drawing more energy, for example a failing compressor or a fouled condenser, or output has fallen while energy stayed roughly the same, because a stopped line still draws power. The day's downtime should be checked before treating it as an energy problem.",
+    "answer_keywords": [
+      "downtime"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 4.3",
+    "domain": "operations",
+    "notes": "Two distinct causes. Tests whether generation gives both or stops at the first."
+  },
+  {
+    "id": "Q07",
+    "scope": "in_scope",
+    "question_type": "two_fact",
+    "question": "When should a drop in production output be reported to the plant manager?",
+    "gold_answer": "When output falls below 80 percent of the nominal rate for two consecutive days on the same line. A single day is logged by the supervisor but needs no further action.",
+    "answer_keywords": [
+      "80",
+      "two consecutive"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 3.2",
+    "domain": "operations",
+    "notes": "Needs both the level and the duration. A number-only answer is incomplete."
+  },
+  {
+    "id": "Q08",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "At what reject rate must the production line be stopped?",
+    "gold_answer": "Above 4.0 percent. The line is paused and inspected before production resumes.",
+    "answer_keywords": [
+      "4.0"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 3.3",
+    "domain": "quality",
+    "notes": "Threshold lookup. Also present in the original manual, so it is a continuity check."
+  },
+  {
+    "id": "Q09",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "What reject rate is considered normal during production?",
+    "gold_answer": "Below 2.5 percent.",
+    "answer_keywords": [
+      "2.5"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 3.2",
+    "domain": "quality",
+    "notes": "Adjacent to Q08 in the same section; tests band separation."
+  },
+  {
+    "id": "Q10",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "How many defects in a single shift require escalation?",
+    "gold_answer": "More than 40 defects on one line in a single shift, escalated to the quality supervisor before the end of that shift.",
+    "answer_keywords": [
+      "40"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 2.3",
+    "domain": "quality",
+    "notes": "A count trigger that is independent of the reject rate bands."
+  },
+  {
+    "id": "Q11",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "How many customer complaints against one production line trigger an escalation?",
+    "gold_answer": "More than 3 complaints against a single line in a rolling 7 day period.",
+    "answer_keywords": [
+      "3",
+      "7"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 6.2",
+    "domain": "customers",
+    "notes": "By line, not by plant."
+  },
+  {
+    "id": "Q12",
+    "scope": "in_scope",
+    "question_type": "reason",
+    "question": "Why are customer complaints compared with reject rates from two weeks earlier instead of today's reject rate?",
+    "gold_answer": "Because complaints arrive after product has been despatched, stored and sold, so a complaint received today concerns product made days or weeks earlier. Fourteen days is the plant's working assumption for that lag.",
+    "answer_keywords": [
+      "14"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 6.3",
+    "domain": "customers",
+    "notes": "Reason question. The number alone is not the answer."
+  },
+  {
+    "id": "Q13",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "When should preforms be reordered?",
+    "gold_answer": "At 12 days of cover.",
+    "answer_keywords": [
+      "12"
+    ],
+    "document": "RBP-INV-2025_inventory_policy.txt",
+    "section": "Section 3.1",
+    "domain": "inventory",
+    "notes": "Threshold lookup."
+  },
+  {
+    "id": "Q14",
+    "scope": "in_scope",
+    "question_type": "reason",
+    "question": "Why is the reorder point for closures higher than the reorder point for preforms?",
+    "gold_answer": "Closures come from a single approved supplier and cannot be substituted without quality qualification, and a closure shortage stops all four lines at once. Preforms have more than one qualified source and formats differ by line, so a shortage may leave some lines running.",
+    "answer_keywords": [
+      "single"
+    ],
+    "document": "RBP-INV-2025_inventory_policy.txt",
+    "section": "Section 3.2",
+    "domain": "inventory",
+    "notes": "Reason question with two supporting facts."
+  },
+  {
+    "id": "Q15",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "At what inventory level is a stock-out risk raised?",
+    "gold_answer": "Below 5 days of cover.",
+    "answer_keywords": [
+      "5"
+    ],
+    "document": "RBP-INV-2025_inventory_policy.txt",
+    "section": "Section 3.4",
+    "domain": "inventory",
+    "notes": "Distinct from the reorder points in the same section group."
+  },
+  {
+    "id": "Q16",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "What is the minimum staffing required to operate one production line?",
+    "gold_answer": "4 operators and 1 technician per line per shift. Below that the line does not run.",
+    "answer_keywords": [
+      "4",
+      "1 technician"
+    ],
+    "document": "RBP-HR-2025_workforce_safety_handbook.txt",
+    "section": "Section 3.1",
+    "domain": "workforce",
+    "notes": "Staffing minimum."
+  },
+  {
+    "id": "Q17",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "How much overtime on a production line requires management review?",
+    "gold_answer": "More than 12 overtime hours on one line in a week, reviewed by the plant manager.",
+    "answer_keywords": [
+      "12"
+    ],
+    "document": "RBP-HR-2025_workforce_safety_handbook.txt",
+    "section": "Section 4.2",
+    "domain": "workforce",
+    "notes": "Threshold lookup. Deliberately confusable with the weekly breakdown escalation of 5 in RBP-MNT."
+  },
+  {
+    "id": "Q18",
+    "scope": "in_scope",
+    "question_type": "lookup",
+    "question": "What is the minimum gross margin the plant should maintain?",
+    "gold_answer": "18 percent, calculated per line over a rolling month as revenue less operating cost divided by revenue.",
+    "answer_keywords": [
+      "18"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 6.4",
+    "domain": "finance",
+    "notes": "Only finance-specific threshold in the corpus."
+  },
+  {
+    "id": "Q19",
+    "scope": "distractor",
+    "question_type": "authority",
+    "question": "After a repair is completed, who has the authority to release the line back into production?",
+    "gold_answer": "If a quality hold is in force, only the quality supervisor can release the line. Mechanical completion is not release; the technician hands the line back to the shift supervisor but it stays held until quality releases it.",
+    "answer_keywords": [
+      "quality supervisor"
+    ],
+    "document": "RBP-QLT-2025_quality_manual.txt",
+    "section": "Section 5.4",
+    "domain": "quality",
+    "notes": "RBP-MNT Section 5.3 covers return to service and reads like the answer. RBP-QLT 5.4 is the controlling document. Retrieving the maintenance manual gives a plausible but wrong answer."
+  },
+  {
+    "id": "Q20",
+    "scope": "distractor",
+    "question_type": "reason",
+    "question": "Line L-04 is serviced every 350 hours. Why was this maintenance interval chosen?",
+    "gold_answer": "The age of the machine. L-04 is the oldest line by commissioning date. It runs the simplest product at the lowest rate, and its shorter interval is part of why its downtime stays close to the plant average.",
+    "answer_keywords": [
+      "age"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 2.2",
+    "domain": "maintenance",
+    "notes": "L-03 has the identical 350 figure for the carbonation reason. Answering 'carbonation' here is the failure mode this question exists to catch."
+  },
+  {
+    "id": "Q21",
+    "scope": "distractor",
+    "question_type": "classification",
+    "question": "If Line L-02 changes to a different bottle size, how should that time be recorded?",
+    "gold_answer": "As planned downtime under the operations manual. It is excluded from the unplanned downtime figures, and misrecording it as unplanned inflates the line's apparent breakdown rate.",
+    "answer_keywords": [
+      "planned"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 3.3",
+    "domain": "operations",
+    "notes": "RBP-MNT Section 4.1 also discusses changeover exclusion. Either retrieval gives a defensible answer, but OPS 3.3 is the controlling section."
+  },
+  {
+    "id": "Q22",
+    "scope": "distractor",
+    "question_type": "lookup",
+    "question": "What increase in operating cost per unit will trigger a financial review?",
+    "gold_answer": "A sustained rise of more than 3 percent month on month.",
+    "answer_keywords": [
+      "3 percent"
+    ],
+    "document": "RBP-OPS-2025_operations_manual.txt",
+    "section": "Section 6.2",
+    "domain": "finance",
+    "notes": "Section 6.3 in the same document has a different cost review trigger, 10 percent above plant average. Two cost thresholds one section apart."
+  },
+  {
+    "id": "Q23",
+    "scope": "distractor",
+    "question_type": "calculation",
+    "question": "How is 'days of cover' calculated for inventory?",
+    "gold_answer": "Stock on hand divided by average daily consumption over the preceding 14 days. Absolute unit counts are not used because consumption varies with the production plan.",
+    "answer_keywords": [
+      "14"
+    ],
+    "document": "RBP-INV-2025_inventory_policy.txt",
+    "section": "Section 2.3",
+    "domain": "inventory",
+    "notes": "Section 3.1 states reorder points in days of cover and is the likelier retrieval hit for the phrase 'days of cover'. The calculation itself is in 2.3."
+  },
+  {
+    "id": "Q24",
+    "scope": "distractor",
+    "question_type": "comparison",
+    "question": "Which production line experiences the highest unplanned downtime, and why?",
+    "gold_answer": "L-03, by a wide margin over every other line. The cause is the carbonation stage, and it is expected behaviour for that line rather than a fault condition. The oldest line, L-04, is not the worst performer.",
+    "answer_keywords": [
+      "L-03",
+      "carbonation"
+    ],
+    "document": "RBP-MNT-2025_maintenance_manual.txt",
+    "section": "Section 4.4",
+    "domain": "maintenance",
+    "notes": "RBP-OPS Section 2.2 makes a similar point at lower depth. Also tests the age trap: answering L-04 because it is oldest is the intuitive wrong answer."
+  },
+  {
+    "id": "Q25",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What chemical concentration is used for the plant's CIP cleaning process?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "operations",
+    "notes": "Entirely plausible for a bottling plant. Cleaning is mentioned in passing as planned downtime, so there is nearby text for the retriever to latch onto. This tests the distance cutoff rather than trivially missing."
+  },
+  {
+    "id": "Q26",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What is the required incoming water quality specification?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "quality",
+    "notes": "The corpus talks extensively about quality specifications and about water products, so semantically this sits close to real content without being answerable."
+  },
+  {
+    "id": "Q27",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What are the permitted effluent discharge limits for the plant?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "operations",
+    "notes": "Plausible, regulated, and absent. The word 'limits' appears throughout the corpus in other contexts."
+  },
+  {
+    "id": "Q28",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What are the asset serial number and book value of the L-02 filler?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "assets",
+    "notes": "Deliberate. The source dataset has no asset-register columns, so hub.assets is empty and the documents carry no asset master data. Answering this would be pure invention."
+  },
+  {
+    "id": "Q29",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What is the hourly wage paid to a line operator?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "workforce",
+    "notes": "The workforce handbook covers staffing, overtime hours and overtime authorisation but never pay. Close enough to overtime content to be a real test."
+  },
+  {
+    "id": "Q30",
+    "scope": "out_of_scope",
+    "question_type": "refusal",
+    "question": "What export documents are required for overseas shipments?",
+    "gold_answer": "Not covered in the uploaded documents.",
+    "answer_keywords": [],
+    "document": null,
+    "section": null,
+    "domain": "customers",
+    "notes": "Order fulfilment and despatch are covered; export paperwork is not."
+  }
+]

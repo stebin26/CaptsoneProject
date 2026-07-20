@@ -1,0 +1,808 @@
+{
+  "configuration": {
+    "dataset_id": 5,
+    "ground_truth": "/app/evaluation/rag/ground_truth.json",
+    "questions_run": 30,
+    "truncated": false,
+    "judge": "none - all metrics are deterministic string and numeric checks"
+  },
+  "summary": {
+    "counts": {
+      "total": 30,
+      "answerable": 24,
+      "out_of_scope": 6,
+      "errors": 0,
+      "llm_used": 24,
+      "extractive_fallback": 0,
+      "mean_seconds": 56.62
+    },
+    "refusal": {
+      "refusal_accuracy": 0.8333,
+      "correctly_refused": 5,
+      "out_of_scope_questions": 6,
+      "false_refusal_rate": 0.125,
+      "wrongly_refused": 3
+    },
+    "correctness": {
+      "answer_correctness": 0.5,
+      "correct": 12,
+      "scored": 24
+    },
+    "groundedness": {
+      "numeric_groundedness": 1.0,
+      "grounded": 21,
+      "checked": 21,
+      "ungrounded_examples": []
+    },
+    "citation": {
+      "citation_rate": 0.3333
+    },
+    "by_scope": {
+      "in_scope": {
+        "questions": 18,
+        "answer_correctness": 0.5
+      },
+      "distractor": {
+        "questions": 6,
+        "answer_correctness": 0.5
+      }
+    }
+  },
+  "questions": [
+    {
+      "id": "Q01",
+      "scope": "in_scope",
+      "domain": "maintenance",
+      "question": "How often should Line L-03 undergo preventive maintenance?",
+      "answer": "According to Section 6.2 of the document, Preventive Maintenance is scheduled by the maintenance planner one week ahead and is fixed once the week has started. A preventive maintenance visit may be deferred only by the plant manager, only once, and by no more than 50 operating hours. Additionally, a line that has passed its interval without service is recorded as overdue and the overdue status is reported at the daily production meeting until the work is complete.\n\nTherefore, Line L-03 should undergo preventive maintenance approximately every 50 operating hours.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "350"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "6.2",
+        "50",
+        "03",
+        "50"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 36.3,
+      "error": null
+    },
+    {
+      "id": "Q02",
+      "scope": "in_scope",
+      "domain": "maintenance",
+      "question": "Why does Line L-03 require maintenance more frequently than Line L-01?",
+      "answer": "According to Section 3 of the document, Line L-03 requires maintenance more frequently because it has a shorter interval due to design considerations. Specifically, [Source 3: RBP-MNT-2025_maintenance_manual.txt, p.1] states:\n\n\"The shorter interval on L-03 is a design consequence and will not change. L-04 is the oldest line on the plant by commissioning date. Its shorter interval reflects the age of the machine rather than the complexity of the process.\"",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "carbonation"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "03",
+        "2025",
+        "03",
+        "04"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 22.89,
+      "error": null
+    },
+    {
+      "id": "Q03",
+      "scope": "in_scope",
+      "domain": "maintenance",
+      "question": "What does the fault code RBP-F04 indicate?",
+      "answer": "According to [Source 1], RBP-F04 is a Carbonation pressure deviation fault code. It applies to L-03 only and indicates pressure in the mixing or holding circuit outside the working band.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "carbonation pressure"
+      ],
+      "keywords_found": [
+        "carbonation pressure"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "04",
+        "03"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 9.27,
+      "error": null
+    },
+    {
+      "id": "Q04",
+      "scope": "in_scope",
+      "domain": "maintenance",
+      "question": "When should unplanned downtime be treated as an alert?",
+      "answer": "According to section 4.2 of RBP-MNT-2025_maintenance_manual.txt [Source 1], a line recording more than 120 minutes of unplanned downtime in a single production day raises a downtime alert.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "120"
+      ],
+      "keywords_found": [
+        "120"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "4.2",
+        "2025",
+        "120"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 60.6,
+      "error": null
+    },
+    {
+      "id": "Q05",
+      "scope": "in_scope",
+      "domain": "operations",
+      "question": "What energy efficiency target does the plant aim to maintain?",
+      "answer": "[Source 1]",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "0.045"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 53.44,
+      "error": null
+    },
+    {
+      "id": "Q06",
+      "scope": "in_scope",
+      "domain": "operations",
+      "question": "If energy used per unit suddenly increases, what could be the reasons?",
+      "answer": "According to Section 4.3 of the manual, Energy per unit rises for two quite different reasons:\n\n1. A genuine increase in energy drawn (e.g., a failing compressor, a chiller working against a fouled condenser, or a heater left running through an idle period).\n2. A fall in output with energy roughly unchanged.\n\nIn other words, if energy used per unit suddenly increases, the reason could be either that there is a genuine increase in energy drawn due to some issue on the line (e.g., equipment failure), or that there has been a fall in output but still significant energy consumption.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "downtime"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "4.3"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 61.46,
+      "error": null
+    },
+    {
+      "id": "Q07",
+      "scope": "in_scope",
+      "domain": "operations",
+      "question": "When should a drop in production output be reported to the plant manager?",
+      "answer": "According to Section 3.2 of the operations manual, [Source 1], a single day below 80% of expected output on the same line does not trigger reporting to the plant manager, but two consecutive days below 80% do require the supervisor to raise a production review with the plant manager, stating whether the shortfall is explained by planned work, material supply, or an unexplained cause.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "80",
+        "two consecutive"
+      ],
+      "keywords_found": [
+        "80",
+        "two consecutive"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "3.2",
+        "80",
+        "80"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 78.94,
+      "error": null
+    },
+    {
+      "id": "Q08",
+      "scope": "in_scope",
+      "domain": "quality",
+      "question": "At what reject rate must the production line be stopped?",
+      "answer": "[Source N] According to Section 3.3 of the document, a production line must be stopped if its reject rate exceeds 4.0 percent [Source 1].",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "4.0"
+      ],
+      "keywords_found": [
+        "4.0"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "3.3",
+        "4.0"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 70.1,
+      "error": null
+    },
+    {
+      "id": "Q09",
+      "scope": "in_scope",
+      "domain": "quality",
+      "question": "What reject rate is considered normal during production?",
+      "answer": "[Source N] According to Section 3.1 of the Quality Manual [RBP-QLT-2025_quality_manual.txt, p.1], the four lines have different reject rates, and their normal conditions are described as follows:\n- L-01: The newest line with the lowest reject rate on the plant.\n- L-02: Runs close to each other and slightly above L-01.\n- L-03: Runs the highest reject rate of the four and sits within the investigate band as its normal condition.\n\nHowever, it is not explicitly stated that a specific reject rate is considered \"normal\" during production. The context only mentions that lines running steadily at 2.4 percent are inside the normal band but require no action under this manual, suggesting that 2.4 percent might be considered within the normal range for L-01, as it's mentioned in a different section.\n\nBut more precisely, according to Section 3.1 [RBP-OPS-2025_operations_manual.txt, p.1], \"Nominal rate is the rate the line is designed to sustain under normal conditions with no stoppages.\"",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "2.5"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "3.1",
+        "2025",
+        "01",
+        "02",
+        "01",
+        "03",
+        "2.4",
+        "2.4",
+        "01",
+        "3.1",
+        "2025"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 95.67,
+      "error": null
+    },
+    {
+      "id": "Q10",
+      "scope": "in_scope",
+      "domain": "quality",
+      "question": "How many defects in a single shift require escalation?",
+      "answer": "[Source 2: RBP-QLT-2025_quality_manual.txt, p.1]\n\nMore than 40 defects recorded on one line in a single shift is escalated to the quality supervisor before the end of that shift. This is a count trigger and is independent of the reject rate bands in Section 3.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "40"
+      ],
+      "keywords_found": [
+        "40"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "2025",
+        "40"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 75.81,
+      "error": null
+    },
+    {
+      "id": "Q11",
+      "scope": "in_scope",
+      "domain": "customers",
+      "question": "How many customer complaints against one production line trigger an escalation?",
+      "answer": "I could not find that in the documents.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "3",
+        "7"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 54.72,
+      "error": null
+    },
+    {
+      "id": "Q12",
+      "scope": "in_scope",
+      "domain": "customers",
+      "question": "Why are customer complaints compared with reject rates from two weeks earlier instead of today's reject rate?",
+      "answer": "[Source N]: According to section 6.4, \"By the time a complaint is recorded, the affected product has left the plant, the condition that caused it has existed for some time, and the same condition has usually already been visible in the line's reject rate and downtime. A rise in complaints against a line is therefore treated as confirmation of something the internal figures should already have shown.\"\n\nIn other words, customer complaints are compared with reject rates from two weeks earlier instead of today's reject rate because the complaint has likely already passed through the system, leaving the current day's reject rate incomplete and potentially misleading.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "14"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "6.4"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 73.7,
+      "error": null
+    },
+    {
+      "id": "Q13",
+      "scope": "in_scope",
+      "domain": "inventory",
+      "question": "When should preforms be reordered?",
+      "answer": "According to Section 3 - REORDER POINTS, preforms should be reordered when they fall below 12 days of cover.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "12"
+      ],
+      "keywords_found": [
+        "12"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "12"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 58.4,
+      "error": null
+    },
+    {
+      "id": "Q14",
+      "scope": "in_scope",
+      "domain": "inventory",
+      "question": "Why is the reorder point for closures higher than the reorder point for preforms?",
+      "answer": "According to Section 3.1 of the inventory policy text [Source 1], the reorder points are as follows:\n\n* Closure stock: reorder at 15 days of cover\n* Preforms: reorder at 12 days of cover\n\nThis indicates that the reorder point for closures is indeed higher than the reorder point for preforms, specifically by 3 days.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 3,
+      "keywords_expected": [
+        "single"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "3.1",
+        "15",
+        "12"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 34.55,
+      "error": null
+    },
+    {
+      "id": "Q15",
+      "scope": "in_scope",
+      "domain": "inventory",
+      "question": "At what inventory level is a stock-out risk raised?",
+      "answer": "According to SECTION 2 - WHAT IS HELD AND HOW IT IS MEASURED [Source 1: RBP-INV-2025_inventory_policy.txt, p.1], a stock-out risk is managed at plant level, and it does not specify an inventory level for raising the risk.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "5"
+      ],
+      "keywords_found": [
+        "5"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "2025"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 61.7,
+      "error": null
+    },
+    {
+      "id": "Q16",
+      "scope": "in_scope",
+      "domain": "workforce",
+      "question": "What is the minimum staffing required to operate one production line?",
+      "answer": "[Source N] According to Section 3 of RBP-HR-2025_workforce_safety_handbook.txt, p.1, the minimum staffing required to operate one production line is 4 operators and 1 technician per line, per shift.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "4",
+        "1 technician"
+      ],
+      "keywords_found": [
+        "4",
+        "1 technician"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "2025"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 76.05,
+      "error": null
+    },
+    {
+      "id": "Q17",
+      "scope": "in_scope",
+      "domain": "workforce",
+      "question": "How much overtime on a production line requires management review?",
+      "answer": "According to Section 7.3 of the Operational Manual (Source 2) and the Workforce Safety Handbook (Source 1), it is not explicitly stated how much overtime requires management review.\n\nHowever, Section 4.2 of the Workforce Safety Handbook mentions that \"The review under Section 4.2 establishes which of the three applies before any action is taken.\" There is no information on what specific amount or threshold of overtime would trigger a management review.\n\nTherefore, I could not find that in the documents.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "12"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 68.8,
+      "error": null
+    },
+    {
+      "id": "Q18",
+      "scope": "in_scope",
+      "domain": "finance",
+      "question": "What is the minimum gross margin the plant should maintain?",
+      "answer": "According to section 6.4 of the operations manual [Source 1], the plant operates to a gross margin floor of 18 percent, calculated per line over a rolling month as revenue less operating cost, divided by revenue.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "18"
+      ],
+      "keywords_found": [
+        "18"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "6.4",
+        "18"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 67.56,
+      "error": null
+    },
+    {
+      "id": "Q19",
+      "scope": "distractor",
+      "domain": "quality",
+      "question": "After a repair is completed, who has the authority to release the line back into production?",
+      "answer": "According to [Source 1: RBP-QLT-2025_quality_manual.txt, p.1], the quality supervisor releases a held line only after certain conditions are met, including identifying the cause of the stop, completing corrective work, and inspecting the first units after restart passing inspection.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "quality supervisor"
+      ],
+      "keywords_found": [
+        "quality supervisor"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "2025"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 76.4,
+      "error": null
+    },
+    {
+      "id": "Q20",
+      "scope": "distractor",
+      "domain": "maintenance",
+      "question": "Line L-04 is serviced every 350 hours. Why was this maintenance interval chosen?",
+      "answer": "According to Section 2.3 of the RBP-MNT-2025_maintenance_manual.txt:\n\n\"L-04 is the oldest line on the plant by commissioning date... Its shorter interval reflects the age of the machine rather than the complexity of the process.\"\n\nSo, Line L-04's maintenance interval was chosen based on its age, not its complexity or actual wear rate.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "age"
+      ],
+      "keywords_found": [
+        "age"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "2.3",
+        "2025",
+        "04",
+        "04"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 86.82,
+      "error": null
+    },
+    {
+      "id": "Q21",
+      "scope": "distractor",
+      "domain": "operations",
+      "question": "If Line L-02 changes to a different bottle size, how should that time be recorded?",
+      "answer": "[Source N] According to Section 3.1 of the Output and Production Control section, units rejected at inspection are not counted as output; they are counted as defects and are reported under the quality procedure in RBP-QLT-2025. However, there is no mention of how changes in bottle size should be recorded. I could not find that in the documents.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "planned"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 40.76,
+      "error": null
+    },
+    {
+      "id": "Q22",
+      "scope": "distractor",
+      "domain": "finance",
+      "question": "What increase in operating cost per unit will trigger a financial review?",
+      "answer": "[Source N] According to Section 6.1 of RBP-OPS-2025, a line whose cost per unit has risen should be examined for overtime alongside energy and rejected product. However, it does not explicitly state what increase in operating cost per unit will trigger a financial review. Nevertheless, the context implies that any significant change in operating cost would warrant further investigation, such as examining maintenance and quality records (Section 6.5).",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "3 percent"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "6.1",
+        "2025",
+        "6.5"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 58.71,
+      "error": null
+    },
+    {
+      "id": "Q23",
+      "scope": "distractor",
+      "domain": "inventory",
+      "question": "How is 'days of cover' calculated for inventory?",
+      "answer": "According to Section 7.1 Inventory Records and Section 3.1 Reorder Points, days of cover are calculated as follows:\n\n* Preform stock: 12 days of cover\n* Closure stock: 15 days of cover\n\nThe context does not explicitly state how 'days of cover' is calculated for inventory in general, so the answer can only be provided based on these specific sections.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "14"
+      ],
+      "keywords_found": [],
+      "correct": false,
+      "numbers_in_answer": [
+        "7.1",
+        "3.1",
+        "12",
+        "15"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 54.43,
+      "error": null
+    },
+    {
+      "id": "Q24",
+      "scope": "distractor",
+      "domain": "maintenance",
+      "question": "Which production line experiences the highest unplanned downtime, and why?",
+      "answer": "L-03 records substantially more unplanned downtime than any other line at Riverside. This is a consequence of the carbonation stage and is expected behaviour, not a fault condition in itself. [Source 1]",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [
+        "L-03",
+        "carbonation"
+      ],
+      "keywords_found": [
+        "L-03",
+        "carbonation"
+      ],
+      "correct": true,
+      "numbers_in_answer": [
+        "03"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": true,
+      "seconds": 31.65,
+      "error": null
+    },
+    {
+      "id": "Q25",
+      "scope": "out_of_scope",
+      "domain": "operations",
+      "question": "What chemical concentration is used for the plant's CIP cleaning process?",
+      "answer": "\"I could not find that in the documents.\"",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 60.38,
+      "error": null
+    },
+    {
+      "id": "Q26",
+      "scope": "out_of_scope",
+      "domain": "quality",
+      "question": "What is the required incoming water quality specification?",
+      "answer": "[Source 1: RBP-QLT-2025_quality_manual.txt, p.2]\n\nThere are no references to an \"incoming water quality specification\" in the provided documents.",
+      "refused": false,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [
+        "2025"
+      ],
+      "numbers_ungrounded": [],
+      "numerically_grounded": true,
+      "cited": false,
+      "seconds": 61.69,
+      "error": null
+    },
+    {
+      "id": "Q27",
+      "scope": "out_of_scope",
+      "domain": "operations",
+      "question": "What are the permitted effluent discharge limits for the plant?",
+      "answer": "I could not find that in the documents. The permitted effluent discharge limits are not mentioned in any of the provided document excerpts.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 59.83,
+      "error": null
+    },
+    {
+      "id": "Q28",
+      "scope": "out_of_scope",
+      "domain": "assets",
+      "question": "What are the asset serial number and book value of the L-02 filler?",
+      "answer": "I could not find that information in the provided documents. There is no mention of the asset serial number or book value of the L-02 filler.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 48.6,
+      "error": null
+    },
+    {
+      "id": "Q29",
+      "scope": "out_of_scope",
+      "domain": "workforce",
+      "question": "What is the hourly wage paid to a line operator?",
+      "answer": "I could not find that in the documents.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 5,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 39.95,
+      "error": null
+    },
+    {
+      "id": "Q30",
+      "scope": "out_of_scope",
+      "domain": "customers",
+      "question": "What export documents are required for overseas shipments?",
+      "answer": "I could not find that in the documents.",
+      "refused": true,
+      "grounded": true,
+      "llm_used": true,
+      "used_chunks": 1,
+      "keywords_expected": [],
+      "keywords_found": [],
+      "correct": null,
+      "numbers_in_answer": [],
+      "numbers_ungrounded": [],
+      "numerically_grounded": null,
+      "cited": false,
+      "seconds": 19.42,
+      "error": null
+    }
+  ]
+}
